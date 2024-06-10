@@ -1,0 +1,26 @@
+name: gotest
+
+on:
+  pull_request:
+    branches: ["**"]
+
+jobs:
+  tests:
+    runs-on: self-hosted
+
+    steps:
+      - name: Install Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: 1.22
+
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+
+      - name: modVerify
+        run: go mod verify
+
+      - name: Run Tests with go testsum
+        run: make test
+
