@@ -1,6 +1,8 @@
+// Package VC provides the controller for handling VIN VC-related requests.
 package vc
 
 import (
+	"context"
 	"fmt"
 	"net/url"
 	"path"
@@ -49,8 +51,9 @@ func NewVCController(
 }
 
 // GetVINVC handles requests to issue a VIN VC
-func (v *VCController) GetVINVC(ctx *fiber.Ctx) error {
-	tokenIDStr := ctx.Query("token_id")
+func (v *VCController) GetVINVC(fiberCtx *fiber.Ctx) error {
+	ctx := fiberCtx.Context()
+	tokenIDStr := fiberCtx.Query("token_id")
 	if tokenIDStr == "" {
 		return fiber.NewError(fiber.StatusBadRequest, "token_id query parameter is required")
 	}
@@ -60,34 +63,28 @@ func (v *VCController) GetVINVC(ctx *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusBadRequest, "invalid token_id format")
 	}
 
-	pairedDevices, err := v.identityService.GetPairedDevices(uint32(tokenID))
+	pairedDevices, err := v.identityService.GetPairedDevices(ctx, uint32(tokenID))
 	if err != nil {
 		return v.handleError(err, "Failed to get paired devices")
 	}
-
-	if err := v.revokeExistingVCForToken(uint32(tokenID), pairedDevices); err != nil {
-		return err
+	if len(pairedDevices) == 0 {
+		return fiber.NewError(fiber.StatusNotFound, "No paired devices found")
 	}
 
-	vin, aftermarketTokenID, syntheticTokenID, err := v.validateAndReconcileVINs(pairedDevices)
+	vin, aftermarketTokenID, syntheticTokenID, err := v.validateAndReconcileVINs(ctx, pairedDevices)
 	if err != nil {
 		return err
-	}
-
-	err = v.vcService.RevokeExistingVCForVIN(vin)
-	if err != nil {
-		return v.handleError(err, "Failed to revoke existing VC for VIN")
 	}
 
 	vcUUID := uuid.New().String()
 
-	if err := v.vcService.GenerateAndStoreVC(vcUUID, uint32(tokenID), aftermarketTokenID, syntheticTokenID, vin); err != nil {
+	if err := v.vcService.GenerateAndStoreVC(ctx, vcUUID, uint32(tokenID), aftermarketTokenID, syntheticTokenID, vin); err != nil {
 		return v.handleError(err, "Failed to generate and store VC")
 	}
 
 	vcURL, gqlQuery := v.generateVCURLAndQuery(vcUUID)
 
-	return ctx.Status(fiber.StatusOK).JSON(fiber.Map{
+	return fiberCtx.Status(fiber.StatusOK).JSON(fiber.Map{
 		"vc_url":   vcURL,
 		"vc_query": gqlQuery,
 		"message":  "VC generated successfully. Retrieve using the provided URL and query parameter.",
@@ -103,26 +100,8 @@ func sanitizeTelemetryURL(telemetryURL string) (*url.URL, error) {
 	return parsedURL, nil
 }
 
-// revokeExistingVCForToken revokes existing VC for the token if no devices are paired
-func (v *VCController) revokeExistingVCForToken(tokenID uint32, pairedDevices []models.PairedDevice) error {
-	if len(pairedDevices) == 0 {
-		err := v.vcService.RevokeExistingVCForToken(tokenID)
-		if err != nil {
-			return v.handleError(err, "Failed to revoke existing VC")
-		}
-		return fiber.NewError(fiber.StatusNoContent)
-	}
-
-	// Revoke all VCs that use paired devices but are not for the requested token
-	err := v.vcService.RevokeVCsForPairedDevices(pairedDevices, tokenID)
-	if err != nil {
-		return v.handleError(err, "Failed to revoke existing VCs for paired devices")
-	}
-	return nil
-}
-
-// validateAndReconcileVINs validates and reconciles VINs from the paired devices
-func (v *VCController) validateAndReconcileVINs(pairedDevices []models.PairedDevice) (string, *uint32, *uint32, error) {
+// validateAndReconcileVINs validates and reconciles VINs from the paired devices.
+func (v *VCController) validateAndReconcileVINs(ctx context.Context, pairedDevices []models.PairedDevice) (string, *uint32, *uint32, error) {
 	if len(pairedDevices) == 0 {
 		return "", nil, nil, fiber.NewError(fiber.StatusInternalServerError, "No paired devices")
 	}
@@ -133,7 +112,7 @@ func (v *VCController) validateAndReconcileVINs(pairedDevices []models.PairedDev
 	var syntheticTokenID *uint32
 
 	for _, device := range pairedDevices {
-		fingerprints, err := v.fingerprintService.GetLatestFingerprintMessages(device.TokenID)
+		fingerprints, err := v.fingerprintService.GetLatestFingerprintMessages(ctx, device.TokenID)
 		if err != nil {
 			return "", nil, nil, v.handleError(err, "Failed to get fingerprint messages")
 		}
@@ -156,7 +135,7 @@ func (v *VCController) validateAndReconcileVINs(pairedDevices []models.PairedDev
 		}
 	}
 
-	if err := v.vinService.ValidateVIN(latestVIN); err != nil {
+	if err := v.vinService.ValidateVIN(ctx, latestVIN); err != nil {
 		return "", nil, nil, v.handleError(err, "Failed to validate VIN")
 	}
 
