@@ -3,15 +3,25 @@ package main
 import (
 	"errors"
 	"flag"
+	"fmt"
+	"math/big"
 	"os"
 	"strconv"
 	"strings"
 
 	"github.com/DIMO-Network/attestation-api/internal/config"
 	"github.com/DIMO-Network/attestation-api/internal/controllers/vc"
+	"github.com/DIMO-Network/attestation-api/internal/services/fingerprint"
+	"github.com/DIMO-Network/attestation-api/internal/services/identity"
+	"github.com/DIMO-Network/attestation-api/internal/services/vinvc"
+	"github.com/DIMO-Network/attestation-api/pkg/verfiable"
+	"github.com/DIMO-Network/clickhouse-infra/pkg/connect"
 	"github.com/DIMO-Network/shared"
 	"github.com/DIMO-Network/shared/middleware/privilegetoken"
 	"github.com/DIMO-Network/shared/privileges"
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/ethereum/go-ethereum/common"
 	jwtware "github.com/gofiber/contrib/jwt"
 	"github.com/gofiber/fiber/v2"
@@ -67,7 +77,7 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings) {
 		Claims:     privilegetoken.Token{},
 	})
 
-	vinvcCtrl, err := vc.NewVCController(&logger, nil, nil, nil, nil, settings.TelemetryURL)
+	vinvcCtrl, err := createController(&logger, settings)
 	if err != nil {
 		logger.Fatal().Err(err).Msg("Failed to create VC controller")
 	}
@@ -139,4 +149,57 @@ func ErrorHandler(c *fiber.Ctx, err error, logger zerolog.Logger) error {
 type CodeResp struct {
 	Code    int    `json:"code"`
 	Message string `json:"message"`
+}
+
+func createController(logger *zerolog.Logger, settings *config.Settings) (*vc.VCController, error) {
+	// Initialize ClickHouse connection
+	chConn, err := connect.GetClickhouseConn(&settings.Clickhouse)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create ClickHouse connection: %w", err)
+	}
+	s3Client, err := s3ClientFromSettings(settings)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create S3 client: %w", err)
+	}
+
+	issuer, err := issuerFromSettings(settings)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create VC issuer: %w", err)
+	}
+
+	fingerprintService := fingerprint.New(chConn, s3Client, settings.FingerprintBucket, settings.FingerprintDataType)
+	identityService := identity.NewService(settings.IdentityAPIURL, nil)
+	vinvcService := vinvc.New(chConn, s3Client, issuer, settings.VINVCBucket, settings.VINVCDataType)
+	vinvcCtrl, err := vc.NewVCController(logger, vinvcService, identityService, fingerprintService, nil, settings.TelemetryURL)
+	if err != nil {
+		logger.Fatal().Err(err).Msg("Failed to create VC controller")
+	}
+
+	return vinvcCtrl, nil
+}
+
+// s3ClientFromSettings creates an S3 client from the given settings.
+func s3ClientFromSettings(settings *config.Settings) (*s3.S3, error) {
+	// Create an AWS session
+	awsSession, err := session.NewSession(&aws.Config{
+		Region: aws.String(settings.AWSRegion),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to create AWS session: %w", err)
+	}
+	// Initialize S3 client
+	return s3.New(awsSession), nil
+}
+
+func issuerFromSettings(settings *config.Settings) (*verfiable.Issuer, error) {
+	verfiableConfig := verfiable.Config{
+		PrivateKey:        settings.PrivateKey,
+		ChainID:           big.NewInt(settings.DIMORegistryChainID),
+		VehicleNFTAddress: common.HexToAddress(settings.VehicleNFTAddress),
+	}
+	issuer, err := verfiable.NewIssuer(verfiableConfig)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create VC issuer: %w", err)
+	}
+	return issuer, nil
 }

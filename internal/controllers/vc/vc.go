@@ -11,7 +11,6 @@ import (
 
 	"github.com/DIMO-Network/attestation-api/pkg/models"
 	"github.com/gofiber/fiber/v2"
-	"github.com/google/uuid"
 	"github.com/rs/zerolog"
 )
 
@@ -58,12 +57,13 @@ func (v *VCController) GetVINVC(fiberCtx *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusBadRequest, "token_id query parameter is required")
 	}
 
-	tokenID, err := strconv.ParseUint(tokenIDStr, 10, 32)
+	tokenID64, err := strconv.ParseUint(tokenIDStr, 10, 32)
+	tokenID := uint32(tokenID64)
 	if err != nil {
 		return fiber.NewError(fiber.StatusBadRequest, "invalid token_id format")
 	}
 
-	pairedDevices, err := v.identityService.GetPairedDevices(ctx, uint32(tokenID))
+	pairedDevices, err := v.identityService.GetPairedDevices(ctx, tokenID)
 	if err != nil {
 		return v.handleError(err, "Failed to get paired devices")
 	}
@@ -71,18 +71,17 @@ func (v *VCController) GetVINVC(fiberCtx *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusNotFound, "No paired devices found")
 	}
 
-	vin, aftermarketTokenID, syntheticTokenID, err := v.validateAndReconcileVINs(ctx, pairedDevices)
+	vin, err := v.validateAndReconcileVINs(ctx, pairedDevices)
 	if err != nil {
 		return err
 	}
 
-	vcUUID := uuid.New().String()
-
-	if err := v.vcService.GenerateAndStoreVC(ctx, vcUUID, uint32(tokenID), aftermarketTokenID, syntheticTokenID, vin); err != nil {
+	err = v.vcService.GenerateAndStoreVC(ctx, tokenID, vin)
+	if err != nil {
 		return v.handleError(err, "Failed to generate and store VC")
 	}
 
-	vcURL, gqlQuery := v.generateVCURLAndQuery(vcUUID)
+	vcURL, gqlQuery := v.generateVCURLAndQuery(tokenID)
 
 	return fiberCtx.Status(fiber.StatusOK).JSON(fiber.Map{
 		"vc_url":   vcURL,
@@ -101,49 +100,36 @@ func sanitizeTelemetryURL(telemetryURL string) (*url.URL, error) {
 }
 
 // validateAndReconcileVINs validates and reconciles VINs from the paired devices.
-func (v *VCController) validateAndReconcileVINs(ctx context.Context, pairedDevices []models.PairedDevice) (string, *uint32, *uint32, error) {
+func (v *VCController) validateAndReconcileVINs(ctx context.Context, pairedDevices []models.PairedDevice) (string, error) {
 	if len(pairedDevices) == 0 {
-		return "", nil, nil, fiber.NewError(fiber.StatusInternalServerError, "No paired devices")
+		return "", fiber.NewError(fiber.StatusInternalServerError, "No paired devices")
 	}
 
 	var latestVIN string
 	var latestTimestamp time.Time
-	var aftermarketTokenID *uint32
-	var syntheticTokenID *uint32
 
 	for _, device := range pairedDevices {
-		fingerprints, err := v.fingerprintService.GetLatestFingerprintMessages(ctx, device.TokenID)
+		fingerprint, err := v.fingerprintService.GetLatestFingerprintMessages(ctx, device.Address)
 		if err != nil {
-			return "", nil, nil, v.handleError(err, "Failed to get fingerprint messages")
+			return "", v.handleError(err, "Failed to get fingerprint messages")
 		}
 
-		if len(fingerprints) > 0 {
-			currentVIN := fingerprints[0].VIN
-			if latestVIN == "" || fingerprints[0].Timestamp.After(latestTimestamp) {
-				latestVIN = currentVIN
-				latestTimestamp = fingerprints[0].Timestamp
-				aftermarketTokenID = nil
-				syntheticTokenID = nil
-			}
-
-			// Check if the TokenID belongs to aftermarket or synthetic
-			if device.Type == models.DeviceTypeAftermarket && latestVIN == currentVIN {
-				aftermarketTokenID = &device.TokenID
-			} else if device.Type == models.DeviceTypeSynthetic && latestVIN == currentVIN {
-				syntheticTokenID = &device.TokenID
-			}
+		currentVIN := fingerprint.VIN
+		if latestVIN == "" || fingerprint.Timestamp.After(latestTimestamp) {
+			latestVIN = currentVIN
+			latestTimestamp = fingerprint.Timestamp
 		}
 	}
 
 	if err := v.vinService.ValidateVIN(ctx, latestVIN); err != nil {
-		return "", nil, nil, v.handleError(err, "Failed to validate VIN")
+		return "", v.handleError(err, "Failed to validate VIN")
 	}
 
-	return latestVIN, aftermarketTokenID, syntheticTokenID, nil
+	return latestVIN, nil
 }
 
 // generateVCURLAndQuery generates the URL and GraphQL query for retrieving the VC
-func (v *VCController) generateVCURLAndQuery(vcUUID string) (string, string) {
+func (v *VCController) generateVCURLAndQuery(tokenID uint32) (string, string) {
 	vcPath := path.Join(v.telemetryBaseURL.Path, "vc")
 	fullURL := &url.URL{
 		Scheme: v.telemetryBaseURL.Scheme,
@@ -153,7 +139,7 @@ func (v *VCController) generateVCURLAndQuery(vcUUID string) (string, string) {
 
 	gqlQuery := fmt.Sprintf(`
 	{
-		vc(uuid: "%s") {
+		vc(tokenID: "%d") {
 			id
 			vin
 			issuanceDate
@@ -162,7 +148,7 @@ func (v *VCController) generateVCURLAndQuery(vcUUID string) (string, string) {
 			proof
 			metadata
 		}
-	}`, vcUUID)
+	}`, tokenID)
 	return fullURL.String(), gqlQuery
 }
 

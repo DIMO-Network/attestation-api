@@ -5,11 +5,13 @@ import (
 	"context"
 
 	"github.com/DIMO-Network/attestation-api/pkg/models"
+	"github.com/ethereum/go-ethereum/common"
 )
 
 // VCService defines the interface for VC operations.
 type VCService interface {
-	GenerateAndStoreVC(ctx context.Context, vcUUID string, tokenID uint32, aftermarketTokenID, syntheticTokenID *uint32, vin string) error
+	GetLatestVC(ctx context.Context, tokenID uint32) (*models.VINVC, error)
+	GenerateAndStoreVC(ctx context.Context, tokenID uint32, vin string) error
 }
 
 // IdentityService defines the interface for identity operations.
@@ -19,7 +21,7 @@ type IdentityService interface {
 
 // FingerprintService defines the interface for fingerprint message operations.
 type FingerprintService interface {
-	GetLatestFingerprintMessages(ctx context.Context, tokenID uint32) ([]models.FingerprintMessage, error)
+	GetLatestFingerprintMessages(ctx context.Context, pairedDeviceAddr common.Address) (*models.FingerprintMessage, error)
 }
 
 // VINService defines the interface for VIN validation.

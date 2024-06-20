@@ -1,6 +1,10 @@
 package models
 
-import "time"
+import (
+	"time"
+
+	"github.com/ethereum/go-ethereum/common"
+)
 
 // DeviceType represents the type of device.
 type DeviceType string
@@ -14,12 +18,15 @@ const (
 
 // PairedDevice represents a device paired with a token.
 type PairedDevice struct {
-	TokenID uint32     `json:"token_id"`
-	Type    DeviceType `json:"type"`
+	Address common.Address `json:"address"`
+	Type    DeviceType     `json:"type"`
 }
 
 // FingerprintMessage represents the fingerprint message containing VIN and timestamp.
 type FingerprintMessage struct {
 	VIN       string    `json:"vin"`
 	Timestamp time.Time `json:"timestamp"`
+}
+
+type VINVC struct {
 }

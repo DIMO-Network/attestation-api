@@ -14,6 +14,7 @@ import (
 	reflect "reflect"
 
 	models "github.com/DIMO-Network/attestation-api/pkg/models"
+	common "github.com/ethereum/go-ethereum/common"
 	gomock "go.uber.org/mock/gomock"
 )
 
@@ -41,17 +42,32 @@ func (m *MockVCService) EXPECT() *MockVCServiceMockRecorder {
 }
 
 // GenerateAndStoreVC mocks base method.
-func (m *MockVCService) GenerateAndStoreVC(ctx context.Context, vcUUID string, tokenID uint32, aftermarketTokenID, syntheticTokenID *uint32, vin string) error {
+func (m *MockVCService) GenerateAndStoreVC(ctx context.Context, tokenID uint32, vin string) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GenerateAndStoreVC", ctx, vcUUID, tokenID, aftermarketTokenID, syntheticTokenID, vin)
+	ret := m.ctrl.Call(m, "GenerateAndStoreVC", ctx, tokenID, vin)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // GenerateAndStoreVC indicates an expected call of GenerateAndStoreVC.
-func (mr *MockVCServiceMockRecorder) GenerateAndStoreVC(ctx, vcUUID, tokenID, aftermarketTokenID, syntheticTokenID, vin any) *gomock.Call {
+func (mr *MockVCServiceMockRecorder) GenerateAndStoreVC(ctx, tokenID, vin any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GenerateAndStoreVC", reflect.TypeOf((*MockVCService)(nil).GenerateAndStoreVC), ctx, vcUUID, tokenID, aftermarketTokenID, syntheticTokenID, vin)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GenerateAndStoreVC", reflect.TypeOf((*MockVCService)(nil).GenerateAndStoreVC), ctx, tokenID, vin)
+}
+
+// GetLatestVC mocks base method.
+func (m *MockVCService) GetLatestVC(ctx context.Context, tokenID uint32) (*models.VINVC, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetLatestVC", ctx, tokenID)
+	ret0, _ := ret[0].(*models.VINVC)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetLatestVC indicates an expected call of GetLatestVC.
+func (mr *MockVCServiceMockRecorder) GetLatestVC(ctx, tokenID any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetLatestVC", reflect.TypeOf((*MockVCService)(nil).GetLatestVC), ctx, tokenID)
 }
 
 // MockIdentityService is a mock of IdentityService interface.
@@ -116,18 +132,18 @@ func (m *MockFingerprintService) EXPECT() *MockFingerprintServiceMockRecorder {
 }
 
 // GetLatestFingerprintMessages mocks base method.
-func (m *MockFingerprintService) GetLatestFingerprintMessages(ctx context.Context, tokenID uint32) ([]models.FingerprintMessage, error) {
+func (m *MockFingerprintService) GetLatestFingerprintMessages(ctx context.Context, pairedDeviceAddr common.Address) (*models.FingerprintMessage, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetLatestFingerprintMessages", ctx, tokenID)
-	ret0, _ := ret[0].([]models.FingerprintMessage)
+	ret := m.ctrl.Call(m, "GetLatestFingerprintMessages", ctx, pairedDeviceAddr)
+	ret0, _ := ret[0].(*models.FingerprintMessage)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetLatestFingerprintMessages indicates an expected call of GetLatestFingerprintMessages.
-func (mr *MockFingerprintServiceMockRecorder) GetLatestFingerprintMessages(ctx, tokenID any) *gomock.Call {
+func (mr *MockFingerprintServiceMockRecorder) GetLatestFingerprintMessages(ctx, pairedDeviceAddr any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetLatestFingerprintMessages", reflect.TypeOf((*MockFingerprintService)(nil).GetLatestFingerprintMessages), ctx, tokenID)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetLatestFingerprintMessages", reflect.TypeOf((*MockFingerprintService)(nil).GetLatestFingerprintMessages), ctx, pairedDeviceAddr)
 }
 
 // MockVINService is a mock of VINService interface.
