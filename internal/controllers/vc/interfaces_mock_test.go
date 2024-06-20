@@ -11,6 +11,7 @@ package vc_test
 
 import (
 	context "context"
+	json "encoding/json"
 	reflect "reflect"
 
 	models "github.com/DIMO-Network/attestation-api/pkg/models"
@@ -41,18 +42,33 @@ func (m *MockVCService) EXPECT() *MockVCServiceMockRecorder {
 	return m.recorder
 }
 
-// GenerateAndStoreVC mocks base method.
-func (m *MockVCService) GenerateAndStoreVC(ctx context.Context, tokenID uint32, vin string) error {
+// GenerateAndStoreVINVC mocks base method.
+func (m *MockVCService) GenerateAndStoreVINVC(ctx context.Context, tokenID uint32, vin string) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GenerateAndStoreVC", ctx, tokenID, vin)
+	ret := m.ctrl.Call(m, "GenerateAndStoreVINVC", ctx, tokenID, vin)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
-// GenerateAndStoreVC indicates an expected call of GenerateAndStoreVC.
-func (mr *MockVCServiceMockRecorder) GenerateAndStoreVC(ctx, tokenID, vin any) *gomock.Call {
+// GenerateAndStoreVINVC indicates an expected call of GenerateAndStoreVINVC.
+func (mr *MockVCServiceMockRecorder) GenerateAndStoreVINVC(ctx, tokenID, vin any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GenerateAndStoreVC", reflect.TypeOf((*MockVCService)(nil).GenerateAndStoreVC), ctx, tokenID, vin)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GenerateAndStoreVINVC", reflect.TypeOf((*MockVCService)(nil).GenerateAndStoreVINVC), ctx, tokenID, vin)
+}
+
+// GenerateStatusVC mocks base method.
+func (m *MockVCService) GenerateStatusVC(tokenID uint32) (json.RawMessage, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GenerateStatusVC", tokenID)
+	ret0, _ := ret[0].(json.RawMessage)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GenerateStatusVC indicates an expected call of GenerateStatusVC.
+func (mr *MockVCServiceMockRecorder) GenerateStatusVC(tokenID any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GenerateStatusVC", reflect.TypeOf((*MockVCService)(nil).GenerateStatusVC), tokenID)
 }
 
 // GetLatestVC mocks base method.

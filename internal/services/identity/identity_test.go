@@ -134,7 +134,8 @@ func TestService_GetPairedDevices(t *testing.T) {
 			server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				w.WriteHeader(tt.mockStatusCode)
 				if tt.mockResponseBody != "" {
-					io.WriteString(w, tt.mockResponseBody)
+					_, err := io.WriteString(w, tt.mockResponseBody)
+					require.NoError(t, err)
 				}
 			}))
 			defer server.Close()

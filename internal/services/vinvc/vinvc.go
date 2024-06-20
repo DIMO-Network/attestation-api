@@ -16,14 +16,21 @@ import (
 // Service manages and retrieves fingerprint messages.
 type Service struct {
 	indexfile.Service
-	issuer *verfiable.Issuer
+	issuer     *verfiable.Issuer
+	revokedMap map[uint32]struct{}
 }
 
 // New creates a new instance of Service.
-func New(chConn clickhouse.Conn, objGetter indexfile.ObjectGetter, issuer *verfiable.Issuer, bucketName, vinvcDataType string) *Service {
+func New(chConn clickhouse.Conn, objGetter indexfile.ObjectGetter, issuer *verfiable.Issuer, bucketName, vinvcDataType string, revokedList []uint32) *Service {
+
+	revokeMap := make(map[uint32]struct{}, len(revokedList))
+	for _, id := range revokedList {
+		revokeMap[id] = struct{}{}
+	}
 	return &Service{
-		Service: *indexfile.New(chConn, objGetter, bucketName, vinvcDataType),
-		issuer:  issuer,
+		Service:    *indexfile.New(chConn, objGetter, bucketName, vinvcDataType),
+		issuer:     issuer,
+		revokedMap: revokeMap,
 	}
 }
 
@@ -43,8 +50,8 @@ func (s *Service) GetLatestVC(ctx context.Context, vehicleTokenId uint32) (*mode
 	return &msg, nil
 }
 
-// GenerateAndStoreVC generates a new VC and stores it in S3.
-func (s *Service) GenerateAndStoreVC(ctx context.Context, vehicleTokenID uint32, vin string) error {
+// GenerateAndStoreVINVC generates a new VIN VC and stores it in S3.
+func (s *Service) GenerateAndStoreVINVC(ctx context.Context, vehicleTokenID uint32, vin string) error {
 	newVC, err := s.issuer.CreateVINVC(vin, vehicleTokenID, time.Time{})
 	if err != nil {
 		return fmt.Errorf("failed to create VC: %w", err)
@@ -64,4 +71,17 @@ func (s *Service) GenerateAndStoreVC(ctx context.Context, vehicleTokenID uint32,
 	}
 
 	return nil
+}
+
+// GenerateStatusVC generates a new status VC.
+func (s *Service) GenerateStatusVC(tokenID uint32) (json.RawMessage, error) {
+	revoked := false
+	if _, ok := s.revokedMap[tokenID]; ok {
+		revoked = true
+	}
+	vcData, err := s.issuer.CreateBitstringStatusListVC(tokenID, revoked)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create VC: %w", err)
+	}
+	return vcData, nil
 }

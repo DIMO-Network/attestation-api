@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"net/url"
 	"path"
-	"strconv"
 	"time"
 
 	"github.com/DIMO-Network/attestation-api/pkg/models"
@@ -49,45 +48,32 @@ func NewVCController(
 	}, nil
 }
 
-// GetVINVC handles requests to issue a VIN VC
-func (v *VCController) GetVINVC(fiberCtx *fiber.Ctx) error {
-	ctx := fiberCtx.Context()
-	tokenIDStr := fiberCtx.Query("token_id")
-	if tokenIDStr == "" {
-		return fiber.NewError(fiber.StatusBadRequest, "token_id query parameter is required")
-	}
-
-	tokenID64, err := strconv.ParseUint(tokenIDStr, 10, 32)
-	tokenID := uint32(tokenID64)
-	if err != nil {
-		return fiber.NewError(fiber.StatusBadRequest, "invalid token_id format")
-	}
-
+func (v *VCController) getVINVC(ctx context.Context, tokenID uint32) (*getVINVCResponse, error) {
 	pairedDevices, err := v.identityService.GetPairedDevices(ctx, tokenID)
 	if err != nil {
-		return v.handleError(err, "Failed to get paired devices")
+		return nil, v.handleError(err, "Failed to get paired devices")
 	}
 	if len(pairedDevices) == 0 {
-		return fiber.NewError(fiber.StatusNotFound, "No paired devices found")
+		return nil, fiber.NewError(fiber.StatusNotFound, "No paired devices found")
 	}
 
 	vin, err := v.validateAndReconcileVINs(ctx, pairedDevices)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	err = v.vcService.GenerateAndStoreVC(ctx, tokenID, vin)
+	err = v.vcService.GenerateAndStoreVINVC(ctx, tokenID, vin)
 	if err != nil {
-		return v.handleError(err, "Failed to generate and store VC")
+		return nil, v.handleError(err, "Failed to generate and store VC")
 	}
 
 	vcURL, gqlQuery := v.generateVCURLAndQuery(tokenID)
 
-	return fiberCtx.Status(fiber.StatusOK).JSON(fiber.Map{
-		"vc_url":   vcURL,
-		"vc_query": gqlQuery,
-		"message":  "VC generated successfully. Retrieve using the provided URL and query parameter.",
-	})
+	return &getVINVCResponse{
+		VCURL:   vcURL,
+		VCQuery: gqlQuery,
+		Message: "VC generated successfully. Retrieve using the provided GQL URL and query parameter.",
+	}, nil
 }
 
 // sanitizeTelemetryURL parses and sanitizes the given telemetry URL.

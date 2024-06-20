@@ -1,8 +1,11 @@
 package verfiable
 
 import (
+	"bytes"
+	"compress/gzip"
 	"crypto/ecdsa"
 	_ "embed" //nolint
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"math/big"
@@ -24,6 +27,9 @@ var w3cNSCredentialsV2 []byte
 
 //go:embed schema_vin.json
 var vinSchema []byte
+
+var trueList = MustEncodeList([]byte{1})
+var falseList = MustEncodeList([]byte{0})
 
 type Config struct {
 	PrivateKey        []byte
@@ -102,7 +108,7 @@ func (i *Issuer) CreateVINVC(vin string, tokenID uint32, expirationDate time.Tim
 			ID:                   statusURL.String(),
 			Type:                 "BitstringStatusListEntry",
 			StatusPurpose:        "revocation",
-			StatusListIndex:      strconv.FormatUint(uint64(tokenID), 10),
+			StatusListIndex:      0,
 			StatusListCredential: i.baseStatusURL.String(),
 		},
 	}
@@ -136,4 +142,81 @@ func (i *Issuer) CreateVINVC(vin string, tokenID uint32, expirationDate time.Tim
 	}
 
 	return signedCreds, nil
+}
+
+func (i *Issuer) CreateBitstringStatusListVC(tokenID uint32, revoked bool) ([]byte, error) {
+	tokenIDStr := strconv.FormatUint(uint64(tokenID), 10)
+	statusURL := i.baseStatusURL.JoinPath(tokenIDStr)
+	issuanceDate := time.Now().UTC().Format(time.RFC3339)
+
+	credential := Credential{
+		Context: []string{
+			"https://www.w3.org/ns/credentials/v2",
+		},
+		ID:        statusURL.String(),
+		Type:      []string{"VerifiableCredential", "BitstringStatusListCredential"},
+		Issuer:    i.issuerDID,
+		ValidFrom: issuanceDate,
+	}
+
+	encodedList := trueList
+	if revoked {
+		encodedList = falseList
+	}
+	subject := BitstringStatusListSubject{
+		ID:            statusURL.String() + "#list",
+		Type:          "BitstringStatusList",
+		StatusPurpose: "revocation",
+		EncodedList:   encodedList,
+	}
+	rawSubject, err := json.Marshal(subject)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal credential subject: %w", err)
+	}
+	credential.CredentialSubject = rawSubject
+
+	proofOptions := ProofOptions{
+		Type:               dataIntegrityProof,
+		VerificationMethod: i.verificationMethod,
+		Cryptosuite:        ecdsaRdfc2019,
+		Created:            issuanceDate,
+		ProofPurpose:       "assertionMethod",
+	}
+	proof, err := CreateProof(credential, proofOptions, i.privateKey, i.ldProcessor, i.ldOptions)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create proof: %w", err)
+	}
+	credential.Proof = proof
+
+	signedCreds, err := json.Marshal(credential)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal signed credential: %w", err)
+	}
+
+	return signedCreds, nil
+}
+
+// EncodeList compresses and base64 encodes a list of bytes.
+func EncodeList(data []byte) (string, error) {
+	var buffer bytes.Buffer
+	gzipWriter := gzip.NewWriter(&buffer)
+	_, err := gzipWriter.Write(data)
+	if err != nil {
+		return "", fmt.Errorf("failed to write data to gzip writer: %w", err)
+	}
+
+	if err := gzipWriter.Close(); err != nil {
+		return "", fmt.Errorf("failed to close gzip writer: %w", err)
+	}
+	// base64 encode the gzip compressed data
+	return base64.StdEncoding.EncodeToString(buffer.Bytes()), nil
+}
+
+// MustEncodeList compresses and base64 encodes a list of bytes.
+func MustEncodeList(data []byte) string {
+	encodedData, err := EncodeList(data)
+	if err != nil {
+		panic(fmt.Errorf("failed to gzip encode data: %w", err))
+	}
+	return encodedData
 }

@@ -11,15 +11,11 @@ type Credential struct {
 	Type              []string         `json:"type,omitempty"`
 	Issuer            string           `json:"issuer,omitempty"`
 	IssuanceDate      string           `json:"issuanceDate,omitempty"`
+	ValidFrom         string           `json:"validFrom,omitempty"`
 	ExpirationDate    string           `json:"expirationDate,omitempty"`
 	CredentialSubject json.RawMessage  `json:"credentialSubject,omitempty"`
 	CredentialStatus  CredentialStatus `json:"credentialStatus,omitempty"`
 	Proof             Proof            `json:"proof,omitempty"`
-}
-
-// CredentialSubject is an interface for the subject of the verifiable credential.
-type CredentialSubject interface {
-	isCredentialSubject() string
 }
 
 // VINSubject represents the subject of the VIN verifiable credential.
@@ -28,14 +24,20 @@ type VINSubject struct {
 	VehicleIdentificationNumber string `json:"vehicleIdentificationNumber,omitempty"`
 }
 
-func (VINSubject) isCredentialSubject() string { return "VINSubject" }
+// BitstringStatusListSubject represents the subject of the bitstring status list verifiable credential.
+type BitstringStatusListSubject struct {
+	ID            string `json:"id,omitempty"`
+	Type          string `json:"type,omitempty"`
+	StatusPurpose string `json:"statusPurpose,omitempty"`
+	EncodedList   string `json:"encodedList,omitempty"`
+}
 
 // CredentialStatus represents the status of the verifiable credential.
 type CredentialStatus struct {
 	ID                   string `json:"id,omitempty"`
 	Type                 string `json:"type,omitempty"`
 	StatusPurpose        string `json:"statusPurpose,omitempty"`
-	StatusListIndex      string `json:"statusListIndex,omitempty"`
+	StatusListIndex      uint   `json:"statusListIndex,omitempty"`
 	StatusListCredential string `json:"statusListCredential,omitempty"`
 }
 

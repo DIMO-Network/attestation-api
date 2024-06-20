@@ -3,6 +3,7 @@ package vc
 
 import (
 	"context"
+	"encoding/json"
 
 	"github.com/DIMO-Network/attestation-api/pkg/models"
 	"github.com/ethereum/go-ethereum/common"
@@ -11,7 +12,8 @@ import (
 // VCService defines the interface for VC operations.
 type VCService interface {
 	GetLatestVC(ctx context.Context, tokenID uint32) (*models.VINVC, error)
-	GenerateAndStoreVC(ctx context.Context, tokenID uint32, vin string) error
+	GenerateAndStoreVINVC(ctx context.Context, tokenID uint32, vin string) error
+	GenerateStatusVC(tokenID uint32) (json.RawMessage, error)
 }
 
 // IdentityService defines the interface for identity operations.

@@ -1,8 +1,13 @@
 package verfiable_test
 
 import (
+	"bytes"
+	"compress/gzip"
 	"crypto/ecdsa"
+	"encoding/base64"
 	"encoding/json"
+	"fmt"
+	"io"
 	"math/big"
 	"strconv"
 	"strings"
@@ -123,6 +128,90 @@ func TestCreateVINVC(t *testing.T) {
 	}
 }
 
+func TestCreateBitstringStatusListVC(t *testing.T) {
+	privateKey, err := crypto.GenerateKey()
+	require.NoError(t, err)
+
+	tests := []struct {
+		name        string
+		config      verfiable.Config
+		tokenID     uint32
+		revoked     bool
+		expectError bool
+		expectedBit byte
+	}{
+		{
+			name: "Valid BitstringStatusListCredential - Not Revoked",
+			config: verfiable.Config{
+				PrivateKey:        crypto.FromECDSA(privateKey),
+				ChainID:           big.NewInt(1),
+				VehicleNFTAddress: common.HexToAddress("0x1234567890abcdef1234567890abcdef12345678"),
+				BaseStatusURL:     "https://status.example.com",
+			},
+			tokenID:     1,
+			revoked:     false,
+			expectError: false,
+			expectedBit: 1,
+		},
+		{
+			name: "Valid BitstringStatusListCredential - Revoked",
+			config: verfiable.Config{
+				PrivateKey:        crypto.FromECDSA(privateKey),
+				ChainID:           big.NewInt(1),
+				VehicleNFTAddress: common.HexToAddress("0x1234567890abcdef1234567890abcdef12345678"),
+				BaseStatusURL:     "https://status.example.com",
+			},
+			tokenID:     2,
+			revoked:     true,
+			expectError: false,
+			expectedBit: 0,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			issuerService, err := verfiable.NewIssuer(tt.config)
+			require.NoError(t, err)
+
+			vc, err := issuerService.CreateBitstringStatusListVC(tt.tokenID, tt.revoked)
+			if tt.expectError {
+				require.Error(t, err)
+				return
+			}
+			require.NoError(t, err)
+
+			var credential verfiable.Credential
+			err = json.Unmarshal(vc, &credential)
+			require.NoError(t, err)
+
+			// Verify credential fields
+			require.Equal(t, "https://www.w3.org/ns/credentials/v2", credential.Context[0])
+			require.Equal(t, issuerService.DID(), credential.Issuer)
+			require.Equal(t, "VerifiableCredential", credential.Type[0])
+			require.Equal(t, "BitstringStatusListCredential", credential.Type[1])
+
+			var subject verfiable.BitstringStatusListSubject
+			err = json.Unmarshal(credential.CredentialSubject, &subject)
+			require.NoError(t, err)
+			require.Equal(t, "BitstringStatusList", subject.Type)
+			require.Equal(t, credential.ID+"#list", subject.ID)
+			require.Equal(t, "revocation", subject.StatusPurpose)
+
+			bitList, err := decodeAndDecompressBitList(subject.EncodedList)
+			require.NoError(t, err)
+
+			// Check if the bit list matches the expected bit
+			for _, bit := range bitList {
+				require.Equal(t, tt.expectedBit, bit)
+			}
+
+			// Verify credential proof
+			valid := validateProof(t, credential.Proof, credential, privateKey)
+			require.True(t, valid)
+		})
+	}
+}
+
 func TestTamperedPayload(t *testing.T) {
 	privateKey, err := crypto.GenerateKey()
 	require.NoError(t, err)
@@ -221,4 +310,26 @@ func validateProof(t *testing.T, proof verfiable.Proof, credential verfiable.Cre
 	require.NotEmpty(t, signatureBytes)
 
 	return ecdsa.VerifyASN1(&privateKey.PublicKey, hashData, signatureBytes)
+}
+
+// decodeAndDecompressBitList decompresses and verifies the bit list.
+func decodeAndDecompressBitList(encodedList string) ([]byte, error) {
+	// Decode and verify the encoded list
+	decodedList, err := base64.StdEncoding.DecodeString(encodedList)
+	if err != nil {
+		return nil, fmt.Errorf("failed to decode base64 string: %w", err)
+	}
+	reader := bytes.NewReader(decodedList)
+	gzipReader, err := gzip.NewReader(reader)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create gzip reader: %w", err)
+	}
+	defer gzipReader.Close()
+
+	decodedBitList, err := io.ReadAll(gzipReader)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read from gzip reader: %w", err)
+	}
+
+	return decodedBitList, nil
 }

@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"math/big"
+	"net/url"
 	"os"
 	"strconv"
 	"strings"
@@ -77,7 +78,7 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings) {
 		Claims:     privilegetoken.Token{},
 	})
 
-	vinvcCtrl, err := createController(&logger, settings)
+	vinvcCtrl, err := createVINController(&logger, settings)
 	if err != nil {
 		logger.Fatal().Err(err).Msg("Failed to create VC controller")
 	}
@@ -89,7 +90,16 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings) {
 	}))
 	app.Use(cors.New())
 	app.Get("/", HealthCheck)
+
+	// add v1 swagger to align with other services
 	app.Get("/v1/swagger/*", swagger.HandlerDefault)
+	app.Get("/swagger/*", swagger.HandlerDefault)
+
+	// status route for entire vc list
+	statusRoute := app.Get("/v1/vc/status", nil)
+
+	// status route for individual vc
+	statusRoute.Get("/:vehicleTokenID", vinvcCtrl.GetVCStatus)
 
 	vehicleAddr := common.HexToAddress(settings.VehicleNFTAddress)
 
@@ -151,7 +161,7 @@ type CodeResp struct {
 	Message string `json:"message"`
 }
 
-func createController(logger *zerolog.Logger, settings *config.Settings) (*vc.VCController, error) {
+func createVINController(logger *zerolog.Logger, settings *config.Settings) (*vc.VCController, error) {
 	// Initialize ClickHouse connection
 	chConn, err := connect.GetClickhouseConn(&settings.Clickhouse)
 	if err != nil {
@@ -166,10 +176,22 @@ func createController(logger *zerolog.Logger, settings *config.Settings) (*vc.VC
 	if err != nil {
 		return nil, fmt.Errorf("failed to create VC issuer: %w", err)
 	}
+	var revokedList []uint32
+	if settings.RevokedTokenIDs != "" {
+		tokenIDs := strings.Split(settings.RevokedTokenIDs, ",")
+		revokedList = make([]uint32, len(tokenIDs))
+		for i, id := range tokenIDs {
+			tokenID, err := strconv.Atoi(strings.TrimSpace(id))
+			if err != nil {
+				return nil, fmt.Errorf("failed to convert revoked token ID to int: %w", err)
+			}
+			revokedList[i] = uint32(tokenID)
+		}
+	}
 
 	fingerprintService := fingerprint.New(chConn, s3Client, settings.FingerprintBucket, settings.FingerprintDataType)
 	identityService := identity.NewService(settings.IdentityAPIURL, nil)
-	vinvcService := vinvc.New(chConn, s3Client, issuer, settings.VINVCBucket, settings.VINVCDataType)
+	vinvcService := vinvc.New(chConn, s3Client, issuer, settings.VINVCBucket, settings.VINVCDataType, revokedList)
 	vinvcCtrl, err := vc.NewVCController(logger, vinvcService, identityService, fingerprintService, nil, settings.TelemetryURL)
 	if err != nil {
 		logger.Fatal().Err(err).Msg("Failed to create VC controller")
@@ -192,10 +214,16 @@ func s3ClientFromSettings(settings *config.Settings) (*s3.S3, error) {
 }
 
 func issuerFromSettings(settings *config.Settings) (*verfiable.Issuer, error) {
+	baseURL := url.URL{
+		Scheme: "https",
+		Host:   settings.ExternalHostname,
+		Path:   "/v1/vc/status",
+	}
 	verfiableConfig := verfiable.Config{
 		PrivateKey:        settings.PrivateKey,
 		ChainID:           big.NewInt(settings.DIMORegistryChainID),
 		VehicleNFTAddress: common.HexToAddress(settings.VehicleNFTAddress),
+		BaseStatusURL:     baseURL.String(),
 	}
 	issuer, err := verfiable.NewIssuer(verfiableConfig)
 	if err != nil {

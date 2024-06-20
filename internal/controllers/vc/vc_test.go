@@ -68,7 +68,7 @@ func TestVCController_GetVINVC(t *testing.T) {
 					VIN: "1HGCM82633A123456", Timestamp: time.Now(),
 				}, nil)
 				mocks.VINService.EXPECT().ValidateVIN(ctxType, "1HGCM82633A123456").Return(nil)
-				mocks.VCService.EXPECT().GenerateAndStoreVC(ctxType, tokenID, "1HGCM82633A123456").Return(nil)
+				mocks.VCService.EXPECT().GenerateAndStoreVINVC(ctxType, tokenID, "1HGCM82633A123456").Return(nil)
 			},
 			expectedStatusCode: fiber.StatusOK,
 		},
@@ -122,7 +122,7 @@ func TestVCController_GetVINVC(t *testing.T) {
 					VIN: "1HGCM82633A654321", Timestamp: time.Now(),
 				}, nil)
 				mocks.VINService.EXPECT().ValidateVIN(ctxType, "1HGCM82633A654321").Return(nil)
-				mocks.VCService.EXPECT().GenerateAndStoreVC(ctxType, tokenID, "1HGCM82633A654321").Return(nil)
+				mocks.VCService.EXPECT().GenerateAndStoreVINVC(ctxType, tokenID, "1HGCM82633A654321").Return(nil)
 			},
 			expectedStatusCode: fiber.StatusOK,
 		},
@@ -158,7 +158,7 @@ func TestVCController_GetVINVC(t *testing.T) {
 					VIN: "1HGCM82633A123456", Timestamp: time.Now(),
 				}, nil)
 				mocks.VINService.EXPECT().ValidateVIN(ctxType, "1HGCM82633A123456").Return(nil)
-				mocks.VCService.EXPECT().GenerateAndStoreVC(ctxType, tokenID, "1HGCM82633A123456").Return(errors.New("store error"))
+				mocks.VCService.EXPECT().GenerateAndStoreVINVC(ctxType, tokenID, "1HGCM82633A123456").Return(errors.New("store error"))
 			},
 			expectedStatusCode: fiber.StatusInternalServerError,
 		},

@@ -19,5 +19,7 @@ type Settings struct {
 	AWSRegion                 string `yaml:"AWS_REGION"`
 	PrivateKey                []byte `yaml:"PRIVATE_KEY"`
 	DIMORegistryChainID       int64  `yaml:"DIMO_REGISTRY_CHAIN_ID"`
+	ExternalHostname          string `yaml:"EXTERNAL_HOSTNAME"`
+	RevokedTokenIDs           string `yaml:"REVOKED_TOKEN_IDS"`
 	Clickhouse                config.Settings
 }
