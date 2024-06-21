@@ -2,14 +2,12 @@ module github.com/DIMO-Network/attestation-api
 
 go 1.22.0
 
-replace github.com/DIMO-Network/nameindexer => ../nameindexer
-
 require (
 	github.com/ClickHouse/clickhouse-go/v2 v2.25.0
 	github.com/DIMO-Network/clickhouse-infra v0.0.0-20240617200741-02d79f296f82
-	github.com/DIMO-Network/nameindexer v0.0.0-20240617150937-ba5ee68ed214
+	github.com/DIMO-Network/nameindexer v0.0.0-20240621201721-88696f54c210
 	github.com/DIMO-Network/shared v0.10.16
-	github.com/aws/aws-sdk-go v1.54.5
+	github.com/aws/aws-sdk-go v1.54.6
 	github.com/btcsuite/btcd/btcutil v1.1.5
 	github.com/btcsuite/btcutil v1.0.2
 	github.com/ethereum/go-ethereum v1.14.5

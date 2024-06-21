@@ -7,29 +7,29 @@ import (
 	"time"
 
 	"github.com/ClickHouse/clickhouse-go/v2"
-	"github.com/DIMO-Network/attestation-api/internal/services/indexfile"
 	"github.com/DIMO-Network/attestation-api/pkg/verifiable"
 	"github.com/DIMO-Network/nameindexer"
+	"github.com/DIMO-Network/nameindexer/pkg/clickhouse/service"
 )
 
 // Service manages and retrieves fingerprint messages.
 type Service struct {
-	indexfile.Service
-	issuer     *verifiable.Issuer
-	revokedMap map[uint32]struct{}
+	indexService *service.Service
+	issuer       *verifiable.Issuer
+	revokedMap   map[uint32]struct{}
 }
 
 // New creates a new instance of Service.
-func New(chConn clickhouse.Conn, objGetter indexfile.ObjectGetter, issuer *verifiable.Issuer, bucketName, vinvcDataType string, revokedList []uint32) *Service {
+func New(chConn clickhouse.Conn, objGetter service.ObjectGetter, issuer *verifiable.Issuer, bucketName, vinvcDataType string, revokedList []uint32) *Service {
 
 	revokeMap := make(map[uint32]struct{}, len(revokedList))
 	for _, id := range revokedList {
 		revokeMap[id] = struct{}{}
 	}
 	return &Service{
-		Service:    *indexfile.New(chConn, objGetter, bucketName, vinvcDataType),
-		issuer:     issuer,
-		revokedMap: revokeMap,
+		indexService: service.New(chConn, objGetter, bucketName, vinvcDataType),
+		issuer:       issuer,
+		revokedMap:   revokeMap,
 	}
 }
 
@@ -38,7 +38,7 @@ func (s *Service) GetLatestVC(ctx context.Context, vehicleTokenId uint32) (*veri
 	subject := nameindexer.Subject{
 		TokenID: &vehicleTokenId,
 	}
-	data, err := s.GetLatestData(ctx, subject)
+	data, err := s.indexService.GetLatestData(ctx, subject)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get vc: %w", err)
 	}
@@ -64,7 +64,7 @@ func (s *Service) GenerateAndStoreVINVC(ctx context.Context, vehicleTokenID uint
 		DataType: "vinvc_0.1",
 	}
 
-	err = s.StoreFile(ctx, &index, newVC)
+	err = s.indexService.StoreFile(ctx, &index, newVC)
 	if err != nil {
 		return fmt.Errorf("failed to store VC: %w", err)
 	}

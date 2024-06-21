@@ -12,9 +12,9 @@ import (
 	"strings"
 
 	"github.com/ClickHouse/clickhouse-go/v2"
-	"github.com/DIMO-Network/attestation-api/internal/services/indexfile"
 	"github.com/DIMO-Network/attestation-api/pkg/models"
 	"github.com/DIMO-Network/nameindexer"
+	"github.com/DIMO-Network/nameindexer/pkg/clickhouse/service"
 	"github.com/ethereum/go-ethereum/common"
 )
 
@@ -28,13 +28,13 @@ func (d decodeError) Error() string {
 
 // Service manages and retrieves fingerprint messages.
 type Service struct {
-	indexfile.Service
+	indexService *service.Service
 }
 
 // New creates a new instance of Service.
-func New(chConn clickhouse.Conn, objGetter indexfile.ObjectGetter, bucketName, fingerprintDataType string) *Service {
+func New(chConn clickhouse.Conn, objGetter service.ObjectGetter, bucketName, fingerprintDataType string) *Service {
 	return &Service{
-		Service: *indexfile.New(chConn, objGetter, bucketName, fingerprintDataType),
+		indexService: service.New(chConn, objGetter, bucketName, fingerprintDataType),
 	}
 }
 
@@ -43,7 +43,7 @@ func (s *Service) GetLatestFingerprintMessages(ctx context.Context, deviceAddr c
 	subject := nameindexer.Subject{
 		Address: &deviceAddr,
 	}
-	data, err := s.GetLatestData(ctx, subject)
+	data, err := s.indexService.GetLatestData(ctx, subject)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get vc: %w", err)
 	}
