@@ -72,13 +72,13 @@ func TestGetFingerprintMessage(t *testing.T) {
 	tests := []struct {
 		name            string
 		deviceAddr      common.Address
-		expectedMessage *models.FingerprintMessage
+		expectedMessage *models.DecodedFingerprintData
 		expectedError   bool
 	}{
 		{
 			name:       "valid fingerprint message",
 			deviceAddr: deviceAddr1,
-			expectedMessage: &models.FingerprintMessage{
+			expectedMessage: &models.DecodedFingerprintData{
 				VIN: "1HGCM82633A123456",
 			},
 		},
