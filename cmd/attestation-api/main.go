@@ -15,7 +15,7 @@ import (
 	"github.com/DIMO-Network/attestation-api/internal/services/fingerprint"
 	"github.com/DIMO-Network/attestation-api/internal/services/identity"
 	"github.com/DIMO-Network/attestation-api/internal/services/vinvc"
-	"github.com/DIMO-Network/attestation-api/pkg/verfiable"
+	"github.com/DIMO-Network/attestation-api/pkg/verifiable"
 	"github.com/DIMO-Network/clickhouse-infra/pkg/connect"
 	"github.com/DIMO-Network/shared"
 	"github.com/DIMO-Network/shared/middleware/privilegetoken"
@@ -213,19 +213,19 @@ func s3ClientFromSettings(settings *config.Settings) (*s3.S3, error) {
 	return s3.New(awsSession), nil
 }
 
-func issuerFromSettings(settings *config.Settings) (*verfiable.Issuer, error) {
+func issuerFromSettings(settings *config.Settings) (*verifiable.Issuer, error) {
 	baseURL := url.URL{
 		Scheme: "https",
 		Host:   settings.ExternalHostname,
 		Path:   "/v1/vc/status",
 	}
-	verfiableConfig := verfiable.Config{
+	verifiableConfig := verifiable.Config{
 		PrivateKey:        settings.PrivateKey,
 		ChainID:           big.NewInt(settings.DIMORegistryChainID),
 		VehicleNFTAddress: common.HexToAddress(settings.VehicleNFTAddress),
 		BaseStatusURL:     baseURL.String(),
 	}
-	issuer, err := verfiable.NewIssuer(verfiableConfig)
+	issuer, err := verifiable.NewIssuer(verifiableConfig)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create VC issuer: %w", err)
 	}

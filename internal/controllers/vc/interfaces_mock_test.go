@@ -15,6 +15,7 @@ import (
 	reflect "reflect"
 
 	models "github.com/DIMO-Network/attestation-api/pkg/models"
+	verifiable "github.com/DIMO-Network/attestation-api/pkg/verifiable"
 	common "github.com/ethereum/go-ethereum/common"
 	gomock "go.uber.org/mock/gomock"
 )
@@ -72,10 +73,10 @@ func (mr *MockVCServiceMockRecorder) GenerateStatusVC(tokenID any) *gomock.Call 
 }
 
 // GetLatestVC mocks base method.
-func (m *MockVCService) GetLatestVC(ctx context.Context, tokenID uint32) (*models.VINVC, error) {
+func (m *MockVCService) GetLatestVC(ctx context.Context, tokenID uint32) (*verifiable.Credential, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetLatestVC", ctx, tokenID)
-	ret0, _ := ret[0].(*models.VINVC)
+	ret0, _ := ret[0].(*verifiable.Credential)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -148,10 +149,10 @@ func (m *MockFingerprintService) EXPECT() *MockFingerprintServiceMockRecorder {
 }
 
 // GetLatestFingerprintMessages mocks base method.
-func (m *MockFingerprintService) GetLatestFingerprintMessages(ctx context.Context, pairedDeviceAddr common.Address) (*models.FingerprintMessage, error) {
+func (m *MockFingerprintService) GetLatestFingerprintMessages(ctx context.Context, pairedDeviceAddr common.Address) (*models.DecodedFingerprintData, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetLatestFingerprintMessages", ctx, pairedDeviceAddr)
-	ret0, _ := ret[0].(*models.FingerprintMessage)
+	ret0, _ := ret[0].(*models.DecodedFingerprintData)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }

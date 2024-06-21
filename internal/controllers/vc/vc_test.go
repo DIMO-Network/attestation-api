@@ -64,7 +64,7 @@ func TestVCController_GetVINVC(t *testing.T) {
 					{Address: pairedAddr, Type: models.DeviceTypeAftermarket},
 				}
 				mocks.IdentityService.EXPECT().GetPairedDevices(ctxType, tokenID).Return(pairedDevices, nil)
-				mocks.FingerprintService.EXPECT().GetLatestFingerprintMessages(ctxType, pairedAddr).Return(&models.FingerprintMessage{
+				mocks.FingerprintService.EXPECT().GetLatestFingerprintMessages(ctxType, pairedAddr).Return(&models.DecodedFingerprintData{
 					VIN: "1HGCM82633A123456", Timestamp: time.Now(),
 				}, nil)
 				mocks.VINService.EXPECT().ValidateVIN(ctxType, "1HGCM82633A123456").Return(nil)
@@ -99,7 +99,7 @@ func TestVCController_GetVINVC(t *testing.T) {
 					{Address: pairedAddr, Type: models.DeviceTypeAftermarket},
 				}
 				mocks.IdentityService.EXPECT().GetPairedDevices(ctxType, tokenID).Return(pairedDevices, nil)
-				mocks.FingerprintService.EXPECT().GetLatestFingerprintMessages(ctxType, pairedAddr).Return(&models.FingerprintMessage{}, fmt.Errorf("no fingerprint messages"))
+				mocks.FingerprintService.EXPECT().GetLatestFingerprintMessages(ctxType, pairedAddr).Return(&models.DecodedFingerprintData{}, fmt.Errorf("no fingerprint messages"))
 			},
 			expectedStatusCode: fiber.StatusInternalServerError,
 		},
@@ -115,10 +115,10 @@ func TestVCController_GetVINVC(t *testing.T) {
 					{Address: pairedAddr2, Type: models.DeviceTypeSynthetic},
 				}
 				mocks.IdentityService.EXPECT().GetPairedDevices(ctxType, tokenID).Return(pairedDevices, nil)
-				mocks.FingerprintService.EXPECT().GetLatestFingerprintMessages(ctxType, pairedAddr).Return(&models.FingerprintMessage{
+				mocks.FingerprintService.EXPECT().GetLatestFingerprintMessages(ctxType, pairedAddr).Return(&models.DecodedFingerprintData{
 					VIN: "1HGCM82633A123456", Timestamp: time.Now().Add(-1 * time.Hour),
 				}, nil)
-				mocks.FingerprintService.EXPECT().GetLatestFingerprintMessages(ctxType, pairedAddr2).Return(&models.FingerprintMessage{
+				mocks.FingerprintService.EXPECT().GetLatestFingerprintMessages(ctxType, pairedAddr2).Return(&models.DecodedFingerprintData{
 					VIN: "1HGCM82633A654321", Timestamp: time.Now(),
 				}, nil)
 				mocks.VINService.EXPECT().ValidateVIN(ctxType, "1HGCM82633A654321").Return(nil)
@@ -136,7 +136,7 @@ func TestVCController_GetVINVC(t *testing.T) {
 					{Address: pairedAddr, Type: models.DeviceTypeAftermarket},
 				}
 				mocks.IdentityService.EXPECT().GetPairedDevices(ctxType, tokenID).Return(pairedDevices, nil)
-				mocks.FingerprintService.EXPECT().GetLatestFingerprintMessages(ctxType, pairedAddr).Return(&models.FingerprintMessage{
+				mocks.FingerprintService.EXPECT().GetLatestFingerprintMessages(ctxType, pairedAddr).Return(&models.DecodedFingerprintData{
 					VIN: "INVALIDVIN", Timestamp: time.Now(),
 				}, nil)
 				mocks.VINService.EXPECT().ValidateVIN(ctxType, "INVALIDVIN").Return(errors.New("invalid VIN"))
@@ -154,7 +154,7 @@ func TestVCController_GetVINVC(t *testing.T) {
 					{Address: pairedAddr, Type: models.DeviceTypeAftermarket},
 				}
 				mocks.IdentityService.EXPECT().GetPairedDevices(ctxType, tokenID).Return(pairedDevices, nil)
-				mocks.FingerprintService.EXPECT().GetLatestFingerprintMessages(ctxType, pairedAddr).Return(&models.FingerprintMessage{
+				mocks.FingerprintService.EXPECT().GetLatestFingerprintMessages(ctxType, pairedAddr).Return(&models.DecodedFingerprintData{
 					VIN: "1HGCM82633A123456", Timestamp: time.Now(),
 				}, nil)
 				mocks.VINService.EXPECT().ValidateVIN(ctxType, "1HGCM82633A123456").Return(nil)

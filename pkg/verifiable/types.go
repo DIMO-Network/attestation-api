@@ -1,4 +1,4 @@
-package verfiable
+package verifiable
 
 import (
 	"encoding/json"

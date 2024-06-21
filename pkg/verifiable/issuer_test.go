@@ -1,4 +1,4 @@
-package verfiable_test
+package verifiable_test
 
 import (
 	"bytes"
@@ -14,7 +14,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/DIMO-Network/attestation-api/pkg/verfiable"
+	"github.com/DIMO-Network/attestation-api/pkg/verifiable"
 	"github.com/btcsuite/btcutil/base58"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -28,7 +28,7 @@ func TestCreateVINVC(t *testing.T) {
 
 	tests := []struct {
 		name           string
-		config         verfiable.Config
+		config         verifiable.Config
 		vin            string
 		tokenID        uint32
 		expirationDate time.Time
@@ -36,7 +36,7 @@ func TestCreateVINVC(t *testing.T) {
 	}{
 		{
 			name: "Valid Config 1",
-			config: verfiable.Config{
+			config: verifiable.Config{
 				PrivateKey:        crypto.FromECDSA(privateKey),
 				ChainID:           big.NewInt(1),
 				VehicleNFTAddress: common.HexToAddress("0x1234567890abcdef1234567890abcdef12345678"),
@@ -49,7 +49,7 @@ func TestCreateVINVC(t *testing.T) {
 		},
 		{
 			name: "Valid Config 2",
-			config: verfiable.Config{
+			config: verifiable.Config{
 				PrivateKey:        crypto.FromECDSA(privateKey),
 				ChainID:           big.NewInt(2),
 				VehicleNFTAddress: common.HexToAddress("0xabcdefabcdefabcdefabcdefabcdefabcdef"),
@@ -62,7 +62,7 @@ func TestCreateVINVC(t *testing.T) {
 		},
 		{
 			name: "Expired Date",
-			config: verfiable.Config{
+			config: verifiable.Config{
 				PrivateKey:        crypto.FromECDSA(privateKey),
 				ChainID:           big.NewInt(1),
 				VehicleNFTAddress: common.HexToAddress("0x1234567890abcdef1234567890abcdef12345678"),
@@ -75,7 +75,7 @@ func TestCreateVINVC(t *testing.T) {
 		},
 		{
 			name: "Future Token ID",
-			config: verfiable.Config{
+			config: verifiable.Config{
 				PrivateKey:        crypto.FromECDSA(privateKey),
 				ChainID:           big.NewInt(1),
 				VehicleNFTAddress: common.HexToAddress("0x1234567890abcdef1234567890abcdef12345678"),
@@ -90,7 +90,7 @@ func TestCreateVINVC(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			issuerService, err := verfiable.NewIssuer(tt.config)
+			issuerService, err := verifiable.NewIssuer(tt.config)
 			require.NoError(t, err)
 
 			vc, err := issuerService.CreateVINVC(tt.vin, tt.tokenID, tt.expirationDate)
@@ -100,10 +100,10 @@ func TestCreateVINVC(t *testing.T) {
 			}
 			require.NoError(t, err)
 
-			var credential verfiable.Credential
+			var credential verifiable.Credential
 			err = json.Unmarshal(vc, &credential)
 			require.NoError(t, err)
-			var subject verfiable.VINSubject
+			var subject verifiable.VINSubject
 			err = json.Unmarshal(credential.CredentialSubject, &subject)
 			require.NoError(t, err)
 
@@ -122,7 +122,9 @@ func TestCreateVINVC(t *testing.T) {
 			require.Contains(t, credential.CredentialStatus.ID, tt.config.BaseStatusURL)
 
 			// Verify credential proof
-			valid := validateProof(t, credential.Proof, credential, privateKey)
+			pubKey, err := extractPublicKeyFromVerificationMethod(credential.Proof.VerificationMethod)
+			require.NoError(t, err)
+			valid := validateProof(t, credential.Proof, credential, pubKey)
 			require.True(t, valid)
 		})
 	}
@@ -134,7 +136,7 @@ func TestCreateBitstringStatusListVC(t *testing.T) {
 
 	tests := []struct {
 		name        string
-		config      verfiable.Config
+		config      verifiable.Config
 		tokenID     uint32
 		revoked     bool
 		expectError bool
@@ -142,7 +144,7 @@ func TestCreateBitstringStatusListVC(t *testing.T) {
 	}{
 		{
 			name: "Valid BitstringStatusListCredential - Not Revoked",
-			config: verfiable.Config{
+			config: verifiable.Config{
 				PrivateKey:        crypto.FromECDSA(privateKey),
 				ChainID:           big.NewInt(1),
 				VehicleNFTAddress: common.HexToAddress("0x1234567890abcdef1234567890abcdef12345678"),
@@ -155,7 +157,7 @@ func TestCreateBitstringStatusListVC(t *testing.T) {
 		},
 		{
 			name: "Valid BitstringStatusListCredential - Revoked",
-			config: verfiable.Config{
+			config: verifiable.Config{
 				PrivateKey:        crypto.FromECDSA(privateKey),
 				ChainID:           big.NewInt(1),
 				VehicleNFTAddress: common.HexToAddress("0x1234567890abcdef1234567890abcdef12345678"),
@@ -170,7 +172,7 @@ func TestCreateBitstringStatusListVC(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			issuerService, err := verfiable.NewIssuer(tt.config)
+			issuerService, err := verifiable.NewIssuer(tt.config)
 			require.NoError(t, err)
 
 			vc, err := issuerService.CreateBitstringStatusListVC(tt.tokenID, tt.revoked)
@@ -180,7 +182,7 @@ func TestCreateBitstringStatusListVC(t *testing.T) {
 			}
 			require.NoError(t, err)
 
-			var credential verfiable.Credential
+			var credential verifiable.Credential
 			err = json.Unmarshal(vc, &credential)
 			require.NoError(t, err)
 
@@ -190,7 +192,7 @@ func TestCreateBitstringStatusListVC(t *testing.T) {
 			require.Equal(t, "VerifiableCredential", credential.Type[0])
 			require.Equal(t, "BitstringStatusListCredential", credential.Type[1])
 
-			var subject verfiable.BitstringStatusListSubject
+			var subject verifiable.BitstringStatusListSubject
 			err = json.Unmarshal(credential.CredentialSubject, &subject)
 			require.NoError(t, err)
 			require.Equal(t, "BitstringStatusList", subject.Type)
@@ -206,7 +208,9 @@ func TestCreateBitstringStatusListVC(t *testing.T) {
 			}
 
 			// Verify credential proof
-			valid := validateProof(t, credential.Proof, credential, privateKey)
+			pubKey, err := extractPublicKeyFromVerificationMethod(credential.Proof.VerificationMethod)
+			require.NoError(t, err)
+			valid := validateProof(t, credential.Proof, credential, pubKey)
 			require.True(t, valid)
 		})
 	}
@@ -216,14 +220,14 @@ func TestTamperedPayload(t *testing.T) {
 	privateKey, err := crypto.GenerateKey()
 	require.NoError(t, err)
 
-	config := verfiable.Config{
+	config := verifiable.Config{
 		PrivateKey:        crypto.FromECDSA(privateKey),
 		ChainID:           big.NewInt(1),
 		VehicleNFTAddress: common.HexToAddress("0x1234567890abcdef1234567890abcdef12345678"),
 		BaseStatusURL:     "https://status.example.com",
 	}
 
-	issuerService, err := verfiable.NewIssuer(config)
+	issuerService, err := verifiable.NewIssuer(config)
 	require.NoError(t, err)
 
 	// Create a valid VC
@@ -233,9 +237,9 @@ func TestTamperedPayload(t *testing.T) {
 	vc, err := issuerService.CreateVINVC(vin, tokenID, expirationDate)
 	require.NoError(t, err)
 
-	var origCredential verfiable.Credential
-	var tamperedVIN verfiable.Credential
-	var tamperedProof verfiable.Credential
+	var origCredential verifiable.Credential
+	var tamperedVIN verifiable.Credential
+	var tamperedProof verifiable.Credential
 	err = json.Unmarshal(vc, &origCredential)
 	require.NoError(t, err)
 
@@ -246,7 +250,7 @@ func TestTamperedPayload(t *testing.T) {
 	require.NoError(t, err)
 
 	badVin := "1HGCM82633A654321"
-	var subject verfiable.VINSubject
+	var subject verifiable.VINSubject
 	err = json.Unmarshal(tamperedVIN.CredentialSubject, &subject)
 	require.NoError(t, err)
 	subject.VehicleIdentificationNumber = badVin
@@ -256,12 +260,16 @@ func TestTamperedPayload(t *testing.T) {
 	tamperedVIN.CredentialSubject = tamperedSubject
 
 	// Verify tampered credential proof
-	valid := validateProof(t, origCredential.Proof, tamperedVIN, privateKey)
+	pubKey, err := extractPublicKeyFromVerificationMethod(origCredential.Proof.VerificationMethod)
+	require.NoError(t, err)
+	valid := validateProof(t, origCredential.Proof, tamperedVIN, pubKey)
 	require.False(t, valid)
 
 	// Tamper with the proof
 	tamperedProof.Proof.Cryptosuite = "bad-cryptosuite"
-	valid = validateProof(t, origCredential.Proof, tamperedProof, privateKey)
+	pubKey, err = extractPublicKeyFromVerificationMethod(origCredential.Proof.VerificationMethod)
+	require.NoError(t, err)
+	valid = validateProof(t, origCredential.Proof, tamperedProof, pubKey)
 	require.False(t, valid)
 }
 
@@ -280,36 +288,56 @@ func parseTokenID(id string) uint32 {
 	return uint32(tokenID)
 }
 
+// extractPublicKeyFromVerificationMethod extracts and decodes the public key from the verification method.
+func extractPublicKeyFromVerificationMethod(verificationMethod string) (*ecdsa.PublicKey, error) {
+	parts := strings.Split(verificationMethod, "#")
+	if len(parts) < 2 {
+		return nil, fmt.Errorf("invalid verification method")
+	}
+	encodedKey := strings.TrimPrefix(parts[1], "z")
+	keyBytes := base58.Decode(encodedKey)
+	if len(keyBytes) == 0 {
+		return nil, fmt.Errorf("failed to decode base58 key")
+	}
+	// Decompress the key bytes
+	pubKey := keyBytes[2:]
+	pub, err := crypto.DecompressPubkey(pubKey)
+	if err != nil {
+		return nil, err
+	}
+	return pub, nil
+}
+
 // checkProof verifies the proof of a credential.
-func validateProof(t *testing.T, proof verfiable.Proof, credential verfiable.Credential, privateKey *ecdsa.PrivateKey) bool {
+func validateProof(t *testing.T, proof verifiable.Proof, credential verifiable.Credential, publicKey *ecdsa.PublicKey) bool {
 	// Canonicalize the credential
 	ldProcessor := ld.NewJsonLdProcessor()
-	ldOptions, err := verfiable.DefaultLdOptions()
+	ldOptions, err := verifiable.DefaultLdOptions()
 	require.NoError(t, err)
 
 	proofOptions := credential.Proof.ProofOptions
-	credential.Proof = verfiable.Proof{}
+	credential.Proof = verifiable.Proof{}
 
-	canonicalizedCredential, err := verfiable.Canonicalize(credential, ldProcessor, ldOptions)
+	canonicalizedCredential, err := verifiable.Canonicalize(credential, ldProcessor, ldOptions)
 	require.NoError(t, err)
 
 	// Canonicalize the proof options
-	config := verfiable.ProofOptionsWithContext{
+	config := verifiable.ProofOptionsWithContext{
 		Context:      credential.Context,
 		ProofOptions: proofOptions,
 	}
-	canonicalizedProofOptions, err := verfiable.Canonicalize(config, ldProcessor, ldOptions)
+	canonicalizedProofOptions, err := verifiable.Canonicalize(config, ldProcessor, ldOptions)
 	require.NoError(t, err)
 
 	// Hash the data
-	hashData, err := verfiable.HashData(canonicalizedCredential, canonicalizedProofOptions)
+	hashData, err := verifiable.HashData(canonicalizedCredential, canonicalizedProofOptions)
 	require.NoError(t, err)
 
 	// Verify the signature
 	signatureBytes := base58.Decode(proof.ProofValue)
 	require.NotEmpty(t, signatureBytes)
 
-	return ecdsa.VerifyASN1(&privateKey.PublicKey, hashData, signatureBytes)
+	return ecdsa.VerifyASN1(publicKey, hashData, signatureBytes)
 }
 
 // decodeAndDecompressBitList decompresses and verifies the bit list.

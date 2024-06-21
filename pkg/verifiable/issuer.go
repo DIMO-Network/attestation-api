@@ -1,4 +1,4 @@
-package verfiable
+package verifiable
 
 import (
 	"bytes"
@@ -20,16 +20,16 @@ import (
 	"github.com/piprate/json-gold/ld"
 )
 
-var secp256k1Prefix = []byte{0xe7, 0x01}
+var (
+	secp256k1Prefix = []byte{0xe7, 0x01}
+	trueList        = MustEncodeList([]byte{1})
+	falseList       = MustEncodeList([]byte{0})
 
-//go:embed w3.org_ns_credentials_v2.json
-var w3cNSCredentialsV2 []byte
-
-//go:embed schema_vin.json
-var vinSchema []byte
-
-var trueList = MustEncodeList([]byte{1})
-var falseList = MustEncodeList([]byte{0})
+	//go:embed w3.org_ns_credentials_v2.json
+	w3cNSCredentialsV2 []byte
+	//go:embed schema_vin.json
+	vinSchema []byte
+)
 
 type Config struct {
 	PrivateKey        []byte

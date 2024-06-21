@@ -8,20 +8,19 @@ import (
 
 	"github.com/ClickHouse/clickhouse-go/v2"
 	"github.com/DIMO-Network/attestation-api/internal/services/indexfile"
-	"github.com/DIMO-Network/attestation-api/pkg/models"
-	"github.com/DIMO-Network/attestation-api/pkg/verfiable"
+	"github.com/DIMO-Network/attestation-api/pkg/verifiable"
 	"github.com/DIMO-Network/nameindexer"
 )
 
 // Service manages and retrieves fingerprint messages.
 type Service struct {
 	indexfile.Service
-	issuer     *verfiable.Issuer
+	issuer     *verifiable.Issuer
 	revokedMap map[uint32]struct{}
 }
 
 // New creates a new instance of Service.
-func New(chConn clickhouse.Conn, objGetter indexfile.ObjectGetter, issuer *verfiable.Issuer, bucketName, vinvcDataType string, revokedList []uint32) *Service {
+func New(chConn clickhouse.Conn, objGetter indexfile.ObjectGetter, issuer *verifiable.Issuer, bucketName, vinvcDataType string, revokedList []uint32) *Service {
 
 	revokeMap := make(map[uint32]struct{}, len(revokedList))
 	for _, id := range revokedList {
@@ -35,7 +34,7 @@ func New(chConn clickhouse.Conn, objGetter indexfile.ObjectGetter, issuer *verfi
 }
 
 // GetLatestVC fetches the latest fingerprint message from S3.
-func (s *Service) GetLatestVC(ctx context.Context, vehicleTokenId uint32) (*models.VINVC, error) {
+func (s *Service) GetLatestVC(ctx context.Context, vehicleTokenId uint32) (*verifiable.Credential, error) {
 	subject := nameindexer.Subject{
 		TokenID: &vehicleTokenId,
 	}
@@ -43,7 +42,7 @@ func (s *Service) GetLatestVC(ctx context.Context, vehicleTokenId uint32) (*mode
 	if err != nil {
 		return nil, fmt.Errorf("failed to get vc: %w", err)
 	}
-	msg := models.VINVC{}
+	msg := verifiable.Credential{}
 	if err := json.Unmarshal(data, &msg); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal fingerprint message: %w", err)
 	}
