@@ -6,7 +6,7 @@ require (
 	github.com/DIMO-Network/shared v0.10.12
 	github.com/ethereum/go-ethereum v1.13.12
 	github.com/gofiber/contrib/jwt v1.0.9
-	github.com/gofiber/fiber/v2 v2.52.4
+	github.com/gofiber/fiber/v2 v2.52.5
 	github.com/gofiber/swagger v1.0.0
 	github.com/google/uuid v1.6.0
 	github.com/prometheus/client_golang v1.19.0
