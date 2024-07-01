@@ -30,6 +30,7 @@ func TestCreateVINVC(t *testing.T) {
 		name           string
 		config         verifiable.Config
 		vin            string
+		countryCode    string
 		tokenID        uint32
 		expirationDate time.Time
 		expectError    bool
@@ -43,6 +44,7 @@ func TestCreateVINVC(t *testing.T) {
 				BaseStatusURL:     "https://status.example.com",
 			},
 			vin:            "1HGCM82633A123456",
+			countryCode:    "US",
 			tokenID:        1,
 			expirationDate: time.Now().Add(24 * time.Hour),
 			expectError:    false,
@@ -56,6 +58,7 @@ func TestCreateVINVC(t *testing.T) {
 				BaseStatusURL:     "https://status.example.org",
 			},
 			vin:            "1HGCM82633B654321",
+			countryCode:    "CA",
 			tokenID:        2,
 			expirationDate: time.Now().Add(24 * time.Hour),
 			expectError:    false,
@@ -69,6 +72,7 @@ func TestCreateVINVC(t *testing.T) {
 				BaseStatusURL:     "https://status.example.com",
 			},
 			vin:            "1HGCM82633A123456",
+			countryCode:    "US",
 			tokenID:        1,
 			expirationDate: time.Now().Add(-24 * time.Hour),
 			expectError:    false,
@@ -82,6 +86,7 @@ func TestCreateVINVC(t *testing.T) {
 				BaseStatusURL:     "https://status.example.com",
 			},
 			vin:            "1HGCM82633A123456",
+			countryCode:    "US",
 			tokenID:        4294967295,
 			expirationDate: time.Now().Add(24 * time.Hour),
 			expectError:    false,
@@ -92,8 +97,8 @@ func TestCreateVINVC(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			issuerService, err := verifiable.NewIssuer(tt.config)
 			require.NoError(t, err)
-
-			vc, err := issuerService.CreateVINVC(tt.vin, tt.tokenID, tt.expirationDate)
+			fmt.Printf("%x\n", tt.config.PrivateKey)
+			vc, err := issuerService.CreateVINVC(tt.vin, tt.countryCode, tt.tokenID, tt.expirationDate)
 			if tt.expectError {
 				require.Error(t, err)
 				return
@@ -234,7 +239,7 @@ func TestTamperedPayload(t *testing.T) {
 	vin := "1HGCM82633A123456"
 	tokenID := uint32(1)
 	expirationDate := time.Now().Add(24 * time.Hour)
-	vc, err := issuerService.CreateVINVC(vin, tokenID, expirationDate)
+	vc, err := issuerService.CreateVINVC(vin, "US", tokenID, expirationDate)
 	require.NoError(t, err)
 
 	var origCredential verifiable.Credential

@@ -13,13 +13,13 @@ import (
 // VCService defines the interface for VC operations.
 type VCService interface {
 	GetLatestVC(ctx context.Context, tokenID uint32) (*verifiable.Credential, error)
-	GenerateAndStoreVINVC(ctx context.Context, tokenID uint32, vin string) error
+	GenerateAndStoreVINVC(ctx context.Context, tokenID uint32, vin, countryCode string) error
 	GenerateStatusVC(tokenID uint32) (json.RawMessage, error)
 }
 
 // IdentityService defines the interface for identity operations.
 type IdentityService interface {
-	GetPairedDevices(ctx context.Context, tokenID uint32) ([]models.PairedDevice, error)
+	GetVehicleInfo(ctx context.Context, tokenID uint32) (*models.VehicleInfo, error)
 }
 
 // FingerprintService defines the interface for fingerprint message operations.
@@ -29,5 +29,5 @@ type FingerprintService interface {
 
 // VINService defines the interface for VIN validation.
 type VINService interface {
-	ValidateVIN(ctx context.Context, vin string) error
+	DecodeVIN(ctx context.Context, vin, countryCode string) (string, error)
 }

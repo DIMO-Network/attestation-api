@@ -44,17 +44,17 @@ func (m *MockVCService) EXPECT() *MockVCServiceMockRecorder {
 }
 
 // GenerateAndStoreVINVC mocks base method.
-func (m *MockVCService) GenerateAndStoreVINVC(ctx context.Context, tokenID uint32, vin string) error {
+func (m *MockVCService) GenerateAndStoreVINVC(ctx context.Context, tokenID uint32, vin, countryCode string) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GenerateAndStoreVINVC", ctx, tokenID, vin)
+	ret := m.ctrl.Call(m, "GenerateAndStoreVINVC", ctx, tokenID, vin, countryCode)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // GenerateAndStoreVINVC indicates an expected call of GenerateAndStoreVINVC.
-func (mr *MockVCServiceMockRecorder) GenerateAndStoreVINVC(ctx, tokenID, vin any) *gomock.Call {
+func (mr *MockVCServiceMockRecorder) GenerateAndStoreVINVC(ctx, tokenID, vin, countryCode any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GenerateAndStoreVINVC", reflect.TypeOf((*MockVCService)(nil).GenerateAndStoreVINVC), ctx, tokenID, vin)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GenerateAndStoreVINVC", reflect.TypeOf((*MockVCService)(nil).GenerateAndStoreVINVC), ctx, tokenID, vin, countryCode)
 }
 
 // GenerateStatusVC mocks base method.
@@ -110,19 +110,19 @@ func (m *MockIdentityService) EXPECT() *MockIdentityServiceMockRecorder {
 	return m.recorder
 }
 
-// GetPairedDevices mocks base method.
-func (m *MockIdentityService) GetPairedDevices(ctx context.Context, tokenID uint32) ([]models.PairedDevice, error) {
+// GetVehicleInfo mocks base method.
+func (m *MockIdentityService) GetVehicleInfo(ctx context.Context, tokenID uint32) (*models.VehicleInfo, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetPairedDevices", ctx, tokenID)
-	ret0, _ := ret[0].([]models.PairedDevice)
+	ret := m.ctrl.Call(m, "GetVehicleInfo", ctx, tokenID)
+	ret0, _ := ret[0].(*models.VehicleInfo)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// GetPairedDevices indicates an expected call of GetPairedDevices.
-func (mr *MockIdentityServiceMockRecorder) GetPairedDevices(ctx, tokenID any) *gomock.Call {
+// GetVehicleInfo indicates an expected call of GetVehicleInfo.
+func (mr *MockIdentityServiceMockRecorder) GetVehicleInfo(ctx, tokenID any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetPairedDevices", reflect.TypeOf((*MockIdentityService)(nil).GetPairedDevices), ctx, tokenID)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetVehicleInfo", reflect.TypeOf((*MockIdentityService)(nil).GetVehicleInfo), ctx, tokenID)
 }
 
 // MockFingerprintService is a mock of FingerprintService interface.
@@ -186,16 +186,17 @@ func (m *MockVINService) EXPECT() *MockVINServiceMockRecorder {
 	return m.recorder
 }
 
-// ValidateVIN mocks base method.
-func (m *MockVINService) ValidateVIN(ctx context.Context, vin string) error {
+// DecodeVIN mocks base method.
+func (m *MockVINService) DecodeVIN(ctx context.Context, vin, countryCode string) (string, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ValidateVIN", ctx, vin)
-	ret0, _ := ret[0].(error)
-	return ret0
+	ret := m.ctrl.Call(m, "DecodeVIN", ctx, vin, countryCode)
+	ret0, _ := ret[0].(string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
-// ValidateVIN indicates an expected call of ValidateVIN.
-func (mr *MockVINServiceMockRecorder) ValidateVIN(ctx, vin any) *gomock.Call {
+// DecodeVIN indicates an expected call of DecodeVIN.
+func (mr *MockVINServiceMockRecorder) DecodeVIN(ctx, vin, countryCode any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ValidateVIN", reflect.TypeOf((*MockVINService)(nil).ValidateVIN), ctx, vin)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DecodeVIN", reflect.TypeOf((*MockVINService)(nil).DecodeVIN), ctx, vin, countryCode)
 }

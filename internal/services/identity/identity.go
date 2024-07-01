@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"time"
 
 	"github.com/DIMO-Network/attestation-api/pkg/models"
@@ -18,12 +19,12 @@ import (
 
 // Service interacts with the identity GraphQL API.
 type Service struct {
-	httpClient *http.Client
-	apiBaseURL string
+	httpClient  *http.Client
+	apiQueryURL string
 }
 
 // NewService creates a new instance of Service with optional TLS certificate pool.
-func NewService(apiBaseURL string, certPool *x509.CertPool) *Service {
+func NewService(apiBaseURL string, certPool *x509.CertPool) (*Service, error) {
 	// Configure HTTP client with optional TLS certificate pool.
 	httpClient := &http.Client{
 		Timeout: 10 * time.Second,
@@ -34,15 +35,19 @@ func NewService(apiBaseURL string, certPool *x509.CertPool) *Service {
 			},
 		},
 	}
+	path, err := url.JoinPath(apiBaseURL, "query")
+	if err != nil {
+		return nil, fmt.Errorf("create idenitiy URL: %w", err)
+	}
 
 	return &Service{
-		apiBaseURL: apiBaseURL,
-		httpClient: httpClient,
-	}
+		apiQueryURL: path,
+		httpClient:  httpClient,
+	}, nil
 }
 
-// GetPairedDevices fetches the paired devices for a given token ID.
-func (s *Service) GetPairedDevices(ctx context.Context, tokenID uint32) ([]models.PairedDevice, error) {
+// GetVehicleInfo fetches vehicle information from the identity API.
+func (s *Service) GetVehicleInfo(ctx context.Context, tokenID uint32) (*models.VehicleInfo, error) {
 	requestBody := map[string]any{
 		"query": query,
 		"variables": map[string]any{
@@ -55,10 +60,12 @@ func (s *Service) GetPairedDevices(ctx context.Context, tokenID uint32) ([]model
 		return nil, fmt.Errorf("failed to marshal GraphQL request: %w", err)
 	}
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, s.apiBaseURL, bytes.NewBuffer(reqBytes))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, s.apiQueryURL, bytes.NewBuffer(reqBytes))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create GraphQL request: %w", err)
 	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept", "application/json")
 	resp, err := s.httpClient.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("failed to send GraphQL request: %w", err)
@@ -96,6 +103,10 @@ func (s *Service) GetPairedDevices(ctx context.Context, tokenID uint32) ([]model
 			Type:    models.DeviceTypeSynthetic,
 		})
 	}
-
-	return pairedDevices, nil
+	vehicleInfo := &models.VehicleInfo{
+		TokenID:       tokenID,
+		PairedDevices: pairedDevices,
+		NameSlug:      respBody.Data.Vehicle.Definition.ID,
+	}
+	return vehicleInfo, nil
 }

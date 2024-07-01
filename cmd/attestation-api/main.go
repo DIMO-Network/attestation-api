@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/hex"
 	"errors"
 	"flag"
 	"fmt"
@@ -10,19 +11,22 @@ import (
 	"strconv"
 	"strings"
 
+	_ "github.com/DIMO-Network/attestation-api/docs"
 	"github.com/DIMO-Network/attestation-api/internal/config"
 	"github.com/DIMO-Network/attestation-api/internal/controllers/vc"
 	"github.com/DIMO-Network/attestation-api/internal/services/fingerprint"
 	"github.com/DIMO-Network/attestation-api/internal/services/identity"
+	"github.com/DIMO-Network/attestation-api/internal/services/vinvalidator"
 	"github.com/DIMO-Network/attestation-api/internal/services/vinvc"
 	"github.com/DIMO-Network/attestation-api/pkg/verifiable"
 	"github.com/DIMO-Network/clickhouse-infra/pkg/connect"
+	ddgrpc "github.com/DIMO-Network/device-definitions-api/pkg/grpc"
 	"github.com/DIMO-Network/shared"
 	"github.com/DIMO-Network/shared/middleware/privilegetoken"
 	"github.com/DIMO-Network/shared/privileges"
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/s3"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/credentials"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/ethereum/go-ethereum/common"
 	jwtware "github.com/gofiber/contrib/jwt"
 	"github.com/gofiber/fiber/v2"
@@ -32,8 +36,15 @@ import (
 	"github.com/gofiber/swagger"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/rs/zerolog"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
+// @title                       DIMO Attestation API
+// @version                     1.0
+// @securityDefinitions.apikey  BearerAuth
+// @in                          header
+// @name                        Authorization
 func main() {
 	logger := zerolog.New(os.Stdout).With().Timestamp().Str("app", "attestation-api").Logger()
 	// create a flag for the settings file
@@ -75,7 +86,7 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings) {
 
 	jwtAuth := jwtware.New(jwtware.Config{
 		JWKSetURLs: []string{settings.TokenExchangeJWTKeySetURL},
-		Claims:     privilegetoken.Token{},
+		Claims:     &privilegetoken.Token{},
 	})
 
 	vinvcCtrl, err := createVINController(&logger, settings)
@@ -96,15 +107,13 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings) {
 	app.Get("/swagger/*", swagger.HandlerDefault)
 
 	// status route for entire vc list
-	statusRoute := app.Get("/v1/vc/status", nil)
-
 	// status route for individual vc
-	statusRoute.Get("/:vehicleTokenID", vinvcCtrl.GetVCStatus)
+	app.Get("/v1/vc/status/:vehicleTokenID", vinvcCtrl.GetVCStatus)
 
 	vehicleAddr := common.HexToAddress(settings.VehicleNFTAddress)
 
-	v1 := app.Group("/v1", jwtAuth, AllOf(vehicleAddr, []privileges.Privilege{privileges.VehicleVinCredential}))
-	v1.Get("/vc/vin", vinvcCtrl.GetVINVC)
+	// v1 := app.Group("", )
+	app.Get("/v1/vc/vin/:tokenId", jwtAuth, AllOf(vehicleAddr, []privileges.Privilege{privileges.VehicleVinCredential}), vinvcCtrl.GetVINVC)
 
 	logger.Info().Int("port", settings.Port).Msg("Server Started")
 
@@ -163,54 +172,55 @@ type CodeResp struct {
 
 func createVINController(logger *zerolog.Logger, settings *config.Settings) (*vc.VCController, error) {
 	// Initialize ClickHouse connection
-	chConn, err := connect.GetClickhouseConn(&settings.Clickhouse)
+	chConn, err := connect.GetClickhouseConn(&settings.Settings)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create ClickHouse connection: %w", err)
 	}
 	s3Client, err := s3ClientFromSettings(settings)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create S3 client: %w", err)
+		return nil, err
 	}
 
 	issuer, err := issuerFromSettings(settings)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create VC issuer: %w", err)
+		return nil, err
 	}
-	var revokedList []uint32
-	if settings.RevokedTokenIDs != "" {
-		tokenIDs := strings.Split(settings.RevokedTokenIDs, ",")
-		revokedList = make([]uint32, len(tokenIDs))
-		for i, id := range tokenIDs {
-			tokenID, err := strconv.Atoi(strings.TrimSpace(id))
-			if err != nil {
-				return nil, fmt.Errorf("failed to convert revoked token ID to int: %w", err)
-			}
-			revokedList[i] = uint32(tokenID)
-		}
+	revokedList, err := revokedListFromSettings(settings)
+	if err != nil {
+		return nil, err
 	}
 
 	fingerprintService := fingerprint.New(chConn, s3Client, settings.FingerprintBucket, settings.FingerprintDataType)
-	identityService := identity.NewService(settings.IdentityAPIURL, nil)
-	vinvcService := vinvc.New(chConn, s3Client, issuer, settings.VINVCBucket, settings.VINVCDataType, revokedList)
-	vinvcCtrl, err := vc.NewVCController(logger, vinvcService, identityService, fingerprintService, nil, settings.TelemetryURL)
+	identityService, err := identity.NewService(settings.IdentityAPIURL, nil)
 	if err != nil {
-		logger.Fatal().Err(err).Msg("Failed to create VC controller")
+		return nil, fmt.Errorf("failed to create identity service: %w", err)
+	}
+	vinvcService := vinvc.New(chConn, s3Client, issuer, settings.VINVCBucket, settings.VINVCDataType, revokedList)
+	deviceDefAPIClient, err := deviceDefAPIClientFromSettings(settings)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create device definition API client: %w", err)
+	}
+	vinValidateSerivce := vinvalidator.New(deviceDefAPIClient)
+	vinvcCtrl, err := vc.NewVCController(logger, vinvcService, identityService, fingerprintService, vinValidateSerivce, settings.TelemetryURL)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create VC controller: %w", err)
 	}
 
 	return vinvcCtrl, nil
 }
 
 // s3ClientFromSettings creates an S3 client from the given settings.
-func s3ClientFromSettings(settings *config.Settings) (*s3.S3, error) {
+func s3ClientFromSettings(settings *config.Settings) (*s3.Client, error) {
 	// Create an AWS session
-	awsSession, err := session.NewSession(&aws.Config{
-		Region: aws.String(settings.AWSRegion),
-	})
-	if err != nil {
-		return nil, fmt.Errorf("failed to create AWS session: %w", err)
+	conf := aws.Config{
+		Region: settings.S3AWSRegion,
+		Credentials: credentials.NewStaticCredentialsProvider(
+			settings.S3AWSAccessKeyID,
+			settings.S3AWSSecretAccessKey,
+			"",
+		),
 	}
-	// Initialize S3 client
-	return s3.New(awsSession), nil
+	return s3.NewFromConfig(conf), nil
 }
 
 func issuerFromSettings(settings *config.Settings) (*verifiable.Issuer, error) {
@@ -219,8 +229,12 @@ func issuerFromSettings(settings *config.Settings) (*verifiable.Issuer, error) {
 		Host:   settings.ExternalHostname,
 		Path:   "/v1/vc/status",
 	}
+	privateKey, err := hex.DecodeString(settings.VINVCPrivateKey)
+	if err != nil {
+		return nil, fmt.Errorf("failed to decode private key: %w", err)
+	}
 	verifiableConfig := verifiable.Config{
-		PrivateKey:        settings.PrivateKey,
+		PrivateKey:        privateKey,
 		ChainID:           big.NewInt(settings.DIMORegistryChainID),
 		VehicleNFTAddress: common.HexToAddress(settings.VehicleNFTAddress),
 		BaseStatusURL:     baseURL.String(),
@@ -230,4 +244,29 @@ func issuerFromSettings(settings *config.Settings) (*verifiable.Issuer, error) {
 		return nil, fmt.Errorf("failed to create VC issuer: %w", err)
 	}
 	return issuer, nil
+}
+
+func revokedListFromSettings(settings *config.Settings) ([]uint32, error) {
+	if settings.RevokedTokenIDs == "" {
+		return nil, nil
+	}
+	tokenIDs := strings.Split(settings.RevokedTokenIDs, ",")
+	revokedList := make([]uint32, len(tokenIDs))
+	for i, id := range tokenIDs {
+		tokenID, err := strconv.Atoi(strings.TrimSpace(id))
+		if err != nil {
+			return nil, fmt.Errorf("failed to convert revoked token ID to int: %w", err)
+		}
+		revokedList[i] = uint32(tokenID)
+	}
+	return revokedList, nil
+}
+
+func deviceDefAPIClientFromSettings(settings *config.Settings) (ddgrpc.VinDecoderServiceClient, error) {
+	conn, err := grpc.NewClient(settings.DefinitionsGRPCAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		return nil, fmt.Errorf("failed to create gRPC client: %w", err)
+	}
+	definitionsClient := ddgrpc.NewVinDecoderServiceClient(conn)
+	return definitionsClient, nil
 }

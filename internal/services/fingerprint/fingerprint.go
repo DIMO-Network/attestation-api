@@ -1,4 +1,3 @@
-//go:generate mockgen -source=./ -destination=interfaces_mock_test.go -package=fingerprint_test
 package fingerprint
 
 import (
@@ -29,12 +28,14 @@ func (d decodeError) Error() string {
 // Service manages and retrieves fingerprint messages.
 type Service struct {
 	indexService *service.Service
+	dataType     string
 }
 
 // New creates a new instance of Service.
 func New(chConn clickhouse.Conn, objGetter service.ObjectGetter, bucketName, fingerprintDataType string) *Service {
 	return &Service{
-		indexService: service.New(chConn, objGetter, bucketName, fingerprintDataType),
+		indexService: service.New(chConn, objGetter, bucketName),
+		dataType:     fingerprintDataType,
 	}
 }
 
@@ -43,7 +44,7 @@ func (s *Service) GetLatestFingerprintMessages(ctx context.Context, deviceAddr c
 	subject := nameindexer.Subject{
 		Address: &deviceAddr,
 	}
-	data, err := s.indexService.GetLatestData(ctx, subject)
+	data, err := s.indexService.GetLatestData(ctx, s.dataType, subject)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get vc: %w", err)
 	}
@@ -60,27 +61,17 @@ func decodeFingerprintMessage(data []byte) (*models.DecodedFingerprintData, erro
 		return nil, fmt.Errorf("failed to unmarshal fingerprint message: %w", err)
 	}
 	var vin string
+	var err error
 	if msg.Data != nil {
-		vin = msg.Data["vin"]
+		vin, err = decodeVINFromData(msg.Data)
+		if err != nil {
+			return nil, err
+		}
 	} else if msg.Data64 != nil {
-		decodedBytes := make([]byte, base64.StdEncoding.DecodedLen(len(*msg.Data64)))
-		_, err := base64.StdEncoding.Decode(decodedBytes, []byte(*msg.Data64))
+		vin, err = decodeVINFromBase64(*msg.Data64)
 		if err != nil {
-			return nil, decodeError("failed to decode base64 data")
+			return nil, err
 		}
-		// Verify the length of decodedBytes: 1 byte header, 4 bytes timestamp, 8 bytes location, 1 byte protocol, 17 bytes VIN
-		if len(decodedBytes) < 31 {
-			return nil, decodeError("invalid data length")
-		}
-
-		macData := macronFingerPrint{}
-		reader := bytes.NewReader(decodedBytes)
-		err = binary.Read(reader, binary.LittleEndian, &macData)
-		if err != nil {
-			return nil, decodeError("failed to read binary data")
-		}
-		fmt.Printf("macData: %+v\n", macData)
-		vin = string(macData.VIN[:])
 	}
 
 	if vin == "" {
@@ -107,4 +98,36 @@ type macronFingerPrint struct {
 	Longitude float32
 	Protocol  uint8
 	VIN       [17]byte
+}
+
+func decodeVINFromData(data map[string]interface{}) (string, error) {
+	vinObj, ok := data["vin"]
+	if !ok {
+		return "", decodeError("missing vin")
+	}
+	vin, ok := vinObj.(string)
+	if !ok {
+		return "", decodeError(fmt.Sprintf("invalid vin type: %T", vinObj))
+	}
+	return vin, nil
+}
+
+func decodeVINFromBase64(data string) (string, error) {
+	decodedBytes := make([]byte, base64.StdEncoding.DecodedLen(len(data)))
+	_, err := base64.StdEncoding.Decode(decodedBytes, []byte(data))
+	if err != nil {
+		return "", fmt.Errorf("failed to decode base64 data: %w", err)
+	}
+	// Verify the length of decodedBytes: 1 byte header, 4 bytes timestamp, 8 bytes location, 1 byte protocol, 17 bytes VIN
+	if len(decodedBytes) < 31 {
+		return "", decodeError("invalid data length")
+	}
+
+	macData := macronFingerPrint{}
+	reader := bytes.NewReader(decodedBytes)
+	err = binary.Read(reader, binary.LittleEndian, &macData)
+	if err != nil {
+		return "", fmt.Errorf("failed to read binary data: %w", err)
+	}
+	return string(macData.VIN[:]), nil
 }

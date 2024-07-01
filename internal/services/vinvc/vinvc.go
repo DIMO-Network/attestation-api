@@ -17,6 +17,7 @@ type Service struct {
 	indexService *service.Service
 	issuer       *verifiable.Issuer
 	revokedMap   map[uint32]struct{}
+	dataType     string
 }
 
 // New creates a new instance of Service.
@@ -27,9 +28,10 @@ func New(chConn clickhouse.Conn, objGetter service.ObjectGetter, issuer *verifia
 		revokeMap[id] = struct{}{}
 	}
 	return &Service{
-		indexService: service.New(chConn, objGetter, bucketName, vinvcDataType),
+		indexService: service.New(chConn, objGetter, bucketName),
 		issuer:       issuer,
 		revokedMap:   revokeMap,
+		dataType:     vinvcDataType,
 	}
 }
 
@@ -38,7 +40,7 @@ func (s *Service) GetLatestVC(ctx context.Context, vehicleTokenId uint32) (*veri
 	subject := nameindexer.Subject{
 		TokenID: &vehicleTokenId,
 	}
-	data, err := s.indexService.GetLatestData(ctx, subject)
+	data, err := s.indexService.GetLatestData(ctx, s.dataType, subject)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get vc: %w", err)
 	}
@@ -50,8 +52,8 @@ func (s *Service) GetLatestVC(ctx context.Context, vehicleTokenId uint32) (*veri
 }
 
 // GenerateAndStoreVINVC generates a new VIN VC and stores it in S3.
-func (s *Service) GenerateAndStoreVINVC(ctx context.Context, vehicleTokenID uint32, vin string) error {
-	newVC, err := s.issuer.CreateVINVC(vin, vehicleTokenID, time.Time{})
+func (s *Service) GenerateAndStoreVINVC(ctx context.Context, vehicleTokenID uint32, vin, countryCode string) error {
+	newVC, err := s.issuer.CreateVINVC(vin, countryCode, vehicleTokenID, time.Time{})
 	if err != nil {
 		return fmt.Errorf("failed to create VC: %w", err)
 	}
@@ -61,7 +63,7 @@ func (s *Service) GenerateAndStoreVINVC(ctx context.Context, vehicleTokenID uint
 		Subject: nameindexer.Subject{
 			TokenID: &vehicleTokenID,
 		},
-		DataType: "vinvc_0.1",
+		DataType: s.dataType,
 	}
 
 	err = s.indexService.StoreFile(ctx, &index, newVC)

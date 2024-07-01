@@ -23,6 +23,10 @@ import (
 	"go.uber.org/mock/gomock"
 )
 
+const (
+	defaultNameSlug = "toyota_tacoma-4wd_2023"
+)
+
 type Mocks struct {
 	VCService          *MockVCService
 	IdentityService    *MockIdentityService
@@ -50,9 +54,9 @@ func TestVCController_GetVINVC(t *testing.T) {
 			tokenID: "123",
 			setupMocks: func(mocks Mocks) {
 				tokenID := uint32(123)
-				mocks.IdentityService.EXPECT().GetPairedDevices(ctxType, tokenID).Return([]models.PairedDevice{}, nil)
+				mocks.IdentityService.EXPECT().GetVehicleInfo(ctxType, tokenID).Return(&models.VehicleInfo{}, nil)
 			},
-			expectedStatusCode: fiber.StatusNotFound,
+			expectedStatusCode: fiber.StatusBadRequest,
 		},
 		{
 			name:    "valid request with paired devices",
@@ -60,15 +64,18 @@ func TestVCController_GetVINVC(t *testing.T) {
 			setupMocks: func(mocks Mocks) {
 				pairedAddr := randAddress()
 				tokenID := uint32(124)
-				pairedDevices := []models.PairedDevice{
-					{Address: pairedAddr, Type: models.DeviceTypeAftermarket},
+				vehicleInfo := &models.VehicleInfo{
+					PairedDevices: []models.PairedDevice{
+						{Address: pairedAddr, Type: models.DeviceTypeAftermarket},
+					},
+					NameSlug: defaultNameSlug,
 				}
-				mocks.IdentityService.EXPECT().GetPairedDevices(ctxType, tokenID).Return(pairedDevices, nil)
+				mocks.IdentityService.EXPECT().GetVehicleInfo(ctxType, tokenID).Return(vehicleInfo, nil)
 				mocks.FingerprintService.EXPECT().GetLatestFingerprintMessages(ctxType, pairedAddr).Return(&models.DecodedFingerprintData{
 					VIN: "1HGCM82633A123456", Timestamp: time.Now(),
 				}, nil)
-				mocks.VINService.EXPECT().ValidateVIN(ctxType, "1HGCM82633A123456").Return(nil)
-				mocks.VCService.EXPECT().GenerateAndStoreVINVC(ctxType, tokenID, "1HGCM82633A123456").Return(nil)
+				mocks.VINService.EXPECT().DecodeVIN(ctxType, "1HGCM82633A123456", "").Return(vehicleInfo.NameSlug, nil)
+				mocks.VCService.EXPECT().GenerateAndStoreVINVC(ctxType, tokenID, "1HGCM82633A123456", "").Return(nil)
 			},
 			expectedStatusCode: fiber.StatusOK,
 		},
@@ -85,7 +92,7 @@ func TestVCController_GetVINVC(t *testing.T) {
 			tokenID: "125",
 			setupMocks: func(mocks Mocks) {
 				tokenID := uint32(125)
-				mocks.IdentityService.EXPECT().GetPairedDevices(ctxType, tokenID).Return(nil, errors.New("error"))
+				mocks.IdentityService.EXPECT().GetVehicleInfo(ctxType, tokenID).Return(nil, errors.New("error"))
 			},
 			expectedStatusCode: fiber.StatusInternalServerError,
 		},
@@ -95,10 +102,13 @@ func TestVCController_GetVINVC(t *testing.T) {
 			setupMocks: func(mocks Mocks) {
 				tokenID := uint32(127)
 				pairedAddr := randAddress()
-				pairedDevices := []models.PairedDevice{
-					{Address: pairedAddr, Type: models.DeviceTypeAftermarket},
+				vehicleInfo := &models.VehicleInfo{
+					PairedDevices: []models.PairedDevice{
+						{Address: pairedAddr, Type: models.DeviceTypeAftermarket},
+					},
+					NameSlug: defaultNameSlug,
 				}
-				mocks.IdentityService.EXPECT().GetPairedDevices(ctxType, tokenID).Return(pairedDevices, nil)
+				mocks.IdentityService.EXPECT().GetVehicleInfo(ctxType, tokenID).Return(vehicleInfo, nil)
 				mocks.FingerprintService.EXPECT().GetLatestFingerprintMessages(ctxType, pairedAddr).Return(&models.DecodedFingerprintData{}, fmt.Errorf("no fingerprint messages"))
 			},
 			expectedStatusCode: fiber.StatusInternalServerError,
@@ -110,19 +120,22 @@ func TestVCController_GetVINVC(t *testing.T) {
 				pairedAddr := randAddress()
 				pairedAddr2 := randAddress()
 				tokenID := uint32(128)
-				pairedDevices := []models.PairedDevice{
-					{Address: pairedAddr, Type: models.DeviceTypeAftermarket},
-					{Address: pairedAddr2, Type: models.DeviceTypeSynthetic},
+				vehicleInfo := &models.VehicleInfo{
+					PairedDevices: []models.PairedDevice{
+						{Address: pairedAddr, Type: models.DeviceTypeAftermarket},
+						{Address: pairedAddr2, Type: models.DeviceTypeSynthetic},
+					},
+					NameSlug: defaultNameSlug,
 				}
-				mocks.IdentityService.EXPECT().GetPairedDevices(ctxType, tokenID).Return(pairedDevices, nil)
+				mocks.IdentityService.EXPECT().GetVehicleInfo(ctxType, tokenID).Return(vehicleInfo, nil)
 				mocks.FingerprintService.EXPECT().GetLatestFingerprintMessages(ctxType, pairedAddr).Return(&models.DecodedFingerprintData{
 					VIN: "1HGCM82633A123456", Timestamp: time.Now().Add(-1 * time.Hour),
 				}, nil)
 				mocks.FingerprintService.EXPECT().GetLatestFingerprintMessages(ctxType, pairedAddr2).Return(&models.DecodedFingerprintData{
 					VIN: "1HGCM82633A654321", Timestamp: time.Now(),
 				}, nil)
-				mocks.VINService.EXPECT().ValidateVIN(ctxType, "1HGCM82633A654321").Return(nil)
-				mocks.VCService.EXPECT().GenerateAndStoreVINVC(ctxType, tokenID, "1HGCM82633A654321").Return(nil)
+				mocks.VINService.EXPECT().DecodeVIN(ctxType, "1HGCM82633A654321", "").Return(vehicleInfo.NameSlug, nil)
+				mocks.VCService.EXPECT().GenerateAndStoreVINVC(ctxType, tokenID, "1HGCM82633A654321", "").Return(nil)
 			},
 			expectedStatusCode: fiber.StatusOK,
 		},
@@ -132,14 +145,17 @@ func TestVCController_GetVINVC(t *testing.T) {
 			setupMocks: func(mocks Mocks) {
 				pairedAddr := randAddress()
 				tokenID := uint32(129)
-				pairedDevices := []models.PairedDevice{
-					{Address: pairedAddr, Type: models.DeviceTypeAftermarket},
+				vehicleInfo := &models.VehicleInfo{
+					PairedDevices: []models.PairedDevice{
+						{Address: pairedAddr, Type: models.DeviceTypeAftermarket},
+					},
+					NameSlug: defaultNameSlug,
 				}
-				mocks.IdentityService.EXPECT().GetPairedDevices(ctxType, tokenID).Return(pairedDevices, nil)
+				mocks.IdentityService.EXPECT().GetVehicleInfo(ctxType, tokenID).Return(vehicleInfo, nil)
 				mocks.FingerprintService.EXPECT().GetLatestFingerprintMessages(ctxType, pairedAddr).Return(&models.DecodedFingerprintData{
 					VIN: "INVALIDVIN", Timestamp: time.Now(),
 				}, nil)
-				mocks.VINService.EXPECT().ValidateVIN(ctxType, "INVALIDVIN").Return(errors.New("invalid VIN"))
+				mocks.VINService.EXPECT().DecodeVIN(ctxType, "INVALIDVIN", "").Return("", errors.New("invalid VIN"))
 			},
 			expectedStatusCode: fiber.StatusInternalServerError,
 		},
@@ -150,15 +166,18 @@ func TestVCController_GetVINVC(t *testing.T) {
 			setupMocks: func(mocks Mocks) {
 				pairedAddr := randAddress()
 				tokenID := uint32(131)
-				pairedDevices := []models.PairedDevice{
-					{Address: pairedAddr, Type: models.DeviceTypeAftermarket},
+				vehicleInfo := &models.VehicleInfo{
+					PairedDevices: []models.PairedDevice{
+						{Address: pairedAddr, Type: models.DeviceTypeAftermarket},
+					},
+					NameSlug: defaultNameSlug,
 				}
-				mocks.IdentityService.EXPECT().GetPairedDevices(ctxType, tokenID).Return(pairedDevices, nil)
+				mocks.IdentityService.EXPECT().GetVehicleInfo(ctxType, tokenID).Return(vehicleInfo, nil)
 				mocks.FingerprintService.EXPECT().GetLatestFingerprintMessages(ctxType, pairedAddr).Return(&models.DecodedFingerprintData{
 					VIN: "1HGCM82633A123456", Timestamp: time.Now(),
 				}, nil)
-				mocks.VINService.EXPECT().ValidateVIN(ctxType, "1HGCM82633A123456").Return(nil)
-				mocks.VCService.EXPECT().GenerateAndStoreVINVC(ctxType, tokenID, "1HGCM82633A123456").Return(errors.New("store error"))
+				mocks.VINService.EXPECT().DecodeVIN(ctxType, "1HGCM82633A123456", "").Return(vehicleInfo.NameSlug, nil)
+				mocks.VCService.EXPECT().GenerateAndStoreVINVC(ctxType, tokenID, "1HGCM82633A123456", "").Return(errors.New("store error"))
 			},
 			expectedStatusCode: fiber.StatusInternalServerError,
 		},
@@ -204,8 +223,8 @@ func TestVCController_GetVINVC(t *testing.T) {
 				require.NoError(t, err)
 
 				// Check for the presence of the required fields
-				require.Contains(t, actualResponse, "vc_url")
-				require.Contains(t, actualResponse, "vc_query")
+				require.Contains(t, actualResponse, "vcUrl")
+				require.Contains(t, actualResponse, "vcQuery")
 				require.Contains(t, actualResponse, "message")
 			}
 		})

@@ -144,10 +144,11 @@ func TestService_GetPairedDevices(t *testing.T) {
 			certPool := x509.NewCertPool()
 			certPool.AddCert(server.Certificate())
 
-			service := identity.NewService(server.URL, certPool)
+			service, err := identity.NewService(server.URL, certPool)
+			require.NoError(t, err)
 
 			// Run the test.
-			devices, err := service.GetPairedDevices(ctx, tt.vehicleTokenId)
+			devices, err := service.GetVehicleInfo(ctx, tt.vehicleTokenId)
 			if tt.expectedError {
 				require.Error(t, err)
 				require.Nil(t, devices)

@@ -5,10 +5,13 @@ const query = `
 	query ($tokenId: Int!) {
 		vehicle(tokenId: $tokenId) {
 			aftermarketDevice {
-				tokenId
+				address
 			}
 			syntheticDevice {
-				tokenId
+				address
+			}
+			definition{
+				id
 			}
 		}
 	}
@@ -29,11 +32,16 @@ type dataField struct {
 type vehicleField struct {
 	AftermarketDevice *deviceResponse `json:"aftermarketDevice"`
 	SyntheticDevice   *deviceResponse `json:"syntheticDevice"`
+	Definition        *definitionResponse
 }
 
 // deviceResponse represents the structure of the device response.
 type deviceResponse struct {
 	Address string `json:"address"`
+}
+
+type definitionResponse struct {
+	ID string `json:"id"`
 }
 
 // graphQLError represents an error returned from the GraphQL API.

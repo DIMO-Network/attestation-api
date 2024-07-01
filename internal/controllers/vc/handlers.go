@@ -12,10 +12,18 @@ const (
 	TokenIDParam = "vehilceTokenID"
 )
 
-// GetVINVC handles requests to issue a VIN VC.
+// @Summary Get VIN VC
+// @Description Get the VIN VC for a given token Id
+// @Tags VC
+// @Accept json
+// @Produce json
+// @Param  tokenId path int true "token Id"
+// @Success 200 {object} getVINVCResponse
+// @Security     BearerAuth
+// @Router /v1/vc/vin/{tokenId} [get]
 func (v *VCController) GetVINVC(fiberCtx *fiber.Ctx) error {
 	ctx := fiberCtx.Context()
-	tokenIDStr := fiberCtx.Query("token_id")
+	tokenIDStr := fiberCtx.Params("tokenId")
 	if tokenIDStr == "" {
 		return fiber.NewError(fiber.StatusBadRequest, "token_id query parameter is required")
 	}

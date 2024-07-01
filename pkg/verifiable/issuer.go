@@ -88,7 +88,7 @@ func (i *Issuer) DID() string {
 }
 
 // CreateVINVC creates a verifiable credential for a vehicle identification number and token ID.
-func (i *Issuer) CreateVINVC(vin string, tokenID uint32, expirationDate time.Time) ([]byte, error) {
+func (i *Issuer) CreateVINVC(vin, countryCode string, tokenID uint32, expirationDate time.Time) ([]byte, error) {
 	id := uuid.New().String()
 	issuanceDate := time.Now().UTC().Format(time.RFC3339)
 
@@ -115,6 +115,7 @@ func (i *Issuer) CreateVINVC(vin string, tokenID uint32, expirationDate time.Tim
 	subject := VINSubject{
 		ID:                          fmt.Sprintf("did:nft:%d_erc721:%s_%d", i.chainID, i.vehicleNFTAddress, tokenID),
 		VehicleIdentificationNumber: vin,
+		CountryCode:                 countryCode,
 	}
 	rawSubject, err := json.Marshal(subject)
 	if err != nil {

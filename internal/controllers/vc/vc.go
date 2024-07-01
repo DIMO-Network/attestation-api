@@ -3,6 +3,7 @@ package vc
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/url"
 	"path"
@@ -49,22 +50,19 @@ func NewVCController(
 }
 
 func (v *VCController) getVINVC(ctx context.Context, tokenID uint32) (*getVINVCResponse, error) {
-	pairedDevices, err := v.identityService.GetPairedDevices(ctx, tokenID)
+	logger := v.logger.With().Uint32("vehicleTokenId", tokenID).Logger()
+	vehicleInfo, err := v.identityService.GetVehicleInfo(ctx, tokenID)
 	if err != nil {
-		return nil, v.handleError(err, "Failed to get paired devices")
+		return nil, handleError(err, &logger, "Failed to get vehicle info")
 	}
-	if len(pairedDevices) == 0 {
-		return nil, fiber.NewError(fiber.StatusNotFound, "No paired devices found")
-	}
-
-	vin, err := v.validateAndReconcileVINs(ctx, pairedDevices)
+	vin, err := v.validateAndReconcileVINs(ctx, vehicleInfo, "")
 	if err != nil {
 		return nil, err
 	}
 
-	err = v.vcService.GenerateAndStoreVINVC(ctx, tokenID, vin)
+	err = v.vcService.GenerateAndStoreVINVC(ctx, tokenID, vin, "")
 	if err != nil {
-		return nil, v.handleError(err, "Failed to generate and store VC")
+		return nil, handleError(err, &logger, "Failed to generate and store VC")
 	}
 
 	vcURL, gqlQuery := v.generateVCURLAndQuery(tokenID)
@@ -86,18 +84,23 @@ func sanitizeTelemetryURL(telemetryURL string) (*url.URL, error) {
 }
 
 // validateAndReconcileVINs validates and reconciles VINs from the paired devices.
-func (v *VCController) validateAndReconcileVINs(ctx context.Context, pairedDevices []models.PairedDevice) (string, error) {
-	if len(pairedDevices) == 0 {
-		return "", fiber.NewError(fiber.StatusInternalServerError, "No paired devices")
+func (v *VCController) validateAndReconcileVINs(ctx context.Context, vehicleInfo *models.VehicleInfo, countryCode string) (string, error) {
+	if len(vehicleInfo.PairedDevices) == 0 {
+		return "", fiber.NewError(fiber.StatusBadRequest, "No paired devices")
 	}
-
+	logger := v.logger.With().Uint32("vehicleTokenId", vehicleInfo.TokenID).Logger()
 	var latestVIN string
 	var latestTimestamp time.Time
 
-	for _, device := range pairedDevices {
+	var fingerprintErr error
+	for _, device := range vehicleInfo.PairedDevices {
 		fingerprint, err := v.fingerprintService.GetLatestFingerprintMessages(ctx, device.Address)
 		if err != nil {
-			return "", v.handleError(err, "Failed to get fingerprint messages")
+			// log the error and continue to the next device if possible
+			localLogger := logger.With().Str("device", device.Address.Hex()).Logger()
+			err := handleError(err, &localLogger, "Failed to get latest fingerprint message")
+			fingerprintErr = errors.Join(fingerprintErr, err)
+			continue
 		}
 
 		currentVIN := fingerprint.VIN
@@ -107,8 +110,18 @@ func (v *VCController) validateAndReconcileVINs(ctx context.Context, pairedDevic
 		}
 	}
 
-	if err := v.vinService.ValidateVIN(ctx, latestVIN); err != nil {
-		return "", v.handleError(err, "Failed to validate VIN")
+	// return error to the user if no VINs were found
+	if latestVIN == "" && fingerprintErr != nil {
+		return "", fingerprintErr
+	}
+	decodedNameSlug, err := v.vinService.DecodeVIN(ctx, latestVIN, countryCode)
+	if err != nil {
+		return "", handleError(err, &logger, "Failed to decode VIN")
+	}
+	if decodedNameSlug != vehicleInfo.NameSlug {
+		message := "Invalid VIN from fingerprint"
+		logger.Error().Str("decodedNameSlug", decodedNameSlug).Str("vehicleNameSlug", vehicleInfo.NameSlug).Msg(message)
+		return "", fiber.NewError(fiber.StatusBadRequest, message)
 	}
 
 	return latestVIN, nil
@@ -139,7 +152,7 @@ func (v *VCController) generateVCURLAndQuery(tokenID uint32) (string, string) {
 }
 
 // handleError logs an error and returns a Fiber error with the given message
-func (v *VCController) handleError(err error, message string) error {
-	v.logger.Error().Err(err).Msg(message)
+func handleError(err error, logger *zerolog.Logger, message string) error {
+	logger.Error().Err(err).Msg(message)
 	return fiber.NewError(fiber.StatusInternalServerError, message)
 }

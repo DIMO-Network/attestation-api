@@ -22,6 +22,7 @@ type Credential struct {
 type VINSubject struct {
 	ID                          string `json:"id,omitempty"`
 	VehicleIdentificationNumber string `json:"vehicleIdentificationNumber,omitempty"`
+	CountryCode                 string `json:"countryCode,omitempty"`
 }
 
 // BitstringStatusListSubject represents the subject of the bitstring status list verifiable credential.

@@ -8,10 +8,11 @@ import (
 	"github.com/DIMO-Network/shared/privileges"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/gofiber/fiber/v2"
+	"github.com/golang-jwt/jwt/v5"
 )
 
 const (
-	tokenIDParam = "tokenID"
+	tokenIDParam = "tokenId"
 	// TokenClaimsKey is the key used to store the token claims in the fiber context
 	TokenClaimsKey = "tokenClaims"
 )
@@ -43,7 +44,7 @@ func validateTokenIDAndAddress(ctx *fiber.Ctx, contract common.Address) error {
 	tokenID := ctx.Params(tokenIDParam)
 
 	if tokenID != claims.TokenID {
-		return fiber.NewError(fiber.StatusUnauthorized, "Unauthorized! Wrong device token provided")
+		return fiber.NewError(fiber.StatusUnauthorized, "Unauthorized! mismatch token Id provided")
 	}
 	if claims.ContractAddress != contract {
 		return fiber.NewError(fiber.StatusUnauthorized, fmt.Sprintf("Provided token is for the wrong contract: %s", claims.ContractAddress))
@@ -52,7 +53,8 @@ func validateTokenIDAndAddress(ctx *fiber.Ctx, contract common.Address) error {
 }
 
 func getTokenClaim(ctx *fiber.Ctx) *privilegetoken.Token {
-	claim, ok := ctx.Locals("user").(*privilegetoken.Token)
+	token := ctx.Locals("user").(*jwt.Token)
+	claim, ok := token.Claims.(*privilegetoken.Token)
 	if !ok {
 		panic("TokenClaimsKey not found in fiber context")
 	}

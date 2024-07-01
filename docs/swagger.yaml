@@ -1,0 +1,60 @@
+definitions:
+  internal_controllers_vc.getVINVCResponse:
+    properties:
+      message:
+        type: string
+      vcQuery:
+        type: string
+      vcUrl:
+        type: string
+    type: object
+info:
+  contact: {}
+  title: DIMO Attestation API
+  version: "1.0"
+paths:
+  /:
+    get:
+      consumes:
+      - '*/*'
+      description: get the status of server.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Show the status of server.
+      tags:
+      - root
+  /v1/vc/vin/{tokenId}:
+    get:
+      consumes:
+      - application/json
+      description: Get the VIN VC for a given token Id
+      parameters:
+      - description: token Id
+        in: path
+        name: tokenId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_controllers_vc.getVINVCResponse'
+      security:
+      - BearerAuth: []
+      summary: Get VIN VC
+      tags:
+      - VC
+securityDefinitions:
+  BearerAuth:
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"
