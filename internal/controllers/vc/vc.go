@@ -52,10 +52,13 @@ func NewVCController(
 func (v *Controller) getVINVC(ctx context.Context, tokenID uint32) (*getVINVCResponse, error) {
 	logger := v.logger.With().Uint32("vehicleTokenId", tokenID).Logger()
 
-	_, err := v.vcService.GetLatestVC(ctx, tokenID)
+	prevVC, err := v.vcService.GetLatestVC(ctx, tokenID)
 	if err == nil {
-		logger.Debug().Msg("VC already exists")
-		return v.generateSuccessResponse(tokenID), nil
+		expireDate, err := time.Parse(time.RFC3339, prevVC.ExpirationDate)
+		if err == nil && time.Now().Before(expireDate) {
+			logger.Debug().Msg("VC already exists skipping generation")
+			return v.generateSuccessResponse(tokenID), nil
+		}
 	}
 
 	vehicleInfo, err := v.identityService.GetVehicleInfo(ctx, tokenID)

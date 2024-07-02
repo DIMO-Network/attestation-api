@@ -16,6 +16,7 @@ import (
 
 	"github.com/DIMO-Network/attestation-api/internal/controllers/vc"
 	"github.com/DIMO-Network/attestation-api/pkg/models"
+	"github.com/DIMO-Network/attestation-api/pkg/verifiable"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/gofiber/fiber/v2"
@@ -215,7 +216,34 @@ func TestVCController_GetVINVC(t *testing.T) {
 			tokenID: "132",
 			setupMocks: func(mocks Mocks) {
 				tokenID := uint32(132)
-				mocks.VCService.EXPECT().GetLatestVC(ctxType, tokenID).Return(nil, nil)
+				mocks.VCService.EXPECT().GetLatestVC(ctxType, tokenID).Return(&verifiable.Credential{
+					ExpirationDate: time.Now().Add(time.Hour).Format(time.RFC3339),
+				}, nil)
+			},
+			expectedStatusCode: fiber.StatusOK,
+		},
+		{
+			name:    "VC is expired",
+			tokenID: "133",
+			setupMocks: func(mocks Mocks) {
+				tokenID := uint32(133)
+				pairedAddr := randAddress()
+				vehicleInfo := &models.VehicleInfo{
+					PairedDevices: []models.PairedDevice{
+						{Address: pairedAddr, Type: models.DeviceTypeAftermarket},
+					},
+					NameSlug: defaultNameSlug,
+				}
+				mocks.VCService.EXPECT().GetLatestVC(ctxType, tokenID).Return(&verifiable.Credential{
+					ExpirationDate: time.Now().Add(-time.Hour).Format(time.RFC3339),
+				}, nil)
+				mocks.IdentityService.EXPECT().GetVehicleInfo(ctxType, tokenID).Return(vehicleInfo, nil)
+				mocks.FingerprintService.EXPECT().GetLatestFingerprintMessages(ctxType, pairedAddr).Return(&models.DecodedFingerprintData{
+					VIN: "1HGCM82633A123456", Timestamp: time.Now(),
+				}, nil)
+				mocks.VINService.EXPECT().DecodeVIN(ctxType, "1HGCM82633A123456", "").Return(vehicleInfo.NameSlug, nil)
+				mocks.VCService.EXPECT().GenerateAndStoreVINVC(ctxType, tokenID, "1HGCM82633A123456", "").Return(nil)
+
 			},
 			expectedStatusCode: fiber.StatusOK,
 		},
