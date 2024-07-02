@@ -1,4 +1,4 @@
-package main
+package auth
 
 import (
 	"fmt"
@@ -12,19 +12,21 @@ import (
 )
 
 const (
-	tokenIDParam = "tokenId"
 	// TokenClaimsKey is the key used to store the token claims in the fiber context
 	TokenClaimsKey = "tokenClaims"
 )
 
-func AllOf(contract common.Address, privilegeIDs []privileges.Privilege) fiber.Handler {
+// AllOf creates a middleware that checks if the token contains all the required privileges
+// this middleware also checks if the token is for the correct contract and token ID
+func AllOf(contract common.Address, tokenIDParam string, privilegeIDs []privileges.Privilege) fiber.Handler {
 	return func(c *fiber.Ctx) error {
-		return checkAllPrivileges(c, contract, privilegeIDs)
+		return checkAllPrivileges(c, contract, tokenIDParam, privilegeIDs)
 	}
 }
-func checkAllPrivileges(ctx *fiber.Ctx, contract common.Address, privilegeIDs []privileges.Privilege) error {
+
+func checkAllPrivileges(ctx *fiber.Ctx, contract common.Address, tokenIDParam string, privilegeIDs []privileges.Privilege) error {
 	// This checks that the privileges are for the token specified by the path variable and the contract address is correct.
-	err := validateTokenIDAndAddress(ctx, contract)
+	err := validateTokenIDAndAddress(ctx, contract, tokenIDParam)
 	if err != nil {
 		return err
 	}
@@ -39,7 +41,7 @@ func checkAllPrivileges(ctx *fiber.Ctx, contract common.Address, privilegeIDs []
 	return ctx.Next()
 }
 
-func validateTokenIDAndAddress(ctx *fiber.Ctx, contract common.Address) error {
+func validateTokenIDAndAddress(ctx *fiber.Ctx, contract common.Address, tokenIDParam string) error {
 	claims := getTokenClaim(ctx)
 	tokenID := ctx.Params(tokenIDParam)
 

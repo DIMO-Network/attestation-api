@@ -18,6 +18,7 @@ import (
 	"github.com/DIMO-Network/attestation-api/internal/services/identity"
 	"github.com/DIMO-Network/attestation-api/internal/services/vinvalidator"
 	"github.com/DIMO-Network/attestation-api/internal/services/vinvc"
+	"github.com/DIMO-Network/attestation-api/pkg/auth"
 	"github.com/DIMO-Network/attestation-api/pkg/verifiable"
 	"github.com/DIMO-Network/clickhouse-infra/pkg/connect"
 	ddgrpc "github.com/DIMO-Network/device-definitions-api/pkg/grpc"
@@ -56,7 +57,7 @@ func main() {
 	}
 
 	serveMonitoring(strconv.Itoa(settings.MonPort), &logger)
-	startWebAPI(logger, &settings)
+	startWebAPI(&logger, &settings)
 }
 
 func serveMonitoring(port string, logger *zerolog.Logger) *fiber.App {
@@ -64,7 +65,7 @@ func serveMonitoring(port string, logger *zerolog.Logger) *fiber.App {
 
 	monApp := fiber.New(fiber.Config{DisableStartupMessage: true})
 
-	monApp.Get("/", func(c *fiber.Ctx) error { return nil })
+	monApp.Get("/", func(*fiber.Ctx) error { return nil })
 	monApp.Get("/metrics", adaptor.HTTPHandler(promhttp.Handler()))
 
 	go func() {
@@ -76,7 +77,7 @@ func serveMonitoring(port string, logger *zerolog.Logger) *fiber.App {
 	return monApp
 }
 
-func startWebAPI(logger zerolog.Logger, settings *config.Settings) {
+func startWebAPI(logger *zerolog.Logger, settings *config.Settings) {
 	app := fiber.New(fiber.Config{
 		ErrorHandler: func(c *fiber.Ctx, err error) error {
 			return ErrorHandler(c, err, logger)
@@ -89,7 +90,7 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings) {
 		Claims:     &privilegetoken.Token{},
 	})
 
-	vinvcCtrl, err := createVINController(&logger, settings)
+	vinvcCtrl, err := createVINController(logger, settings)
 	if err != nil {
 		logger.Fatal().Err(err).Msg("Failed to create VC controller")
 	}
@@ -112,14 +113,14 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings) {
 
 	vehicleAddr := common.HexToAddress(settings.VehicleNFTAddress)
 
-	// v1 := app.Group("", )
-	app.Get("/v1/vc/vin/:tokenId", jwtAuth, AllOf(vehicleAddr, []privileges.Privilege{privileges.VehicleVinCredential}), vinvcCtrl.GetVINVC)
+	vinMiddlewre := auth.AllOf(vehicleAddr, "tokenId", []privileges.Privilege{privileges.VehicleVinCredential})
+	app.Get("/v1/vc/vin/:tokenId", jwtAuth, vinMiddlewre, vinvcCtrl.GetVINVC)
 
 	logger.Info().Int("port", settings.Port).Msg("Server Started")
 
 	// Start Server
 	if err := app.Listen(":" + strconv.Itoa(settings.Port)); err != nil {
-		logger.Fatal().Err(err)
+		logger.Fatal().Err(err).Msg("Failed to run server")
 	}
 }
 
@@ -131,20 +132,16 @@ func startWebAPI(logger zerolog.Logger, settings *config.Settings) {
 // @Produce json
 // @Success 200 {object} map[string]interface{}
 // @Router / [get]
-func HealthCheck(c *fiber.Ctx) error {
-	res := map[string]interface{}{
+func HealthCheck(ctx *fiber.Ctx) error {
+	res := map[string]any{
 		"data": "Server is up and running",
 	}
 
-	if err := c.JSON(res); err != nil {
-		return err
-	}
-
-	return nil
+	return ctx.JSON(res)
 }
 
 // ErrorHandler custom handler to log recovered errors using our logger and return json instead of string
-func ErrorHandler(c *fiber.Ctx, err error, logger zerolog.Logger) error {
+func ErrorHandler(ctx *fiber.Ctx, err error, logger *zerolog.Logger) error {
 	code := fiber.StatusInternalServerError // Default 500 statuscode
 	message := "Internal error."
 
@@ -157,17 +154,17 @@ func ErrorHandler(c *fiber.Ctx, err error, logger zerolog.Logger) error {
 	// don't log not found errors
 	if code != fiber.StatusNotFound {
 		logger.Err(err).Int("httpStatusCode", code).
-			Str("httpPath", strings.TrimPrefix(c.Path(), "/")).
-			Str("httpMethod", c.Method()).
+			Str("httpPath", strings.TrimPrefix(ctx.Path(), "/")).
+			Str("httpMethod", ctx.Method()).
 			Msg("caught an error from http request")
 	}
 
-	return c.Status(code).JSON(CodeResp{Code: code, Message: message})
+	return ctx.Status(code).JSON(codeResp{Code: code, Message: message})
 }
 
-type CodeResp struct {
-	Code    int    `json:"code"`
+type codeResp struct {
 	Message string `json:"message"`
+	Code    int    `json:"code"`
 }
 
 func createVINController(logger *zerolog.Logger, settings *config.Settings) (*vc.Controller, error) {
@@ -176,10 +173,7 @@ func createVINController(logger *zerolog.Logger, settings *config.Settings) (*vc
 	if err != nil {
 		return nil, fmt.Errorf("failed to create ClickHouse connection: %w", err)
 	}
-	s3Client, err := s3ClientFromSettings(settings)
-	if err != nil {
-		return nil, err
-	}
+	s3Client := s3ClientFromSettings(settings)
 
 	issuer, err := issuerFromSettings(settings)
 	if err != nil {
@@ -210,7 +204,7 @@ func createVINController(logger *zerolog.Logger, settings *config.Settings) (*vc
 }
 
 // s3ClientFromSettings creates an S3 client from the given settings.
-func s3ClientFromSettings(settings *config.Settings) (*s3.Client, error) {
+func s3ClientFromSettings(settings *config.Settings) *s3.Client {
 	// Create an AWS session
 	conf := aws.Config{
 		Region: settings.S3AWSRegion,
@@ -220,7 +214,7 @@ func s3ClientFromSettings(settings *config.Settings) (*s3.Client, error) {
 			"",
 		),
 	}
-	return s3.NewFromConfig(conf), nil
+	return s3.NewFromConfig(conf)
 }
 
 func issuerFromSettings(settings *config.Settings) (*verifiable.Issuer, error) {
