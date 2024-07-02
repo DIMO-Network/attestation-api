@@ -4,12 +4,12 @@ image:
   pullPolicy: IfNotPresent
   tag: d6c5a98
 imagePullSecrets: []
-nameOverride: ''
-fullnameOverride: ''
+nameOverride: ""
+fullnameOverride: ""
 serviceAccount:
   create: true
   annotations: {}
-  name: ''
+  name: ""
 podAnnotations: {}
 podSecurityContext:
   runAsNonRoot: true
@@ -31,7 +31,7 @@ env:
   DEFINITIONS_GRPC_ADDR: device-definitions-api-dev:8086
   TOKEN_EXCHANGE_JWK_KEY_SET_URL: http://dex-roles-rights.dev.svc.cluster.local:5556/keys
   TOKEN_EXCHANGE_ISSUER_URL: https://auth-roles-rights.dev.dimo.zone
-  VEHICLE_NFT_ADDRESS: '0x90c4d6113ec88dd4bdf12f26db2b3998fd13a144'
+  VEHICLE_NFT_ADDRESS: "0x45fbCD3ef7361d156e8b16F5538AE36DEdf61Da8"
   TELEMETRY_URL: http://telemetry-api.dev.dimo.zone
   IDENTITY_API_URL: https://identity-api.dev.dimo.zone
   FINGERPRINT_BUCKET: dimo-network-fingerprint-dev
@@ -63,10 +63,10 @@ ingress:
   className: nginx
   annotations:
     nginx.ingress.kubernetes.io/auth-tls-secret: ingress/cf-origin-ca
-    nginx.ingress.kubernetes.io/auth-tls-verify-client: 'on'
-    nginx.ingress.kubernetes.io/enable-cors: 'true'
+    nginx.ingress.kubernetes.io/auth-tls-verify-client: "on"
+    nginx.ingress.kubernetes.io/enable-cors: "true"
     nginx.ingress.kubernetes.io/cors-allow-origin: https://app.dev.dimo.zone, https://admin.dev.dimo.zone
-    nginx.ingress.kubernetes.io/limit-rps: '25'
+    nginx.ingress.kubernetes.io/limit-rps: "25"
     external-dns.alpha.kubernetes.io/hostname: attestation-api.dev.dimo.zone
   hosts:
     - host: attestation-api.dev.dimo.zone
