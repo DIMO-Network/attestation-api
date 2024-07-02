@@ -70,7 +70,7 @@ tools-mockgen: ## install mockgen tool
 	@mkdir -p $(PATHINSTBIN)
 	GOBIN=$(PATHINSTBIN) go install go.uber.org/mock/mockgen@$(MOCKGEN_VERSION)
 
-make tools: tools-golangci-lint tools-swagger ## install all tools
+make tools: tools-golangci-lint tools-swagger tools-mockgen ## install all tools
 
 generate: swagger go-generate ## run all file generation for the project
 swagger: ## generate swagger documentation
