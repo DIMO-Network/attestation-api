@@ -4,16 +4,16 @@ go 1.22.0
 
 require (
 	github.com/ClickHouse/clickhouse-go/v2 v2.26.0
-	github.com/DIMO-Network/clickhouse-infra v0.0.0-20240625130842-c9eff0c8aabe
+	github.com/DIMO-Network/clickhouse-infra v0.0.1
 	github.com/DIMO-Network/device-definitions-api v1.2.24-0.20240627130136-bc4ae8dee2cb
-	github.com/DIMO-Network/nameindexer v0.0.0-20240628155536-28d584bb84b9
+	github.com/DIMO-Network/nameindexer v0.0.1
 	github.com/DIMO-Network/shared v0.10.19
 	github.com/aws/aws-sdk-go-v2 v1.30.1
 	github.com/aws/aws-sdk-go-v2/credentials v1.17.23
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.57.1
 	github.com/btcsuite/btcd/btcutil v1.1.5
 	github.com/btcsuite/btcutil v1.0.2
-	github.com/ethereum/go-ethereum v1.14.5
+	github.com/ethereum/go-ethereum v1.14.6
 	github.com/gofiber/contrib/jwt v1.0.9
 	github.com/gofiber/fiber/v2 v2.52.5
 	github.com/gofiber/swagger v1.0.0
@@ -25,7 +25,7 @@ require (
 	github.com/stretchr/testify v1.9.0
 	github.com/swaggo/swag v1.16.3
 	go.uber.org/mock v0.4.0
-	google.golang.org/grpc v1.64.0
+	google.golang.org/grpc v1.65.0
 )
 
 require (
