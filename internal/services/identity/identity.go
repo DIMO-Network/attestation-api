@@ -103,10 +103,13 @@ func (s *Service) GetVehicleInfo(ctx context.Context, tokenID uint32) (*models.V
 			Type:    models.DeviceTypeSynthetic,
 		})
 	}
+	if respBody.Data.Vehicle.Definition == nil || respBody.Data.Vehicle.Definition.ID.value == nil {
+		return nil, fmt.Errorf("vehicle is missing definition ID")
+	}
 	vehicleInfo := &models.VehicleInfo{
 		TokenID:       tokenID,
 		PairedDevices: pairedDevices,
-		NameSlug:      respBody.Data.Vehicle.Definition.ID,
+		NameSlug:      *respBody.Data.Vehicle.Definition.ID.value,
 	}
 	return vehicleInfo, nil
 }

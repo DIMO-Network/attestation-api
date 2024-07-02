@@ -16,25 +16,30 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+const testSlug = "toyota_tacoma-4wd_2023"
+
 func TestService_GetPairedDevices(t *testing.T) {
 	deviceAddr1 := randAddress()
 	deviceAddr2 := randAddress()
 	ctx := context.Background()
 	tests := []struct {
 		name             string
-		vehicleTokenId   uint32
+		vehicleTokenID   uint32
 		mockResponseBody string
 		mockStatusCode   int
-		expectedDevices  []models.PairedDevice
+		expectedInfo     *models.VehicleInfo
 		expectedError    bool
 	}{
 		{
 			name:           "successful response with devices",
-			vehicleTokenId: 123,
+			vehicleTokenID: 123,
 			mockResponseBody: fmt.Sprintf(`
 			{
 				"data": {
 					"vehicle": {
+						"definition": {
+							"id": "toyota_tacoma-4wd_2023"
+						},
 						"aftermarketDevice": {
 							"Address": "%s"
 						},
@@ -45,53 +50,67 @@ func TestService_GetPairedDevices(t *testing.T) {
 				}
 			}`, deviceAddr1, deviceAddr2),
 			mockStatusCode: http.StatusOK,
-			expectedDevices: []models.PairedDevice{
-				{Address: deviceAddr1, Type: models.DeviceTypeAftermarket},
-				{Address: deviceAddr2, Type: models.DeviceTypeSynthetic},
+			expectedInfo: &models.VehicleInfo{
+				TokenID:  123,
+				NameSlug: testSlug,
+				PairedDevices: []models.PairedDevice{
+					{Address: deviceAddr1, Type: models.DeviceTypeAftermarket},
+					{Address: deviceAddr2, Type: models.DeviceTypeSynthetic},
+				},
 			},
 			expectedError: false,
 		},
 		{
 			name:           "successful response with no devices",
-			vehicleTokenId: 125,
+			vehicleTokenID: 125,
 			mockResponseBody: `
 			{
 				"data": {
-					"vehicle": {}
+					"vehicle": {
+						"definition": {
+							"id": "toyota_tacoma-4wd_2023"
+						}
+					}
 				}
 			}`,
-			mockStatusCode:  http.StatusOK,
-			expectedDevices: nil,
-			expectedError:   false,
+			mockStatusCode: http.StatusOK,
+			expectedInfo: &models.VehicleInfo{
+				TokenID:  125,
+				NameSlug: testSlug,
+			},
+			expectedError: false,
 		},
 		{
 			name:           "GraphQL API error",
-			vehicleTokenId: 126,
+			vehicleTokenID: 126,
 			mockResponseBody: `
 			{
 				"errors": [
 					{"message": "some error"}
 				]
 			}`,
-			mockStatusCode:  http.StatusOK,
-			expectedDevices: nil,
-			expectedError:   true,
+			mockStatusCode: http.StatusOK,
+			expectedInfo:   nil,
+			expectedError:  true,
 		},
 		{
 			name:             "non-200 response",
-			vehicleTokenId:   127,
+			vehicleTokenID:   127,
 			mockResponseBody: "",
 			mockStatusCode:   http.StatusInternalServerError,
-			expectedDevices:  nil,
+			expectedInfo:     nil,
 			expectedError:    true,
 		},
 		{
 			name:           "successful response with only aftermarket device",
-			vehicleTokenId: 128,
+			vehicleTokenID: 128,
 			mockResponseBody: fmt.Sprintf(`
 			{
 				"data": {
 					"vehicle": {
+						"definition": {
+							"id": "toyota_tacoma-4wd_2023"
+						},
 						"aftermarketDevice": {
 							"Address": "%s"
 						}
@@ -99,18 +118,25 @@ func TestService_GetPairedDevices(t *testing.T) {
 				}
 			}`, deviceAddr1),
 			mockStatusCode: http.StatusOK,
-			expectedDevices: []models.PairedDevice{
-				{Address: deviceAddr1, Type: models.DeviceTypeAftermarket},
+			expectedInfo: &models.VehicleInfo{
+				TokenID:  128,
+				NameSlug: testSlug,
+				PairedDevices: []models.PairedDevice{
+					{Address: deviceAddr1, Type: models.DeviceTypeAftermarket},
+				},
 			},
 			expectedError: false,
 		},
 		{
 			name:           "successful response with only synthetic device",
-			vehicleTokenId: 129,
+			vehicleTokenID: 129,
 			mockResponseBody: fmt.Sprintf(`
 			{
 				"data": {
 					"vehicle": {
+						"definition": {
+							"id": "toyota_tacoma-4wd_2023"
+						},
 						"syntheticDevice": {
 							"Address": "%s"
 						}
@@ -118,15 +144,39 @@ func TestService_GetPairedDevices(t *testing.T) {
 				}
 			}`, deviceAddr2),
 			mockStatusCode: http.StatusOK,
-			expectedDevices: []models.PairedDevice{
-				{Address: deviceAddr2, Type: models.DeviceTypeSynthetic},
+			expectedInfo: &models.VehicleInfo{
+				TokenID:  129,
+				NameSlug: testSlug,
+				PairedDevices: []models.PairedDevice{
+					{Address: deviceAddr2, Type: models.DeviceTypeSynthetic},
+				},
 			},
 			expectedError: false,
+		},
+		{
+			name:           "successful response with no definition ID",
+			vehicleTokenID: 130,
+			mockResponseBody: fmt.Sprintf(`
+			{
+				"data": {
+					"vehicle": {
+						"definition": {
+							"id": null
+						},
+						"syntheticDevice": {
+							"Address": "%s"
+						}
+					}
+				}
+			}`, deviceAddr2),
+			mockStatusCode: http.StatusOK,
+			expectedInfo:   nil,
+			expectedError:  true,
 		},
 	}
 
 	for _, tt := range tests {
-		tt := tt // capture range variable
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
@@ -148,13 +198,13 @@ func TestService_GetPairedDevices(t *testing.T) {
 			require.NoError(t, err)
 
 			// Run the test.
-			devices, err := service.GetVehicleInfo(ctx, tt.vehicleTokenId)
+			devices, err := service.GetVehicleInfo(ctx, tt.vehicleTokenID)
 			if tt.expectedError {
 				require.Error(t, err)
 				require.Nil(t, devices)
 			} else {
 				require.NoError(t, err)
-				require.Equal(t, tt.expectedDevices, devices)
+				require.Equal(t, tt.expectedInfo, devices)
 			}
 		})
 	}

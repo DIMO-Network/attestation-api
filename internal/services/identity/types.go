@@ -1,5 +1,7 @@
 package identity
 
+import "encoding/json"
+
 // GraphQL query to fetch paired devices.
 const query = `
 	query ($tokenId: Int!) {
@@ -41,10 +43,24 @@ type deviceResponse struct {
 }
 
 type definitionResponse struct {
-	ID string `json:"id"`
+	ID nullableString `json:"id"`
 }
 
 // graphQLError represents an error returned from the GraphQL API.
 type graphQLError struct {
 	Message string `json:"message"`
+}
+
+// nullableString is a string that can interpret "null" as nil.
+type nullableString struct {
+	value *string
+}
+
+// UnmarshalJSON unmarshals a nullableString.
+func (n *nullableString) UnmarshalJSON(data []byte) error {
+	if string(data) == "null" {
+		n.value = nil
+		return nil
+	}
+	return json.Unmarshal(data, &n.value)
 }

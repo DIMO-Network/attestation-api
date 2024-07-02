@@ -140,7 +140,7 @@ func TestVCController_GetVINVC(t *testing.T) {
 			expectedStatusCode: fiber.StatusOK,
 		},
 		{
-			name:    "invalid VIN from fingerprint message",
+			name:    "failed to decode VIN from fingerprint message",
 			tokenID: "129",
 			setupMocks: func(mocks Mocks) {
 				pairedAddr := randAddress()
@@ -158,6 +158,26 @@ func TestVCController_GetVINVC(t *testing.T) {
 				mocks.VINService.EXPECT().DecodeVIN(ctxType, "INVALIDVIN", "").Return("", errors.New("invalid VIN"))
 			},
 			expectedStatusCode: fiber.StatusInternalServerError,
+		},
+		{
+			name:    "invalid VIN from fingerprint message",
+			tokenID: "129",
+			setupMocks: func(mocks Mocks) {
+				pairedAddr := randAddress()
+				tokenID := uint32(129)
+				vehicleInfo := &models.VehicleInfo{
+					PairedDevices: []models.PairedDevice{
+						{Address: pairedAddr, Type: models.DeviceTypeAftermarket},
+					},
+					NameSlug: defaultNameSlug,
+				}
+				mocks.IdentityService.EXPECT().GetVehicleInfo(ctxType, tokenID).Return(vehicleInfo, nil)
+				mocks.FingerprintService.EXPECT().GetLatestFingerprintMessages(ctxType, pairedAddr).Return(&models.DecodedFingerprintData{
+					VIN: "1HGCM82633A123456", Timestamp: time.Now(),
+				}, nil)
+				mocks.VINService.EXPECT().DecodeVIN(ctxType, "1HGCM82633A123456", "").Return("bad_name", nil)
+			},
+			expectedStatusCode: fiber.StatusBadRequest,
 		},
 
 		{
@@ -187,7 +207,7 @@ func TestVCController_GetVINVC(t *testing.T) {
 	for i := range tests {
 		tt := tests[i]
 		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
+			// t.Parallel()
 			// Initialize mocks for this specific test case
 			mocks := Mocks{
 				VCService:          NewMockVCService(ctrl),
@@ -205,28 +225,30 @@ func TestVCController_GetVINVC(t *testing.T) {
 
 			// Register the handler
 			app := fiber.New()
-			app.Get("/v1/vc/vin", vcController.GetVINVC)
+			app.Get("/v1/vc/vin/:tokenId", vcController.GetVINVC)
 
 			// Create a test request
-			req := httptest.NewRequest(http.MethodGet, "/v1/vc/vin?token_id="+tt.tokenID, nil)
+			req := httptest.NewRequest(http.MethodGet, "/v1/vc/vin/"+tt.tokenID, nil)
 			resp, err := app.Test(req, -1)
 			require.NoError(t, err)
 			require.Equal(t, tt.expectedStatusCode, resp.StatusCode)
 
-			if tt.expectedStatusCode == fiber.StatusOK {
-				// Read and check the response body
-				bodyBytes, err := io.ReadAll(resp.Body)
-				require.NoError(t, err)
-
-				var actualResponse map[string]interface{}
-				err = json.Unmarshal(bodyBytes, &actualResponse)
-				require.NoError(t, err)
-
-				// Check for the presence of the required fields
-				require.Contains(t, actualResponse, "vcUrl")
-				require.Contains(t, actualResponse, "vcQuery")
-				require.Contains(t, actualResponse, "message")
+			if tt.expectedStatusCode != fiber.StatusOK {
+				return
 			}
+			// Read and check the response body
+			bodyBytes, err := io.ReadAll(resp.Body)
+			require.NoError(t, err)
+
+			var actualResponse map[string]any
+			err = json.Unmarshal(bodyBytes, &actualResponse)
+			require.NoError(t, err)
+
+			// verify expected fields are present
+			require.Contains(t, actualResponse, "vcUrl")
+			require.Contains(t, actualResponse, "vcQuery")
+			require.Contains(t, actualResponse, "message")
+
 		})
 	}
 }
