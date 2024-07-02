@@ -27,11 +27,20 @@ env:
   PORT: 8080
   MON_PORT: 8888
   CLICKHOUSE_TCP_PORT: 9440
-  CLICKHOUSE_DATABASE: file_index
-  TOKEN_EXCHANGE_JWK_KEY_SET_URL: http://dex-roles-rights.dev.svc.cluster.local:5556/keys
-  TOKEN_EXCHANGE_ISSUER_URL: https://auth-roles-rights.dev.dimo.zone
-  VEHICLE_NFT_ADDRESS: "0x90c4d6113ec88dd4bdf12f26db2b3998fd13a144"
+  CLICKHOUSE_DATABASE: "file_index"
   DEFINITIONS_GRPC_ADDR: "device-definitions-api-dev:8086"
+  TOKEN_EXCHANGE_JWK_KEY_SET_URL: "http://dex-roles-rights.dev.svc.cluster.local:5556/keys"
+  TOKEN_EXCHANGE_ISSUER_URL: "https://auth-roles-rights.dev.dimo.zone"
+  VEHICLE_NFT_ADDRESS: "0x90c4d6113ec88dd4bdf12f26db2b3998fd13a144"
+  TELEMETRY_URL: "http://telemetry-api.dev.dimo.zone"
+  IDENTITY_API_URL: "https://identity-api.dev.dimo.zone"
+  FINGERPRINT_BUCKET: "dimo-network-fingerprint-dev"
+  FINGERPRINT_DATA_TYPE: "FP_v0.0.1"
+  VINVC_BUCKET: "dimo-network-vinvc-dev"
+  VINVC_DATA_TYPE: "VINVCv0.0"
+  S3_AWS_REGION: "us-east-2"
+  DIMO_REGISTRY_CHAIN_ID: 80002
+
 service:
   type: ClusterIP
   ports:

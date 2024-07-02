@@ -9,8 +9,14 @@ import (
 
 const (
 	// TokenIDParam is the parameter name for the vehilce token ID.
-	TokenIDParam = "vehilceTokenID"
+	TokenIDParam = "tokenId"
 )
+
+type getVINVCResponse struct {
+	VCURL   string `json:"vcUrl"`
+	VCQuery string `json:"vcQuery"`
+	Message string `json:"message"`
+}
 
 // @Summary Get VIN VC
 // @Description Get the VIN VC for a given token Id
@@ -23,7 +29,7 @@ const (
 // @Router /v1/vc/vin/{tokenId} [get]
 func (v *Controller) GetVINVC(fiberCtx *fiber.Ctx) error {
 	ctx := fiberCtx.Context()
-	tokenIDStr := fiberCtx.Params("tokenId")
+	tokenIDStr := fiberCtx.Params(TokenIDParam)
 	if tokenIDStr == "" {
 		return fiber.NewError(fiber.StatusBadRequest, "token_id query parameter is required")
 	}
@@ -39,12 +45,6 @@ func (v *Controller) GetVINVC(fiberCtx *fiber.Ctx) error {
 		return err
 	}
 	return fiberCtx.Status(fiber.StatusOK).JSON(retObj)
-}
-
-type getVINVCResponse struct {
-	VCURL   string `json:"vcUrl"`
-	VCQuery string `json:"vcQuery"`
-	Message string `json:"message"`
 }
 
 func (v *Controller) GetVCStatus(fiberCtx *fiber.Ctx) error {
