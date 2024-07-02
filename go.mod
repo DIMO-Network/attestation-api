@@ -5,7 +5,7 @@ go 1.22.0
 require (
 	github.com/ClickHouse/clickhouse-go/v2 v2.26.0
 	github.com/DIMO-Network/clickhouse-infra v0.0.1
-	github.com/DIMO-Network/device-definitions-api v1.2.24-0.20240627130136-bc4ae8dee2cb
+	github.com/DIMO-Network/device-definitions-api v1.2.24
 	github.com/DIMO-Network/nameindexer v0.0.1
 	github.com/DIMO-Network/shared v0.10.19
 	github.com/aws/aws-sdk-go-v2 v1.30.1
