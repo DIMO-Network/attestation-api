@@ -19,6 +19,7 @@ VER_CUT   := $(shell echo $(VERSION) | cut -c2-)
 # Dependency versions
 GOLANGCI_VERSION   = v1.56.2
 SWAGGO_VERSION     = $(shell go list -m -f '{{.Version}}' github.com/swaggo/swag)
+MOCKGEN_VERSION    = $(shell go list -m -f '{{.Version}}' go.uber.org/mock)
 
 help:
 	@echo "\nSpecify a subcommand:\n"
@@ -62,8 +63,12 @@ tools-golangci-lint: ## install golangci-lint
 	curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | BINARY=golangci-lint bash -s -- ${GOLANGCI_VERSION}
 
 tools-swagger: ## install swagger tool
-	@mkdir -p $(PATHINSTBIN) 
+	@mkdir -p $(PATHINSTBIN)
 	GOBIN=$(PATHINSTBIN) go install github.com/swaggo/swag/cmd/swag@$(SWAGGO_VERSION)
+
+tools-mockgen: ## install mockgen tool
+	@mkdir -p $(PATHINSTBIN)
+	GOBIN=$(PATHINSTBIN) go install go.uber.org/mock/mockgen@$(MOCKGEN_VERSION)
 
 make tools: tools-golangci-lint tools-swagger ## install all tools
 
