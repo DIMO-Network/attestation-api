@@ -12,6 +12,8 @@ import (
 	"github.com/DIMO-Network/nameindexer/pkg/clickhouse/service"
 )
 
+const daysInWeek = 7
+
 // Service manages and retrieves fingerprint messages.
 type Service struct {
 	indexService *service.Service
@@ -22,7 +24,6 @@ type Service struct {
 
 // New creates a new instance of Service.
 func New(chConn clickhouse.Conn, objGetter service.ObjectGetter, issuer *verifiable.Issuer, bucketName, vinvcDataType string, revokedList []uint32) *Service {
-
 	revokeMap := make(map[uint32]struct{}, len(revokedList))
 	for _, id := range revokedList {
 		revokeMap[id] = struct{}{}
@@ -36,9 +37,9 @@ func New(chConn clickhouse.Conn, objGetter service.ObjectGetter, issuer *verifia
 }
 
 // GetLatestVC fetches the latest fingerprint message from S3.
-func (s *Service) GetLatestVC(ctx context.Context, vehicleTokenId uint32) (*verifiable.Credential, error) {
+func (s *Service) GetLatestVC(ctx context.Context, vehicleTokenID uint32) (*verifiable.Credential, error) {
 	subject := nameindexer.Subject{
-		TokenID: &vehicleTokenId,
+		TokenID: &vehicleTokenID,
 	}
 	data, err := s.indexService.GetLatestData(ctx, s.dataType, subject)
 	if err != nil {
@@ -53,7 +54,9 @@ func (s *Service) GetLatestVC(ctx context.Context, vehicleTokenId uint32) (*veri
 
 // GenerateAndStoreVINVC generates a new VIN VC and stores it in S3.
 func (s *Service) GenerateAndStoreVINVC(ctx context.Context, vehicleTokenID uint32, vin, countryCode string) error {
-	newVC, err := s.issuer.CreateVINVC(vin, countryCode, vehicleTokenID, time.Time{})
+	// expire at the end of the week
+	expTime := time.Now().AddDate(0, 0, daysInWeek-int(time.Now().Weekday()))
+	newVC, err := s.issuer.CreateVINVC(vin, countryCode, vehicleTokenID, expTime)
 	if err != nil {
 		return fmt.Errorf("failed to create VC: %w", err)
 	}
