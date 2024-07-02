@@ -1,6 +1,33 @@
 # attestation-api
 
-Run `make`
+![GitHub license](https://img.shields.io/badge/license-Apache%202.0-blue.svg)
+[![GoDoc](https://godoc.org/github.com/DIMO-Network/attestation-api?status.svg)](https://godoc.org/github.com/DIMO-Network/attestation-api)
+[![Go Report Card](https://goreportcard.com/badge/github.com/DIMO-Network/attestation-api)](https://goreportcard.com/report/github.com/DIMO-Network/attestation-api)
+
+Run `make help`
+
+```shell
+Specify a subcommand:
+
+  test                 run tests
+  lint                 run linter
+  docker               build docker image
+  tools-golangci-lint  install golangci-lint
+  tools-swagger        install swagger tool
+  generate             run all file generation for the project
+  swagger              generate swagger documentation
+  go-generate          run go generate
+```
+
+## Devlopment
+
+Running this locally requires the following services to be running:
+
+- [identity-api](https://github.com/DIMO-Network/identity-api/)
+- [token-exchange-api](https://github.com/DIMO-Network/token-exchange-api)
+- [device-definition-api](https://github.com/DIMO-Network/device-definitions-api)
+- clickhouse connection
+- s3 connection
 
 ## License
 

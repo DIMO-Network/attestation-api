@@ -1,7 +1,7 @@
 name: golangci-lint
 on:
   pull_request:
-    branches: [ '**' ]
+    branches: ["**"]
 env:
   GOPRIVATE: github.com/DIMO-Network
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -18,6 +18,9 @@ jobs:
 
       - name: Checkout code
         uses: actions/checkout@v4
+
+      - name: build
+        run: make build
 
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v6
