@@ -169,7 +169,7 @@ type codeResp struct {
 
 func createVINController(logger *zerolog.Logger, settings *config.Settings) (*vc.Controller, error) {
 	// Initialize ClickHouse connection
-	chConn, err := connect.GetClickhouseConn(&settings.Settings)
+	chConn, err := connect.GetClickhouseConn(&settings.Clickhouse)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create ClickHouse connection: %w", err)
 	}
