@@ -247,6 +247,10 @@ func revokedListFromSettings(settings *config.Settings) ([]uint32, error) {
 	tokenIDs := strings.Split(settings.RevokedTokenIDs, ",")
 	revokedList := make([]uint32, len(tokenIDs))
 	for i, id := range tokenIDs {
+		id = strings.TrimSpace(id)
+		if id == "" {
+			continue
+		}
 		tokenID, err := strconv.Atoi(strings.TrimSpace(id))
 		if err != nil {
 			return nil, fmt.Errorf("failed to convert revoked token ID to int: %w", err)
