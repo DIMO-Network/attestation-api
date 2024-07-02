@@ -9,10 +9,16 @@ cronJob:
 env:
   PORT: 8080
   MON_PORT: 8888
-  CLICKHOUSE_HOST: clickhouse-ck-prod-dimo-clickhouse.prod.svc.cluster.local
-  TOKEN_EXCHANGE_JWK_KEY_SET_URL: http://dex-roles-rights-prod.prod.svc.cluster.local:5556
+  TOKEN_EXCHANGE_JWK_KEY_SET_URL: "http://dex-roles-rights-prod.prod.svc.cluster.local:5556/keys"
   TOKEN_EXCHANGE_ISSUER_URL: "https://auth-roles-rights.dimo.zone"
   VEHICLE_NFT_ADDRESS: "0xbA5738a18d83D41847dfFbDC6101d37C69c9B0cF"
+  DEFINITIONS_GRPC_ADDR: "device-definitions-api-prod:8086"
+  TELEMETRY_URL: "http://telemetry-api.dimo.zone"
+  IDENTITY_API_URL: "https://identity-api.dimo.zone"
+  FINGERPRINT_BUCKET: "dimo-network-fingerprint-prod"
+  VINVC_BUCKET: "dimo-network-vinvc-prod"
+  DIMO_REGISTRY_CHAIN_ID: 137
+
 ingress:
   enabled: true
   className: nginx

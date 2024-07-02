@@ -1,22 +1,21 @@
-// Package VC provides the controller for handling VIN VC-related requests.
+// Package vc provides the controller for handling VIN VC-related requests.
 package vc
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/url"
 	"path"
-	"strconv"
 	"time"
 
 	"github.com/DIMO-Network/attestation-api/pkg/models"
 	"github.com/gofiber/fiber/v2"
-	"github.com/google/uuid"
 	"github.com/rs/zerolog"
 )
 
-// VCController handles VIN VC-related requests.
-type VCController struct {
+// Controller handles VIN VC-related requests.
+type Controller struct {
 	logger             *zerolog.Logger
 	vcService          VCService
 	identityService    IdentityService
@@ -33,14 +32,14 @@ func NewVCController(
 	fingerprintService FingerprintService,
 	vinService VINService,
 	telemetryURL string,
-) (*VCController, error) {
+) (*Controller, error) {
 	// Parse and sanitize the telemetry URL
 	parsedURL, err := sanitizeTelemetryURL(telemetryURL)
 	if err != nil {
 		return nil, err
 	}
 
-	return &VCController{
+	return &Controller{
 		logger:             logger,
 		vcService:          vcService,
 		identityService:    identityService,
@@ -50,45 +49,33 @@ func NewVCController(
 	}, nil
 }
 
-// GetVINVC handles requests to issue a VIN VC
-func (v *VCController) GetVINVC(fiberCtx *fiber.Ctx) error {
-	ctx := fiberCtx.Context()
-	tokenIDStr := fiberCtx.Query("token_id")
-	if tokenIDStr == "" {
-		return fiber.NewError(fiber.StatusBadRequest, "token_id query parameter is required")
+func (v *Controller) getVINVC(ctx context.Context, tokenID uint32) (*getVINVCResponse, error) {
+	logger := v.logger.With().Uint32("vehicleTokenId", tokenID).Logger()
+
+	prevVC, err := v.vcService.GetLatestVC(ctx, tokenID)
+	if err == nil {
+		expireDate, err := time.Parse(time.RFC3339, prevVC.ExpirationDate)
+		if err == nil && time.Now().Before(expireDate) {
+			logger.Debug().Msg("VC already exists skipping generation")
+			return v.generateSuccessResponse(tokenID), nil
+		}
 	}
 
-	tokenID, err := strconv.ParseUint(tokenIDStr, 10, 32)
+	vehicleInfo, err := v.identityService.GetVehicleInfo(ctx, tokenID)
 	if err != nil {
-		return fiber.NewError(fiber.StatusBadRequest, "invalid token_id format")
+		return nil, handleError(err, &logger, "Failed to get vehicle info")
 	}
-
-	pairedDevices, err := v.identityService.GetPairedDevices(ctx, uint32(tokenID))
+	vin, err := v.validateAndReconcileVINs(ctx, vehicleInfo, "")
 	if err != nil {
-		return v.handleError(err, "Failed to get paired devices")
-	}
-	if len(pairedDevices) == 0 {
-		return fiber.NewError(fiber.StatusNotFound, "No paired devices found")
+		return nil, err
 	}
 
-	vin, aftermarketTokenID, syntheticTokenID, err := v.validateAndReconcileVINs(ctx, pairedDevices)
+	err = v.vcService.GenerateAndStoreVINVC(ctx, tokenID, vin, "")
 	if err != nil {
-		return err
+		return nil, handleError(err, &logger, "Failed to generate and store VC")
 	}
 
-	vcUUID := uuid.New().String()
-
-	if err := v.vcService.GenerateAndStoreVC(ctx, vcUUID, uint32(tokenID), aftermarketTokenID, syntheticTokenID, vin); err != nil {
-		return v.handleError(err, "Failed to generate and store VC")
-	}
-
-	vcURL, gqlQuery := v.generateVCURLAndQuery(vcUUID)
-
-	return fiberCtx.Status(fiber.StatusOK).JSON(fiber.Map{
-		"vc_url":   vcURL,
-		"vc_query": gqlQuery,
-		"message":  "VC generated successfully. Retrieve using the provided URL and query parameter.",
-	})
+	return v.generateSuccessResponse(tokenID), nil
 }
 
 // sanitizeTelemetryURL parses and sanitizes the given telemetry URL.
@@ -101,49 +88,51 @@ func sanitizeTelemetryURL(telemetryURL string) (*url.URL, error) {
 }
 
 // validateAndReconcileVINs validates and reconciles VINs from the paired devices.
-func (v *VCController) validateAndReconcileVINs(ctx context.Context, pairedDevices []models.PairedDevice) (string, *uint32, *uint32, error) {
-	if len(pairedDevices) == 0 {
-		return "", nil, nil, fiber.NewError(fiber.StatusInternalServerError, "No paired devices")
+func (v *Controller) validateAndReconcileVINs(ctx context.Context, vehicleInfo *models.VehicleInfo, countryCode string) (string, error) {
+	if len(vehicleInfo.PairedDevices) == 0 {
+		return "", fiber.NewError(fiber.StatusBadRequest, "No paired devices")
 	}
-
+	logger := v.logger.With().Uint32("vehicleTokenId", vehicleInfo.TokenID).Logger()
 	var latestVIN string
 	var latestTimestamp time.Time
-	var aftermarketTokenID *uint32
-	var syntheticTokenID *uint32
 
-	for _, device := range pairedDevices {
-		fingerprints, err := v.fingerprintService.GetLatestFingerprintMessages(ctx, device.TokenID)
+	var fingerprintErr error
+	for _, device := range vehicleInfo.PairedDevices {
+		fingerprint, err := v.fingerprintService.GetLatestFingerprintMessages(ctx, device.Address)
 		if err != nil {
-			return "", nil, nil, v.handleError(err, "Failed to get fingerprint messages")
+			// log the error and continue to the next device if possible
+			localLogger := logger.With().Str("device", device.Address.Hex()).Logger()
+			err := handleError(err, &localLogger, "Failed to get latest fingerprint message")
+			fingerprintErr = errors.Join(fingerprintErr, err)
+			continue
 		}
 
-		if len(fingerprints) > 0 {
-			currentVIN := fingerprints[0].VIN
-			if latestVIN == "" || fingerprints[0].Timestamp.After(latestTimestamp) {
-				latestVIN = currentVIN
-				latestTimestamp = fingerprints[0].Timestamp
-				aftermarketTokenID = nil
-				syntheticTokenID = nil
-			}
-
-			// Check if the TokenID belongs to aftermarket or synthetic
-			if device.Type == models.DeviceTypeAftermarket && latestVIN == currentVIN {
-				aftermarketTokenID = &device.TokenID
-			} else if device.Type == models.DeviceTypeSynthetic && latestVIN == currentVIN {
-				syntheticTokenID = &device.TokenID
-			}
+		currentVIN := fingerprint.VIN
+		if latestVIN == "" || fingerprint.Timestamp.After(latestTimestamp) {
+			latestVIN = currentVIN
+			latestTimestamp = fingerprint.Timestamp
 		}
 	}
 
-	if err := v.vinService.ValidateVIN(ctx, latestVIN); err != nil {
-		return "", nil, nil, v.handleError(err, "Failed to validate VIN")
+	// return error to the user if no VINs were found
+	if latestVIN == "" && fingerprintErr != nil {
+		return "", fingerprintErr
+	}
+	decodedNameSlug, err := v.vinService.DecodeVIN(ctx, latestVIN, countryCode)
+	if err != nil {
+		return "", handleError(err, &logger, "Failed to decode VIN")
+	}
+	if decodedNameSlug != vehicleInfo.NameSlug {
+		message := "Invalid VIN from fingerprint"
+		logger.Error().Str("decodedNameSlug", decodedNameSlug).Str("vehicleNameSlug", vehicleInfo.NameSlug).Msg(message)
+		return "", fiber.NewError(fiber.StatusBadRequest, message)
 	}
 
-	return latestVIN, aftermarketTokenID, syntheticTokenID, nil
+	return latestVIN, nil
 }
 
-// generateVCURLAndQuery generates the URL and GraphQL query for retrieving the VC
-func (v *VCController) generateVCURLAndQuery(vcUUID string) (string, string) {
+// generateSuccessResponse generates a success response for the given token ID.
+func (v *Controller) generateSuccessResponse(tokenID uint32) *getVINVCResponse {
 	vcPath := path.Join(v.telemetryBaseURL.Path, "vc")
 	fullURL := &url.URL{
 		Scheme: v.telemetryBaseURL.Scheme,
@@ -152,22 +141,20 @@ func (v *VCController) generateVCURLAndQuery(vcUUID string) (string, string) {
 	}
 
 	gqlQuery := fmt.Sprintf(`
-	{
-		vc(uuid: "%s") {
-			id
-			vin
-			issuanceDate
-			expirationDate
-			issuer
-			proof
-			metadata
+	query {
+		vinvc(tokenId: %d) {
+			rawVC
 		}
-	}`, vcUUID)
-	return fullURL.String(), gqlQuery
+	}`, tokenID)
+	return &getVINVCResponse{
+		VCURL:   fullURL.String(),
+		VCQuery: gqlQuery,
+		Message: "VC generated successfully. Retrieve using the provided GQL URL and query parameter.",
+	}
 }
 
-// handleError logs an error and returns a Fiber error with the given message
-func (v *VCController) handleError(err error, message string) error {
-	v.logger.Error().Err(err).Msg(message)
+// handleError logs an error and returns a Fiber error with the given message.
+func handleError(err error, logger *zerolog.Logger, message string) error {
+	logger.Error().Err(err).Msg(message)
 	return fiber.NewError(fiber.StatusInternalServerError, message)
 }
