@@ -170,7 +170,7 @@ type CodeResp struct {
 	Message string `json:"message"`
 }
 
-func createVINController(logger *zerolog.Logger, settings *config.Settings) (*vc.VCController, error) {
+func createVINController(logger *zerolog.Logger, settings *config.Settings) (*vc.Controller, error) {
 	// Initialize ClickHouse connection
 	chConn, err := connect.GetClickhouseConn(&settings.Settings)
 	if err != nil {

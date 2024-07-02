@@ -21,7 +21,7 @@ const (
 // @Success 200 {object} getVINVCResponse
 // @Security     BearerAuth
 // @Router /v1/vc/vin/{tokenId} [get]
-func (v *VCController) GetVINVC(fiberCtx *fiber.Ctx) error {
+func (v *Controller) GetVINVC(fiberCtx *fiber.Ctx) error {
 	ctx := fiberCtx.Context()
 	tokenIDStr := fiberCtx.Params("tokenId")
 	if tokenIDStr == "" {
@@ -47,7 +47,7 @@ type getVINVCResponse struct {
 	Message string `json:"message"`
 }
 
-func (v *VCController) GetVCStatus(fiberCtx *fiber.Ctx) error {
+func (v *Controller) GetVCStatus(fiberCtx *fiber.Ctx) error {
 	tokenIDStr := fiberCtx.Params(TokenIDParam)
 	if tokenIDStr == "" {
 		return fiber.NewError(fiber.StatusBadRequest, "tokenId path parameter is required")

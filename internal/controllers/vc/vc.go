@@ -1,4 +1,4 @@
-// Package VC provides the controller for handling VIN VC-related requests.
+// Package vc provides the controller for handling VIN VC-related requests.
 package vc
 
 import (
@@ -14,8 +14,8 @@ import (
 	"github.com/rs/zerolog"
 )
 
-// VCController handles VIN VC-related requests.
-type VCController struct {
+// Controller handles VIN VC-related requests.
+type Controller struct {
 	logger             *zerolog.Logger
 	vcService          VCService
 	identityService    IdentityService
@@ -32,14 +32,14 @@ func NewVCController(
 	fingerprintService FingerprintService,
 	vinService VINService,
 	telemetryURL string,
-) (*VCController, error) {
+) (*Controller, error) {
 	// Parse and sanitize the telemetry URL
 	parsedURL, err := sanitizeTelemetryURL(telemetryURL)
 	if err != nil {
 		return nil, err
 	}
 
-	return &VCController{
+	return &Controller{
 		logger:             logger,
 		vcService:          vcService,
 		identityService:    identityService,
@@ -49,8 +49,15 @@ func NewVCController(
 	}, nil
 }
 
-func (v *VCController) getVINVC(ctx context.Context, tokenID uint32) (*getVINVCResponse, error) {
+func (v *Controller) getVINVC(ctx context.Context, tokenID uint32) (*getVINVCResponse, error) {
 	logger := v.logger.With().Uint32("vehicleTokenId", tokenID).Logger()
+
+	_, err := v.vcService.GetLatestVC(ctx, tokenID)
+	if err == nil {
+		logger.Debug().Msg("VC already exists")
+		return v.generateSuccessResponse(tokenID), nil
+	}
+
 	vehicleInfo, err := v.identityService.GetVehicleInfo(ctx, tokenID)
 	if err != nil {
 		return nil, handleError(err, &logger, "Failed to get vehicle info")
@@ -65,13 +72,7 @@ func (v *VCController) getVINVC(ctx context.Context, tokenID uint32) (*getVINVCR
 		return nil, handleError(err, &logger, "Failed to generate and store VC")
 	}
 
-	vcURL, gqlQuery := v.generateVCURLAndQuery(tokenID)
-
-	return &getVINVCResponse{
-		VCURL:   vcURL,
-		VCQuery: gqlQuery,
-		Message: "VC generated successfully. Retrieve using the provided GQL URL and query parameter.",
-	}, nil
+	return v.generateSuccessResponse(tokenID), nil
 }
 
 // sanitizeTelemetryURL parses and sanitizes the given telemetry URL.
@@ -84,7 +85,7 @@ func sanitizeTelemetryURL(telemetryURL string) (*url.URL, error) {
 }
 
 // validateAndReconcileVINs validates and reconciles VINs from the paired devices.
-func (v *VCController) validateAndReconcileVINs(ctx context.Context, vehicleInfo *models.VehicleInfo, countryCode string) (string, error) {
+func (v *Controller) validateAndReconcileVINs(ctx context.Context, vehicleInfo *models.VehicleInfo, countryCode string) (string, error) {
 	if len(vehicleInfo.PairedDevices) == 0 {
 		return "", fiber.NewError(fiber.StatusBadRequest, "No paired devices")
 	}
@@ -127,8 +128,8 @@ func (v *VCController) validateAndReconcileVINs(ctx context.Context, vehicleInfo
 	return latestVIN, nil
 }
 
-// generateVCURLAndQuery generates the URL and GraphQL query for retrieving the VC
-func (v *VCController) generateVCURLAndQuery(tokenID uint32) (string, string) {
+// generateSuccessResponse generates a success response for the given token ID.
+func (v *Controller) generateSuccessResponse(tokenID uint32) *getVINVCResponse {
 	vcPath := path.Join(v.telemetryBaseURL.Path, "vc")
 	fullURL := &url.URL{
 		Scheme: v.telemetryBaseURL.Scheme,
@@ -148,10 +149,14 @@ func (v *VCController) generateVCURLAndQuery(tokenID uint32) (string, string) {
 			metadata
 		}
 	}`, tokenID)
-	return fullURL.String(), gqlQuery
+	return &getVINVCResponse{
+		VCURL:   fullURL.String(),
+		VCQuery: gqlQuery,
+		Message: "VC generated successfully. Retrieve using the provided GQL URL and query parameter.",
+	}
 }
 
-// handleError logs an error and returns a Fiber error with the given message
+// handleError logs an error and returns a Fiber error with the given message.
 func handleError(err error, logger *zerolog.Logger, message string) error {
 	logger.Error().Err(err).Msg(message)
 	return fiber.NewError(fiber.StatusInternalServerError, message)
