@@ -1,10 +1,11 @@
+// Package verifiable provides functionality managing verifiable credentials.
 package verifiable
 
 import (
 	"bytes"
 	"compress/gzip"
 	"crypto/ecdsa"
-	_ "embed" //nolint
+	_ "embed"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -31,6 +32,7 @@ var (
 	vinSchema []byte
 )
 
+// Config contains the configuration for a Issuer.
 type Config struct {
 	PrivateKey        []byte
 	ChainID           *big.Int
@@ -38,6 +40,7 @@ type Config struct {
 	BaseStatusURL     string
 }
 
+// Issuer issues various Verifiable Credentials.
 type Issuer struct {
 	privateKey         *ecdsa.PrivateKey
 	chainID            *big.Int
@@ -49,6 +52,7 @@ type Issuer struct {
 	baseStatusURL      *url.URL
 }
 
+// NewIssuer creates a new instance of Issuer.
 func NewIssuer(config Config) (*Issuer, error) {
 	privateKey, err := crypto.ToECDSA(config.PrivateKey)
 	if err != nil {
