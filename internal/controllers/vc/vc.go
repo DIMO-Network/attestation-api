@@ -138,15 +138,9 @@ func (v *Controller) generateSuccessResponse(tokenID uint32) *getVINVCResponse {
 	}
 
 	gqlQuery := fmt.Sprintf(`
-	{
-		vc(tokenID: "%d") {
-			id
-			vin
-			issuanceDate
-			expirationDate
-			issuer
-			proof
-			metadata
+	query {
+		vinvc(tokenId: %d) {
+			rawVC
 		}
 	}`, tokenID)
 	return &getVINVCResponse{
