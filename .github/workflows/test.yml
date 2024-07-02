@@ -6,13 +6,9 @@ on:
   push:
     branches:
       - main
-env:
-  GOPRIVATE: github.com/DIMO-Network
-  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }
 
 jobs:
   tests:
-    # Condition to skip merge commits
     if: "!contains(github.event.head_commit.message, 'Merge pull request')"
     runs-on: self-hosted
 
