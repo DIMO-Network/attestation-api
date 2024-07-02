@@ -39,14 +39,14 @@ const docTemplate = `{
                 }
             }
         },
-        "/v1/vc/vin/{tokenId}": {
+        "/v1/vc/status/{group}": {
             "get": {
                 "security": [
                     {
                         "BearerAuth": []
                     }
                 ],
-                "description": "Get the VIN VC for a given token Id",
+                "description": "Get the VC status for a given status group (currently this is just the vehcilesTokenId)",
                 "consumes": [
                     "application/json"
                 ],
@@ -54,13 +54,50 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "VC"
+                    "VINVC"
+                ],
+                "summary": "Get VC Status",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "token Id of the vehicle NFT",
+                        "name": "tokenId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_DIMO-Network_attestation-api_pkg_verifiable.Credential"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/vc/vin/{tokenId}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Get the VIN VC for a given token Id of a vehicle NFT. If a unexpired VC is not found, a new VC is generated.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "VINVC"
                 ],
                 "summary": "Get VIN VC",
                 "parameters": [
                     {
                         "type": "integer",
-                        "description": "token Id",
+                        "description": "token Id of the vehicle NFT",
                         "name": "tokenId",
                         "in": "path",
                         "required": true
@@ -78,6 +115,93 @@ const docTemplate = `{
         }
     },
     "definitions": {
+        "github_com_DIMO-Network_attestation-api_pkg_verifiable.Credential": {
+            "type": "object",
+            "properties": {
+                "@context": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "credentialStatus": {
+                    "$ref": "#/definitions/github_com_DIMO-Network_attestation-api_pkg_verifiable.CredentialStatus"
+                },
+                "credentialSubject": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "expirationDate": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "issuanceDate": {
+                    "type": "string"
+                },
+                "issuer": {
+                    "type": "string"
+                },
+                "proof": {
+                    "$ref": "#/definitions/github_com_DIMO-Network_attestation-api_pkg_verifiable.Proof"
+                },
+                "type": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "validFrom": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_DIMO-Network_attestation-api_pkg_verifiable.CredentialStatus": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "statusListCredential": {
+                    "type": "string"
+                },
+                "statusListIndex": {
+                    "type": "integer"
+                },
+                "statusPurpose": {
+                    "type": "string"
+                },
+                "type": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_DIMO-Network_attestation-api_pkg_verifiable.Proof": {
+            "type": "object",
+            "properties": {
+                "created": {
+                    "type": "string"
+                },
+                "cryptosuite": {
+                    "type": "string"
+                },
+                "proofPurpose": {
+                    "type": "string"
+                },
+                "proofValue": {
+                    "type": "string"
+                },
+                "type": {
+                    "type": "string"
+                },
+                "verificationMethod": {
+                    "type": "string"
+                }
+            }
+        },
         "internal_controllers_vc.getVINVCResponse": {
             "type": "object",
             "properties": {

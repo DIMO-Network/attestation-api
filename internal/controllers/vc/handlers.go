@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"strconv"
 
+	//  import verifable for swagger docs
+	_ "github.com/DIMO-Network/attestation-api/pkg/verifiable"
 	"github.com/gofiber/fiber/v2"
 )
 
