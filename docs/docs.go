@@ -39,13 +39,31 @@ const docTemplate = `{
                 }
             }
         },
+        "/v1/vc/keys": {
+            "get": {
+                "description": "Returns the public key document for verifying VCs.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "VINVC"
+                ],
+                "summary": "Get verification control document",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_DIMO-Network_attestation-api_pkg_verifiable.VerificationControlDocument"
+                        }
+                    }
+                }
+            }
+        },
         "/v1/vc/status/{group}": {
             "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
                 "description": "Get the VC status for a given status group (currently this is just the vehcilesTokenId)",
                 "consumes": [
                     "application/json"
@@ -179,6 +197,23 @@ const docTemplate = `{
                 }
             }
         },
+        "github_com_DIMO-Network_attestation-api_pkg_verifiable.MultiKey": {
+            "type": "object",
+            "properties": {
+                "controller": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "publicKeyMultibase": {
+                    "type": "string"
+                },
+                "type": {
+                    "type": "string"
+                }
+            }
+        },
         "github_com_DIMO-Network_attestation-api_pkg_verifiable.Proof": {
             "type": "object",
             "properties": {
@@ -199,6 +234,50 @@ const docTemplate = `{
                 },
                 "verificationMethod": {
                     "type": "string"
+                }
+            }
+        },
+        "github_com_DIMO-Network_attestation-api_pkg_verifiable.VerificationControlDocument": {
+            "type": "object",
+            "properties": {
+                "@context": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "assertionMethod": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "authentication": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "capabilityDelegation": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "capabilityInvocation": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "id": {
+                    "type": "string"
+                },
+                "verificationMethod": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_DIMO-Network_attestation-api_pkg_verifiable.MultiKey"
+                    }
                 }
             }
         },

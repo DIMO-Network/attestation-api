@@ -59,7 +59,6 @@ func (v *Controller) GetVINVC(fiberCtx *fiber.Ctx) error {
 // @Produce json
 // @Param  group path int true "status list group"
 // @Success 200 {object} verifiable.Credential
-// @Security     BearerAuth
 // @Router /v1/vc/status/{group} [get]
 func (v *Controller) GetVCStatus(fiberCtx *fiber.Ctx) error {
 	tokenIDStr := fiberCtx.Params(StatusGroupParam)
@@ -80,15 +79,13 @@ func (v *Controller) GetVCStatus(fiberCtx *fiber.Ctx) error {
 	return fiberCtx.Status(fiber.StatusOK).JSON(statusVC)
 }
 
-// @Summary Get VIN VC
-// @Description Get the VIN VC for a given token Id of a vehicle NFT. If a unexpired VC is not found, a new VC is generated.
+// @Summary Get verification control document
+// @Description Returns the public key document for verifying VCs.
 // @Tags VINVC
 // @Accept json
 // @Produce json
-// @Param  tokenId path int true "token Id of the vehicle NFT"
-// @Success 200 {object} getVINVCResponse
-// @Security     BearerAuth
+// @Success 200 {object} verifiable.VerificationControlDocument
 // @Router /v1/vc/keys [get]
-func (v *Controller) ControlDoc(fiberCtx *fiber.Ctx) error {
+func (v *Controller) GetPublicKeyDoc(fiberCtx *fiber.Ctx) error {
 	return fiberCtx.Status(fiber.StatusOK).JSON(v.publicKeyDoc)
 }

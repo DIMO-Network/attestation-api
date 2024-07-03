@@ -64,37 +64,6 @@ type Proof struct {
 	ProofValue string `json:"proofValue,omitempty"`
 }
 
-//	{
-//		"@context": [
-//		  "https://www.w3.org/ns/did/v1",
-//		  "https://w3id.org/security/multikey/v1"
-//		],
-//		"id": "did:example:123",
-//		"verificationMethod": [{
-//		  "id": "https://example.com/issuer/123#key-1",
-//		  "type": "Multikey",
-//		  "controller": "https://example.com/issuer/123",
-//		  "publicKeyMultibase": "zDnaerx9CtbPJ1q36T5Ln5wYt3MQYeGRG5ehnPAmxcf5mDZpv"
-//		}, {
-//		  "id": "https://example.com/issuer/123#key-2",
-//		  "type": "Multikey",
-//		  "controller": "https://example.com/issuer/123",
-//		  "publicKeyMultibase": "z82LkvCwHNreneWpsgPEbV3gu1C6NFJEBg4srfJ5gdxEsMGRJ
-//			Uz2sG9FE42shbn2xkZJh54"
-//		}],
-//		"authentication": [
-//		  "did:example:123#key-1"
-//		],
-//		"assertionMethod": [
-//		  "did:example:123#key-2"
-//		],
-//		"capabilityDelegation": [
-//		  "did:example:123#key-2"
-//		],
-//		"capabilityInvocation": [
-//		  "did:example:123#key-2"
-//		]
-//	  }
 type VerificationControlDocument struct {
 	Context              []string   `json:"@context,omitempty"`
 	ID                   string     `json:"id,omitempty"`

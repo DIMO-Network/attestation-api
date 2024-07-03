@@ -93,6 +93,7 @@ func startWebAPI(logger *zerolog.Logger, settings *config.Settings) {
 
 	// status route for any vc
 	app.Get("/v1/vc/status/:"+vc.StatusGroupParam, vinvcCtrl.GetVCStatus)
+	app.Get("/v1/vc/keys", vinvcCtrl.GetPublicKeyDoc)
 
 	vehicleAddr := common.HexToAddress(settings.VehicleNFTAddress)
 
