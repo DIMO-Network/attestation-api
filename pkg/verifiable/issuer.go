@@ -38,14 +38,16 @@ type Config struct {
 	ChainID           *big.Int
 	VehicleNFTAddress common.Address
 	BaseStatusURL     string
+	BaseKeyURL        string
 }
 
 // Issuer issues various Verifiable Credentials.
 type Issuer struct {
 	privateKey         *ecdsa.PrivateKey
+	encodedPublicKey   string
 	chainID            *big.Int
 	vehicleNFTAddress  common.Address
-	issuerDID          string
+	issuer             string
 	verificationMethod string
 	ldProcessor        *ld.JsonLdProcessor
 	ldOptions          *ld.JsonLdOptions
@@ -58,10 +60,7 @@ func NewIssuer(config Config) (*Issuer, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to create private key: %w", err)
 	}
-
-	keyEnc := "z" + base58.Encode(append(secp256k1Prefix, crypto.CompressPubkey(&privateKey.PublicKey)...))
-	issuer := "did:key:" + keyEnc
-	verificationMethod := issuer + "#" + keyEnc
+	pubKeyEnc := "z" + base58.Encode(append(secp256k1Prefix, crypto.CompressPubkey(&privateKey.PublicKey)...))
 
 	ldProc := ld.NewJsonLdProcessor()
 	options, err := DefaultLdOptions()
@@ -69,26 +68,30 @@ func NewIssuer(config Config) (*Issuer, error) {
 		return nil, fmt.Errorf("failed to create JSON-LD options: %w", err)
 	}
 
-	baseURL, err := url.Parse(config.BaseStatusURL)
+	baseStatusURL, err := url.Parse(config.BaseStatusURL)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse base status URL: %w", err)
 	}
 
+	baseKeyURL, err := url.Parse(config.BaseKeyURL)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse base key URL: %w", err)
+	}
+
+	issuer := baseKeyURL.String()
+	verfifcationMethod := issuer + "#key1"
+
 	return &Issuer{
 		privateKey:         privateKey,
+		encodedPublicKey:   pubKeyEnc,
 		chainID:            config.ChainID,
 		vehicleNFTAddress:  config.VehicleNFTAddress,
-		issuerDID:          issuer,
-		verificationMethod: verificationMethod,
+		issuer:             issuer,
+		verificationMethod: verfifcationMethod,
 		ldProcessor:        ldProc,
 		ldOptions:          options,
-		baseStatusURL:      baseURL,
+		baseStatusURL:      baseStatusURL,
 	}, nil
-}
-
-// DID returns the issuer's DID.
-func (i *Issuer) DID() string {
-	return i.issuerDID
 }
 
 // CreateVINVC creates a verifiable credential for a vehicle identification number and token ID.
@@ -105,7 +108,7 @@ func (i *Issuer) CreateVINVC(vin, countryCode string, tokenID uint32, expiration
 		},
 		ID:             "urn:uuid:" + id,
 		Type:           []string{"VerifiableCredential", "Vehicle"},
-		Issuer:         i.issuerDID,
+		Issuer:         i.issuer,
 		IssuanceDate:   issuanceDate,
 		ExpirationDate: expirationDate.Format(time.RFC3339),
 		CredentialStatus: CredentialStatus{
@@ -160,7 +163,7 @@ func (i *Issuer) CreateBitstringStatusListVC(tokenID uint32, revoked bool) ([]by
 		},
 		ID:        statusURL.String(),
 		Type:      []string{"VerifiableCredential", "BitstringStatusListCredential"},
-		Issuer:    i.issuerDID,
+		Issuer:    i.issuer,
 		ValidFrom: issuanceDate,
 	}
 
@@ -224,4 +227,34 @@ func MustEncodeList(data []byte) string {
 		panic(fmt.Errorf("failed to gzip encode data: %w", err))
 	}
 	return encodedData
+}
+
+// CreateKeyControlDoc creates a key control document for the issuer.
+// This document is used to get the public key of the issuer.
+func (i *Issuer) CreateKeyControlDoc() ([]byte, error) {
+	controlDoc := VerificationControlDocument{
+		Context: []string{
+			"https://www.w3.org/ns/did/v1",
+			"https://w3id.org/security/multikey/v1",
+		},
+		ID: i.issuer,
+		VerificationMethod: []MultiKey{
+			{
+				ID:                 i.verificationMethod,
+				Type:               "Multikey",
+				Controller:         i.issuer,
+				PublicKeyMultibase: i.encodedPublicKey,
+			},
+		},
+		AssertionMethod: []string{
+			i.verificationMethod,
+		},
+	}
+
+	jsonDoc, err := json.Marshal(controlDoc)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marsal controll doc: %w", err)
+	}
+
+	return jsonDoc, nil
 }

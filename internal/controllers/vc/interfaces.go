@@ -15,6 +15,7 @@ type VCService interface {
 	GetLatestVC(ctx context.Context, tokenID uint32) (*verifiable.Credential, error)
 	GenerateAndStoreVINVC(ctx context.Context, tokenID uint32, vin, countryCode string) error
 	GenerateStatusVC(tokenID uint32) (json.RawMessage, error)
+	GenerateKeyControlDocument() (json.RawMessage, error)
 }
 
 // IdentityService defines the interface for identity operations.

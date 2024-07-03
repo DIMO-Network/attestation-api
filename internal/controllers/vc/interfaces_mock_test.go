@@ -57,6 +57,21 @@ func (mr *MockVCServiceMockRecorder) GenerateAndStoreVINVC(ctx, tokenID, vin, co
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GenerateAndStoreVINVC", reflect.TypeOf((*MockVCService)(nil).GenerateAndStoreVINVC), ctx, tokenID, vin, countryCode)
 }
 
+// GenerateKeyControlDocument mocks base method.
+func (m *MockVCService) GenerateKeyControlDocument() (json.RawMessage, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GenerateKeyControlDocument")
+	ret0, _ := ret[0].(json.RawMessage)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GenerateKeyControlDocument indicates an expected call of GenerateKeyControlDocument.
+func (mr *MockVCServiceMockRecorder) GenerateKeyControlDocument() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GenerateKeyControlDocument", reflect.TypeOf((*MockVCService)(nil).GenerateKeyControlDocument))
+}
+
 // GenerateStatusVC mocks base method.
 func (m *MockVCService) GenerateStatusVC(tokenID uint32) (json.RawMessage, error) {
 	m.ctrl.T.Helper()

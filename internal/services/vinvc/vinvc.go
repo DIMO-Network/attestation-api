@@ -89,3 +89,8 @@ func (s *Service) GenerateStatusVC(tokenID uint32) (json.RawMessage, error) {
 	}
 	return vcData, nil
 }
+
+// GenerateKeyControlDocument generates a new control document for sharing public keys.
+func (s *Service) GenerateKeyControlDocument() (json.RawMessage, error) {
+	return s.issuer.CreateKeyControlDoc()
+}

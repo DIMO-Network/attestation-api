@@ -79,3 +79,16 @@ func (v *Controller) GetVCStatus(fiberCtx *fiber.Ctx) error {
 	}
 	return fiberCtx.Status(fiber.StatusOK).JSON(statusVC)
 }
+
+// @Summary Get VIN VC
+// @Description Get the VIN VC for a given token Id of a vehicle NFT. If a unexpired VC is not found, a new VC is generated.
+// @Tags VINVC
+// @Accept json
+// @Produce json
+// @Param  tokenId path int true "token Id of the vehicle NFT"
+// @Success 200 {object} getVINVCResponse
+// @Security     BearerAuth
+// @Router /v1/vc/keys [get]
+func (v *Controller) ControlDoc(fiberCtx *fiber.Ctx) error {
+	return fiberCtx.Status(fiber.StatusOK).JSON(v.publicKeyDoc)
+}

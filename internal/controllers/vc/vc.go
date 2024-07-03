@@ -3,6 +3,7 @@ package vc
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/url"
@@ -22,6 +23,7 @@ type Controller struct {
 	fingerprintService FingerprintService
 	vinService         VINService
 	telemetryBaseURL   *url.URL
+	publicKeyDoc       json.RawMessage
 }
 
 // NewVCController creates a new VCController instance.
@@ -39,6 +41,11 @@ func NewVCController(
 		return nil, err
 	}
 
+	publicKeyDoc, err := vcService.GenerateKeyControlDocument()
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate key control document: %w", err)
+	}
+
 	return &Controller{
 		logger:             logger,
 		vcService:          vcService,
@@ -46,6 +53,7 @@ func NewVCController(
 		fingerprintService: fingerprintService,
 		vinService:         vinService,
 		telemetryBaseURL:   parsedURL,
+		publicKeyDoc:       publicKeyDoc,
 	}, nil
 }
 
