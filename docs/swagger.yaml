@@ -93,9 +93,9 @@ paths:
       description: Get the VC status for a given status group (currently this is just
         the vehcilesTokenId)
       parameters:
-      - description: token Id of the vehicle NFT
+      - description: status list group
         in: path
-        name: tokenId
+        name: group
         required: true
         type: integer
       produces:

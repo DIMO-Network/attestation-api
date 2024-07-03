@@ -57,7 +57,7 @@ func (v *Controller) GetVINVC(fiberCtx *fiber.Ctx) error {
 // @Tags VINVC
 // @Accept json
 // @Produce json
-// @Param  tokenId path int true "token Id of the vehicle NFT"
+// @Param  group path int true "status list group"
 // @Success 200 {object} verifiable.Credential
 // @Security     BearerAuth
 // @Router /v1/vc/status/{group} [get]

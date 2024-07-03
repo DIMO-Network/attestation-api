@@ -60,8 +60,8 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "integer",
-                        "description": "token Id of the vehicle NFT",
-                        "name": "tokenId",
+                        "description": "status list group",
+                        "name": "group",
                         "in": "path",
                         "required": true
                     }
