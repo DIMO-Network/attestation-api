@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/hex"
 	"errors"
 	"flag"
@@ -10,6 +11,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 
 	_ "github.com/DIMO-Network/attestation-api/docs"
 	"github.com/DIMO-Network/attestation-api/internal/config"
@@ -173,6 +175,14 @@ func createVINController(logger *zerolog.Logger, settings *config.Settings) (*vc
 	if err != nil {
 		return nil, fmt.Errorf("failed to create ClickHouse connection: %w", err)
 	}
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
+	defer cancel()
+
+	err = chConn.Ping(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to ping ClickHouse: %w", err)
+	}
+
 	s3Client := s3ClientFromSettings(settings)
 
 	issuer, err := issuerFromSettings(settings)
