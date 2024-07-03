@@ -38,7 +38,7 @@ type CredentialStatus struct {
 	ID                   string `json:"id,omitempty"`
 	Type                 string `json:"type,omitempty"`
 	StatusPurpose        string `json:"statusPurpose,omitempty"`
-	StatusListIndex      uint   `json:"statusListIndex,omitempty"`
+	StatusListIndex      uint   `json:"statusListIndex"`
 	StatusListCredential string `json:"statusListCredential,omitempty"`
 }
 
