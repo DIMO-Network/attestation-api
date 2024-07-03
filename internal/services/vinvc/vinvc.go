@@ -55,7 +55,7 @@ func (s *Service) GetLatestVC(ctx context.Context, vehicleTokenID uint32) (*veri
 // GenerateAndStoreVINVC generates a new VIN VC and stores it in S3.
 func (s *Service) GenerateAndStoreVINVC(ctx context.Context, vehicleTokenID uint32, vin, countryCode string) error {
 	// expire at the end of the week
-	expTime := time.Now().AddDate(0, 0, daysInWeek-int(time.Now().Weekday()))
+	expTime := time.Now().AddDate(0, 0, daysInWeek-int(time.Now().Weekday())).UTC().Truncate(time.Hour * 24)
 	newVC, err := s.issuer.CreateVINVC(vin, countryCode, vehicleTokenID, expTime)
 	if err != nil {
 		return fmt.Errorf("failed to create VC: %w", err)

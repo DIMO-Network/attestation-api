@@ -56,7 +56,7 @@ func (v *Controller) getVINVC(ctx context.Context, tokenID uint32) (*getVINVCRes
 	if err == nil {
 		expireDate, err := time.Parse(time.RFC3339, prevVC.ExpirationDate)
 		if err == nil && time.Now().Before(expireDate) {
-			logger.Debug().Msg("VC already exists skipping generation")
+			logger.Debug().Str("ExpirationDate", expireDate.Format(time.RFC3339)).Msg("VC already exists skipping generation")
 			return v.generateSuccessResponse(tokenID), nil
 		}
 	}
