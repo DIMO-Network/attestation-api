@@ -119,6 +119,12 @@ const docTemplate = `{
                         "name": "tokenId",
                         "in": "path",
                         "required": true
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "force generation of a new VC even if an unexpired VC exists",
+                        "name": "force",
+                        "in": "query"
                     }
                 ],
                 "responses": {

@@ -29,6 +29,7 @@ type getVINVCResponse struct {
 // @Accept json
 // @Produce json
 // @Param  tokenId path int true "token Id of the vehicle NFT"
+// @Param  force query bool false "force generation of a new VC even if an unexpired VC exists"
 // @Success 200 {object} getVINVCResponse
 // @Security     BearerAuth
 // @Router /v1/vc/vin/{tokenId} [get]
@@ -43,11 +44,12 @@ func (v *Controller) GetVINVC(fiberCtx *fiber.Ctx) error {
 	if err != nil {
 		return fiber.NewError(fiber.StatusBadRequest, "invalid token_id format")
 	}
+	force := fiberCtx.Query("force") == "true"
 
 	tokenID := uint32(tokenID64)
-	retObj, err := v.getVINVC(ctx, tokenID)
+	retObj, err := v.getOrCreateVC(ctx, tokenID, force)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to get or create VC: %w", err)
 	}
 	return fiberCtx.Status(fiber.StatusOK).JSON(retObj)
 }

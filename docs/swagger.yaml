@@ -175,6 +175,10 @@ paths:
         name: tokenId
         required: true
         type: integer
+      - description: force generation of a new VC even if an unexpired VC exists
+        in: query
+        name: force
+        type: boolean
       produces:
       - application/json
       responses:

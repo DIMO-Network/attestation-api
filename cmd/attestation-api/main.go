@@ -73,8 +73,9 @@ func startWebAPI(logger *zerolog.Logger, settings *config.Settings) {
 		JWKSetURLs: []string{settings.TokenExchangeJWTKeySetURL},
 		Claims:     &privilegetoken.Token{},
 	})
-
-	vinvcCtrl, err := createVINController(logger, settings)
+	statusRoute := "/v1/vc/status"
+	keysRoute := "/v1/vc/keys"
+	vinvcCtrl, err := createVINController(logger, settings, statusRoute, keysRoute)
 	if err != nil {
 		logger.Fatal().Err(err).Msg("Failed to create VC controller")
 	}
@@ -92,8 +93,8 @@ func startWebAPI(logger *zerolog.Logger, settings *config.Settings) {
 	app.Get("/swagger/*", swagger.HandlerDefault)
 
 	// status route for any vc
-	app.Get("/v1/vc/status/:"+vc.StatusGroupParam, vinvcCtrl.GetVCStatus)
-	app.Get("/v1/vc/keys", vinvcCtrl.GetPublicKeyDoc)
+	app.Get(statusRoute+"/:"+vc.StatusGroupParam, vinvcCtrl.GetVCStatus)
+	app.Get(keysRoute, vinvcCtrl.GetPublicKeyDoc)
 
 	vehicleAddr := common.HexToAddress(settings.VehicleNFTAddress)
 

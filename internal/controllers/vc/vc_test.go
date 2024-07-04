@@ -303,7 +303,6 @@ func TestVCController_GetVINVC(t *testing.T) {
 			require.Contains(t, actualResponse, "vcUrl")
 			require.Contains(t, actualResponse, "vcQuery")
 			require.Contains(t, actualResponse, "message")
-
 		})
 	}
 }
