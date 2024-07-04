@@ -235,15 +235,12 @@ func TestTamperedPayload(t *testing.T) {
 		BaseKeyURL:        "https://key.example.com",
 	}
 
-	issuerService, err := verifiable.NewIssuer(config)
-	require.NoError(t, err)
-
 	// Start a test server for querying the public key
 	ts := getTestServer(t)
 
 	// Update the BaseKeyURL to point to the test server
 	config.BaseKeyURL = ts.URL
-	issuerService, err = verifiable.NewIssuer(config)
+	issuerService, err := verifiable.NewIssuer(config)
 	require.NoError(t, err)
 
 	// Create a valid VC
