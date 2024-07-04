@@ -150,7 +150,7 @@ func (v *Controller) generateSuccessResponse(tokenID uint32) *getVINVCResponse {
 
 	gqlQuery := fmt.Sprintf(`
 	query {
-		vinvc(tokenId: %d) {
+		vinVCLatest(tokenId: %d) {
 			rawVC
 		}
 	}`, tokenID)
