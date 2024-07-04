@@ -56,6 +56,7 @@ func TestVCController_GetVINVC(t *testing.T) {
 			tokenID: "123",
 			setupMocks: func(mocks Mocks) {
 				tokenID := uint32(123)
+				mocks.VCService.EXPECT().GenerateKeyControlDocument().Return(json.RawMessage{}, nil)
 				mocks.VCService.EXPECT().GetLatestVC(ctxType, tokenID).Return(nil, sql.ErrNoRows)
 				mocks.IdentityService.EXPECT().GetVehicleInfo(ctxType, tokenID).Return(&models.VehicleInfo{}, nil)
 			},
@@ -73,6 +74,7 @@ func TestVCController_GetVINVC(t *testing.T) {
 					},
 					NameSlug: defaultNameSlug,
 				}
+				mocks.VCService.EXPECT().GenerateKeyControlDocument().Return(json.RawMessage{}, nil)
 				mocks.VCService.EXPECT().GetLatestVC(ctxType, tokenID).Return(nil, sql.ErrNoRows)
 				mocks.IdentityService.EXPECT().GetVehicleInfo(ctxType, tokenID).Return(vehicleInfo, nil)
 				mocks.FingerprintService.EXPECT().GetLatestFingerprintMessages(ctxType, pairedAddr).Return(&models.DecodedFingerprintData{
@@ -87,7 +89,7 @@ func TestVCController_GetVINVC(t *testing.T) {
 			name:    "invalid token_id format",
 			tokenID: "invalid_token_id",
 			setupMocks: func(mocks Mocks) {
-				// No mocks needed for this case
+				mocks.VCService.EXPECT().GenerateKeyControlDocument().Return(json.RawMessage{}, nil)
 			},
 			expectedStatusCode: fiber.StatusBadRequest,
 		},
@@ -96,6 +98,7 @@ func TestVCController_GetVINVC(t *testing.T) {
 			tokenID: "125",
 			setupMocks: func(mocks Mocks) {
 				tokenID := uint32(125)
+				mocks.VCService.EXPECT().GenerateKeyControlDocument().Return(json.RawMessage{}, nil)
 				mocks.VCService.EXPECT().GetLatestVC(ctxType, tokenID).Return(nil, sql.ErrNoRows)
 				mocks.IdentityService.EXPECT().GetVehicleInfo(ctxType, tokenID).Return(nil, errors.New("error"))
 			},
@@ -113,6 +116,7 @@ func TestVCController_GetVINVC(t *testing.T) {
 					},
 					NameSlug: defaultNameSlug,
 				}
+				mocks.VCService.EXPECT().GenerateKeyControlDocument().Return(json.RawMessage{}, nil)
 				mocks.VCService.EXPECT().GetLatestVC(ctxType, tokenID).Return(nil, sql.ErrNoRows)
 				mocks.IdentityService.EXPECT().GetVehicleInfo(ctxType, tokenID).Return(vehicleInfo, nil)
 				mocks.FingerprintService.EXPECT().GetLatestFingerprintMessages(ctxType, pairedAddr).Return(&models.DecodedFingerprintData{}, fmt.Errorf("no fingerprint messages"))
@@ -133,6 +137,7 @@ func TestVCController_GetVINVC(t *testing.T) {
 					},
 					NameSlug: defaultNameSlug,
 				}
+				mocks.VCService.EXPECT().GenerateKeyControlDocument().Return(json.RawMessage{}, nil)
 				mocks.VCService.EXPECT().GetLatestVC(ctxType, tokenID).Return(nil, sql.ErrNoRows)
 				mocks.IdentityService.EXPECT().GetVehicleInfo(ctxType, tokenID).Return(vehicleInfo, nil)
 				mocks.FingerprintService.EXPECT().GetLatestFingerprintMessages(ctxType, pairedAddr).Return(&models.DecodedFingerprintData{
@@ -158,6 +163,7 @@ func TestVCController_GetVINVC(t *testing.T) {
 					},
 					NameSlug: defaultNameSlug,
 				}
+				mocks.VCService.EXPECT().GenerateKeyControlDocument().Return(json.RawMessage{}, nil)
 				mocks.VCService.EXPECT().GetLatestVC(ctxType, tokenID).Return(nil, sql.ErrNoRows)
 				mocks.IdentityService.EXPECT().GetVehicleInfo(ctxType, tokenID).Return(vehicleInfo, nil)
 				mocks.FingerprintService.EXPECT().GetLatestFingerprintMessages(ctxType, pairedAddr).Return(&models.DecodedFingerprintData{
@@ -179,6 +185,7 @@ func TestVCController_GetVINVC(t *testing.T) {
 					},
 					NameSlug: defaultNameSlug,
 				}
+				mocks.VCService.EXPECT().GenerateKeyControlDocument().Return(json.RawMessage{}, nil)
 				mocks.VCService.EXPECT().GetLatestVC(ctxType, tokenID).Return(nil, sql.ErrNoRows)
 				mocks.IdentityService.EXPECT().GetVehicleInfo(ctxType, tokenID).Return(vehicleInfo, nil)
 				mocks.FingerprintService.EXPECT().GetLatestFingerprintMessages(ctxType, pairedAddr).Return(&models.DecodedFingerprintData{
@@ -201,6 +208,7 @@ func TestVCController_GetVINVC(t *testing.T) {
 					},
 					NameSlug: defaultNameSlug,
 				}
+				mocks.VCService.EXPECT().GenerateKeyControlDocument().Return(json.RawMessage{}, nil)
 				mocks.VCService.EXPECT().GetLatestVC(ctxType, tokenID).Return(nil, sql.ErrNoRows)
 				mocks.IdentityService.EXPECT().GetVehicleInfo(ctxType, tokenID).Return(vehicleInfo, nil)
 				mocks.FingerprintService.EXPECT().GetLatestFingerprintMessages(ctxType, pairedAddr).Return(&models.DecodedFingerprintData{
@@ -216,6 +224,7 @@ func TestVCController_GetVINVC(t *testing.T) {
 			tokenID: "132",
 			setupMocks: func(mocks Mocks) {
 				tokenID := uint32(132)
+				mocks.VCService.EXPECT().GenerateKeyControlDocument().Return(json.RawMessage{}, nil)
 				mocks.VCService.EXPECT().GetLatestVC(ctxType, tokenID).Return(&verifiable.Credential{
 					ExpirationDate: time.Now().Add(time.Hour).Format(time.RFC3339),
 				}, nil)
@@ -234,6 +243,7 @@ func TestVCController_GetVINVC(t *testing.T) {
 					},
 					NameSlug: defaultNameSlug,
 				}
+				mocks.VCService.EXPECT().GenerateKeyControlDocument().Return(json.RawMessage{}, nil)
 				mocks.VCService.EXPECT().GetLatestVC(ctxType, tokenID).Return(&verifiable.Credential{
 					ExpirationDate: time.Now().Add(-time.Hour).Format(time.RFC3339),
 				}, nil)
@@ -261,12 +271,12 @@ func TestVCController_GetVINVC(t *testing.T) {
 				VINService:         NewMockVINService(ctrl),
 			}
 
+			// Set up the mocks as defined in the test case
+			tt.setupMocks(mocks)
+
 			// Create a new VCController instance for this test
 			vcController, err := vc.NewVCController(&logger, mocks.VCService, mocks.IdentityService, mocks.FingerprintService, mocks.VINService, telemetryURL)
 			require.NoError(t, err)
-
-			// Set up the mocks as defined in the test case
-			tt.setupMocks(mocks)
 
 			// Register the handler
 			app := fiber.New()

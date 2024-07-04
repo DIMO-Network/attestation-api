@@ -322,7 +322,11 @@ func extractPublicKeyFromVerificationMethod(verificationMethod string) (*ecdsa.P
 	}
 
 	var controlDoc verifiable.VerificationControlDocument
-	if err := json.NewDecoder(resp.Body).Decode(&controlDoc); err != nil {
+	doc, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read control document: %w", err)
+	}
+	if err := json.Unmarshal(doc, &controlDoc); err != nil {
 		return nil, fmt.Errorf("failed to decode control document: %w", err)
 	}
 
@@ -342,6 +346,11 @@ func extractPublicKeyFromVerificationMethod(verificationMethod string) (*ecdsa.P
 	keyBytes := base58.Decode(encodedKey)
 	if len(keyBytes) == 0 {
 		return nil, fmt.Errorf("failed to decode base58 key")
+	}
+	keyType := keyBytes[:2]
+	secp256k1Prefix := []byte{0xe7, 0x01}
+	if !bytes.Equal(keyType, secp256k1Prefix) {
+		return nil, fmt.Errorf("invalid key type")
 	}
 	// Decompress the key bytes
 	pubKey := keyBytes[2:]
