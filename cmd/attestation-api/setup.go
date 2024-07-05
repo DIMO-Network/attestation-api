@@ -28,7 +28,7 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 )
 
-func createVINController(logger *zerolog.Logger, settings *config.Settings) (*vc.Controller, error) {
+func createVINController(logger *zerolog.Logger, settings *config.Settings, statusRoute, keysRoute string) (*vc.Controller, error) {
 	// Initialize ClickHouse connection
 	chConn, err := connect.GetClickhouseConn(&settings.Clickhouse)
 	if err != nil {
@@ -44,7 +44,7 @@ func createVINController(logger *zerolog.Logger, settings *config.Settings) (*vc
 
 	s3Client := s3ClientFromSettings(settings)
 
-	issuer, err := issuerFromSettings(settings)
+	issuer, err := issuerFromSettings(settings, statusRoute, keysRoute)
 	if err != nil {
 		return nil, err
 	}
@@ -86,11 +86,16 @@ func s3ClientFromSettings(settings *config.Settings) *s3.Client {
 	return s3.NewFromConfig(conf)
 }
 
-func issuerFromSettings(settings *config.Settings) (*verifiable.Issuer, error) {
-	baseURL := url.URL{
+func issuerFromSettings(settings *config.Settings, statusRoute, keysRoute string) (*verifiable.Issuer, error) {
+	baseStatusURL := url.URL{
 		Scheme: "https",
 		Host:   settings.ExternalHostname,
-		Path:   "/v1/vc/status",
+		Path:   statusRoute,
+	}
+	baseKeyURL := url.URL{
+		Scheme: "https",
+		Host:   settings.ExternalHostname,
+		Path:   keysRoute,
 	}
 	privateKey, err := hex.DecodeString(settings.VINVCPrivateKey)
 	if err != nil {
@@ -100,7 +105,8 @@ func issuerFromSettings(settings *config.Settings) (*verifiable.Issuer, error) {
 		PrivateKey:        privateKey,
 		ChainID:           big.NewInt(settings.DIMORegistryChainID),
 		VehicleNFTAddress: common.HexToAddress(settings.VehicleNFTAddress),
-		BaseStatusURL:     baseURL.String(),
+		BaseStatusURL:     baseStatusURL.String(),
+		BaseKeyURL:        baseKeyURL.String(),
 	}
 	issuer, err := verifiable.NewIssuer(verifiableConfig)
 	if err != nil {

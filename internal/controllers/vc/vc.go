@@ -3,6 +3,7 @@ package vc
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/url"
@@ -22,6 +23,7 @@ type Controller struct {
 	fingerprintService FingerprintService
 	vinService         VINService
 	telemetryBaseURL   *url.URL
+	publicKeyDoc       json.RawMessage
 }
 
 // NewVCController creates a new VCController instance.
@@ -39,6 +41,11 @@ func NewVCController(
 		return nil, err
 	}
 
+	publicKeyDoc, err := vcService.GenerateKeyControlDocument()
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate key control document: %w", err)
+	}
+
 	return &Controller{
 		logger:             logger,
 		vcService:          vcService,
@@ -46,36 +53,8 @@ func NewVCController(
 		fingerprintService: fingerprintService,
 		vinService:         vinService,
 		telemetryBaseURL:   parsedURL,
+		publicKeyDoc:       publicKeyDoc,
 	}, nil
-}
-
-func (v *Controller) getVINVC(ctx context.Context, tokenID uint32) (*getVINVCResponse, error) {
-	logger := v.logger.With().Uint32("vehicleTokenId", tokenID).Logger()
-
-	prevVC, err := v.vcService.GetLatestVC(ctx, tokenID)
-	if err == nil {
-		expireDate, err := time.Parse(time.RFC3339, prevVC.ExpirationDate)
-		if err == nil && time.Now().Before(expireDate) {
-			logger.Debug().Str("ExpirationDate", expireDate.Format(time.RFC3339)).Msg("VC already exists skipping generation")
-			return v.generateSuccessResponse(tokenID), nil
-		}
-	}
-
-	vehicleInfo, err := v.identityService.GetVehicleInfo(ctx, tokenID)
-	if err != nil {
-		return nil, handleError(err, &logger, "Failed to get vehicle info")
-	}
-	vin, err := v.validateAndReconcileVINs(ctx, vehicleInfo, "")
-	if err != nil {
-		return nil, err
-	}
-
-	err = v.vcService.GenerateAndStoreVINVC(ctx, tokenID, vin, "")
-	if err != nil {
-		return nil, handleError(err, &logger, "Failed to generate and store VC")
-	}
-
-	return v.generateSuccessResponse(tokenID), nil
 }
 
 // sanitizeTelemetryURL parses and sanitizes the given telemetry URL.
@@ -85,6 +64,47 @@ func sanitizeTelemetryURL(telemetryURL string) (*url.URL, error) {
 		return nil, fmt.Errorf("invalid telemetry URL: %s", telemetryURL)
 	}
 	return parsedURL, nil
+}
+
+// getOrCreateVC retrieves or generates a VC for the given token ID.
+func (v *Controller) getOrCreateVC(ctx context.Context, tokenID uint32, force bool) (*getVINVCResponse, error) {
+	logger := v.logger.With().Uint32("vehicleTokenId", tokenID).Logger()
+
+	if !force && v.hasValidVC(ctx, tokenID) {
+		logger.Debug().Msg("Valid VC already exists skipping generation")
+		return v.successResponse(tokenID), nil
+	}
+	return v.generateVINVC(ctx, tokenID, &logger)
+}
+
+// hasValidVC checks if a valid VC exists for the given token ID.
+func (v *Controller) hasValidVC(ctx context.Context, tokenID uint32) bool {
+	prevVC, err := v.vcService.GetLatestVC(ctx, tokenID)
+	if err == nil {
+		expireDate, err := time.Parse(time.RFC3339, prevVC.ExpirationDate)
+		if err == nil && time.Now().Before(expireDate) {
+			return true
+		}
+	}
+	return false
+}
+
+func (v *Controller) generateVINVC(ctx context.Context, tokenID uint32, logger *zerolog.Logger) (*getVINVCResponse, error) {
+	vehicleInfo, err := v.identityService.GetVehicleInfo(ctx, tokenID)
+	if err != nil {
+		return nil, handleError(err, logger, "Failed to get vehicle info")
+	}
+	vin, err := v.validateAndReconcileVINs(ctx, vehicleInfo, "")
+	if err != nil {
+		return nil, err
+	}
+
+	err = v.vcService.GenerateAndStoreVINVC(ctx, tokenID, vin, "")
+	if err != nil {
+		return nil, handleError(err, logger, "Failed to generate and store VC")
+	}
+
+	return v.successResponse(tokenID), nil
 }
 
 // validateAndReconcileVINs validates and reconciles VINs from the paired devices.
@@ -131,8 +151,8 @@ func (v *Controller) validateAndReconcileVINs(ctx context.Context, vehicleInfo *
 	return latestVIN, nil
 }
 
-// generateSuccessResponse generates a success response for the given token ID.
-func (v *Controller) generateSuccessResponse(tokenID uint32) *getVINVCResponse {
+// successResponse generates a success response for the given token ID.
+func (v *Controller) successResponse(tokenID uint32) *getVINVCResponse {
 	vcPath := path.Join(v.telemetryBaseURL.Path, "vc")
 	fullURL := &url.URL{
 		Scheme: v.telemetryBaseURL.Scheme,
@@ -142,7 +162,7 @@ func (v *Controller) generateSuccessResponse(tokenID uint32) *getVINVCResponse {
 
 	gqlQuery := fmt.Sprintf(`
 	query {
-		vinvc(tokenId: %d) {
+		vinVCLatest(tokenId: %d) {
 			rawVC
 		}
 	}`, tokenID)

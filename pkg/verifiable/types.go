@@ -63,3 +63,20 @@ type Proof struct {
 	ProofOptions
 	ProofValue string `json:"proofValue,omitempty"`
 }
+
+type VerificationControlDocument struct {
+	Context              []string   `json:"@context,omitempty"`
+	ID                   string     `json:"id,omitempty"`
+	VerificationMethod   []MultiKey `json:"verificationMethod,omitempty"`
+	Authentication       []string   `json:"authentication,omitempty"`
+	AssertionMethod      []string   `json:"assertionMethod,omitempty"`
+	CapabilityDelegation []string   `json:"capabilityDelegation,omitempty"`
+	CapabilityInvocation []string   `json:"capabilityInvocation,omitempty"`
+}
+
+type MultiKey struct {
+	ID                 string `json:"id,omitempty"`
+	Type               string `json:"type,omitempty"`
+	Controller         string `json:"controller,omitempty"`
+	PublicKeyMultibase string `json:"publicKeyMultibase,omitempty"`
+}

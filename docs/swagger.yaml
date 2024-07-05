@@ -41,6 +41,17 @@ definitions:
       type:
         type: string
     type: object
+  github_com_DIMO-Network_attestation-api_pkg_verifiable.MultiKey:
+    properties:
+      controller:
+        type: string
+      id:
+        type: string
+      publicKeyMultibase:
+        type: string
+      type:
+        type: string
+    type: object
   github_com_DIMO-Network_attestation-api_pkg_verifiable.Proof:
     properties:
       created:
@@ -55,6 +66,35 @@ definitions:
         type: string
       verificationMethod:
         type: string
+    type: object
+  github_com_DIMO-Network_attestation-api_pkg_verifiable.VerificationControlDocument:
+    properties:
+      '@context':
+        items:
+          type: string
+        type: array
+      assertionMethod:
+        items:
+          type: string
+        type: array
+      authentication:
+        items:
+          type: string
+        type: array
+      capabilityDelegation:
+        items:
+          type: string
+        type: array
+      capabilityInvocation:
+        items:
+          type: string
+        type: array
+      id:
+        type: string
+      verificationMethod:
+        items:
+          $ref: '#/definitions/github_com_DIMO-Network_attestation-api_pkg_verifiable.MultiKey'
+        type: array
     type: object
   internal_controllers_vc.getVINVCResponse:
     properties:
@@ -86,6 +126,21 @@ paths:
       summary: Show the status of server.
       tags:
       - root
+  /v1/vc/keys:
+    get:
+      consumes:
+      - application/json
+      description: Returns the public key document for verifying VCs.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_DIMO-Network_attestation-api_pkg_verifiable.VerificationControlDocument'
+      summary: Get verification control document
+      tags:
+      - VINVC
   /v1/vc/status/{group}:
     get:
       consumes:
@@ -105,8 +160,6 @@ paths:
           description: OK
           schema:
             $ref: '#/definitions/github_com_DIMO-Network_attestation-api_pkg_verifiable.Credential'
-      security:
-      - BearerAuth: []
       summary: Get VC Status
       tags:
       - VINVC
@@ -122,6 +175,10 @@ paths:
         name: tokenId
         required: true
         type: integer
+      - description: force generation of a new VC even if an unexpired VC exists
+        in: query
+        name: force
+        type: boolean
       produces:
       - application/json
       responses:
