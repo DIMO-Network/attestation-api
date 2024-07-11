@@ -157,13 +157,7 @@ const docTemplate = `{
                         "type": "integer"
                     }
                 },
-                "expirationDate": {
-                    "type": "string"
-                },
                 "id": {
-                    "type": "string"
-                },
-                "issuanceDate": {
                     "type": "string"
                 },
                 "issuer": {
@@ -179,6 +173,9 @@ const docTemplate = `{
                     }
                 },
                 "validFrom": {
+                    "type": "string"
+                },
+                "validTo": {
                     "type": "string"
                 }
             }
