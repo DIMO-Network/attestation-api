@@ -152,16 +152,10 @@ func (v *Controller) validateAndReconcileVINs(ctx context.Context, vehicleInfo *
 
 // successResponse generates a success response for the given token ID.
 func (v *Controller) successResponse(tokenID uint32) *getVINVCResponse {
-	vcPath := v.telemetryBaseURL.String()
-	fullURL := &url.URL{
-		Scheme: v.telemetryBaseURL.Scheme,
-		Host:   v.telemetryBaseURL.Host,
-		Path:   vcPath,
-	}
-
+	queryURL := v.telemetryBaseURL.JoinPath("query")
 	gqlQuery := fmt.Sprintf("query {vinVCLatest(tokenId: %d) {rawVC}}", tokenID)
 	return &getVINVCResponse{
-		VCURL:   fullURL.String(),
+		VCURL:   queryURL.String(),
 		VCQuery: gqlQuery,
 		Message: "VC generated successfully. Retrieve using the provided GQL URL and query parameter.",
 	}
