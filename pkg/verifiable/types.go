@@ -10,9 +10,8 @@ type Credential struct {
 	ID                string           `json:"id,omitempty"`
 	Type              []string         `json:"type,omitempty"`
 	Issuer            string           `json:"issuer,omitempty"`
-	IssuanceDate      string           `json:"issuanceDate,omitempty"`
 	ValidFrom         string           `json:"validFrom,omitempty"`
-	ExpirationDate    string           `json:"expirationDate,omitempty"`
+	ValidTo           string           `json:"validTo,omitempty"`
 	CredentialSubject json.RawMessage  `json:"credentialSubject,omitempty"`
 	CredentialStatus  CredentialStatus `json:"credentialStatus,omitempty"`
 	Proof             Proof            `json:"proof,omitempty"`
