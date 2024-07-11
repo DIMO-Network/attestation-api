@@ -7,7 +7,6 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
-	"path"
 	"time"
 
 	"github.com/DIMO-Network/attestation-api/pkg/models"
@@ -153,19 +152,14 @@ func (v *Controller) validateAndReconcileVINs(ctx context.Context, vehicleInfo *
 
 // successResponse generates a success response for the given token ID.
 func (v *Controller) successResponse(tokenID uint32) *getVINVCResponse {
-	vcPath := path.Join(v.telemetryBaseURL.Path, "vc")
+	vcPath := v.telemetryBaseURL.String()
 	fullURL := &url.URL{
 		Scheme: v.telemetryBaseURL.Scheme,
 		Host:   v.telemetryBaseURL.Host,
 		Path:   vcPath,
 	}
 
-	gqlQuery := fmt.Sprintf(`
-	query {
-		vinVCLatest(tokenId: %d) {
-			rawVC
-		}
-	}`, tokenID)
+	gqlQuery := fmt.Sprintf("query {vinVCLatest(tokenId: %d) {rawVC}}", tokenID)
 	return &getVINVCResponse{
 		VCURL:   fullURL.String(),
 		VCQuery: gqlQuery,
