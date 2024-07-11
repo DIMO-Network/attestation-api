@@ -148,13 +148,7 @@
                         "type": "integer"
                     }
                 },
-                "expirationDate": {
-                    "type": "string"
-                },
                 "id": {
-                    "type": "string"
-                },
-                "issuanceDate": {
                     "type": "string"
                 },
                 "issuer": {
@@ -170,6 +164,9 @@
                     }
                 },
                 "validFrom": {
+                    "type": "string"
+                },
+                "validTo": {
                     "type": "string"
                 }
             }

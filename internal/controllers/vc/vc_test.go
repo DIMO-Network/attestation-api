@@ -226,7 +226,7 @@ func TestVCController_GetVINVC(t *testing.T) {
 				tokenID := uint32(132)
 				mocks.VCService.EXPECT().GenerateKeyControlDocument().Return(json.RawMessage{}, nil)
 				mocks.VCService.EXPECT().GetLatestVC(ctxType, tokenID).Return(&verifiable.Credential{
-					ExpirationDate: time.Now().Add(time.Hour).Format(time.RFC3339),
+					ValidFrom: time.Now().Add(time.Hour).Format(time.RFC3339),
 				}, nil)
 			},
 			expectedStatusCode: fiber.StatusOK,
@@ -245,7 +245,7 @@ func TestVCController_GetVINVC(t *testing.T) {
 				}
 				mocks.VCService.EXPECT().GenerateKeyControlDocument().Return(json.RawMessage{}, nil)
 				mocks.VCService.EXPECT().GetLatestVC(ctxType, tokenID).Return(&verifiable.Credential{
-					ExpirationDate: time.Now().Add(-time.Hour).Format(time.RFC3339),
+					ValidFrom: time.Now().Add(-time.Hour).Format(time.RFC3339),
 				}, nil)
 				mocks.IdentityService.EXPECT().GetVehicleInfo(ctxType, tokenID).Return(vehicleInfo, nil)
 				mocks.FingerprintService.EXPECT().GetLatestFingerprintMessages(ctxType, pairedAddr).Return(&models.DecodedFingerprintData{

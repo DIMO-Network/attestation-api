@@ -80,7 +80,7 @@ func (v *Controller) getOrCreateVC(ctx context.Context, tokenID uint32, force bo
 func (v *Controller) hasValidVC(ctx context.Context, tokenID uint32) bool {
 	prevVC, err := v.vcService.GetLatestVC(ctx, tokenID)
 	if err == nil {
-		expireDate, err := time.Parse(time.RFC3339, prevVC.ExpirationDate)
+		expireDate, err := time.Parse(time.RFC3339, prevVC.ValidFrom)
 		if err == nil && time.Now().Before(expireDate) {
 			return true
 		}

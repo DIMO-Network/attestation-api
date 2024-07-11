@@ -4,6 +4,10 @@
 [![GoDoc](https://godoc.org/github.com/DIMO-Network/attestation-api?status.svg)](https://godoc.org/github.com/DIMO-Network/attestation-api)
 [![Go Report Card](https://goreportcard.com/badge/github.com/DIMO-Network/attestation-api)](https://goreportcard.com/report/github.com/DIMO-Network/attestation-api)
 
+## License
+
+[Apache 2.0](LICENSE)
+
 Run `make help`
 
 ```shell
@@ -14,6 +18,7 @@ Specify a subcommand:
   docker               build docker image
   tools-golangci-lint  install golangci-lint
   tools-swagger        install swagger tool
+  tools-mockgen        install mockgen tool
   generate             run all file generation for the project
   swagger              generate swagger documentation
   go-generate          run go generate
@@ -29,17 +34,13 @@ Running this locally requires the following services to be running:
 - clickhouse connection
 - s3 connection
 
-## License
-
-[Apache 2.0](LICENSE)
-
 # VIN VC Eligibility Logic
 
 ### 1. Check if there is Currently a Valid VC for the NFT
 
 - **Check Existing VCs for NFT**:
   - Query to determine if there is already a valid VC for the requesting NFT.
-  - If a valid VC exists return it and end the process.
+  - If a valid VC exists return a success response with the VC query.
 
 ### 2. Get the Paired Device(s) for the NFT
 
@@ -59,7 +60,6 @@ Running this locally requires the following services to be running:
 ### 5. Validate VIN for Each Paired Device Matches
 
 - **Ensure VIN Consistency**:
-  - Verify that the VIN in the latest fingerprint messages from the paired device(s) matches each other.
   - **Use Latest Message as Source of Truth**:
     - If the VINs from the paired devices do not match, use the VIN from the latest fingerprint message as the source of truth.
 
@@ -67,21 +67,13 @@ Running this locally requires the following services to be running:
 
 - **Decode and Validate VIN**:
   - Decode the VIN from the latest fingerprint message.
-  - Ensure the VIN decodes to the same manufacturer, model, and year as per vehicle records.
+  - Ensure the VIN decodes to the same manufacturer, model, and year as per vehicle record in identity-api.
 
 ### 7. Generate New VC
 
-- **Create VIN VC**:
-  - Generate a new VC for the NFT, including:
-    - **VIN**: The Vehicle Identification Number.
-    - **Issuance Date**: The timestamp of credential issuance.
-    - **Expiration Date**: The timestamp indicating when the credential will expire.
-    - **Issuer**: The entity issuing the VC.
-    - **Proof**: Digital signature or cryptographic proof.
-  - **Sign and Store VC**:
-    - Ensure the VC is digitally signed to maintain integrity and authenticity.
-    - Store the VC securely in the system.
+- Generate a new VC for the tokenId and VIN
+- Store the VC in s3
 
-### 8. Issue VC
+### 8. Return VC Query
 
 - Return a query to be run on telemetry-api for VC retrieval
