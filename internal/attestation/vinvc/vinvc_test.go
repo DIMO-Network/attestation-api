@@ -17,7 +17,6 @@ import (
 	"github.com/DIMO-Network/attestation-api/pkg/verifiable"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/gofiber/fiber/v2"
 	"github.com/rs/zerolog"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
@@ -44,10 +43,10 @@ func TestVCController_GetVINVC(t *testing.T) {
 	ctx := reflect.TypeOf((*context.Context)(nil)).Elem()
 	ctxType := gomock.AssignableToTypeOf(ctx)
 	tests := []struct {
-		name               string
-		tokenID            uint32
-		setupMocks         func(mocks Mocks)
-		expectedStatusCode int
+		name           string
+		tokenID        uint32
+		setupMocks     func(mocks Mocks)
+		expectedErrror bool
 	}{
 		{
 			name:    "valid request with no paired devices",
@@ -57,7 +56,7 @@ func TestVCController_GetVINVC(t *testing.T) {
 				mocks.vcRepo.EXPECT().GetLatestVINVC(ctxType, tokenID).Return(nil, sql.ErrNoRows)
 				mocks.identityAPI.EXPECT().GetVehicleInfo(ctxType, tokenID).Return(&models.VehicleInfo{}, nil)
 			},
-			expectedStatusCode: fiber.StatusBadRequest,
+			expectedErrror: true,
 		},
 		{
 			name:    "valid request with paired devices",
@@ -90,7 +89,6 @@ func TestVCController_GetVINVC(t *testing.T) {
 				mocks.issuer.EXPECT().CreateVINVC(vinSubject, gomock.Any()).Return(testVCPayload, nil)
 				mocks.vcRepo.EXPECT().StoreVINVC(ctxType, tokenID, testVCPayload).Return(nil)
 			},
-			expectedStatusCode: fiber.StatusOK,
 		},
 		{
 			name:    "error fetching paired devices",
@@ -100,7 +98,7 @@ func TestVCController_GetVINVC(t *testing.T) {
 				mocks.vcRepo.EXPECT().GetLatestVINVC(ctxType, tokenID).Return(nil, sql.ErrNoRows)
 				mocks.identityAPI.EXPECT().GetVehicleInfo(ctxType, tokenID).Return(nil, errors.New("error"))
 			},
-			expectedStatusCode: fiber.StatusInternalServerError,
+			expectedErrror: true,
 		},
 		{
 			name:    "no fingerprint messages",
@@ -118,7 +116,7 @@ func TestVCController_GetVINVC(t *testing.T) {
 				mocks.identityAPI.EXPECT().GetVehicleInfo(ctxType, tokenID).Return(vehicleInfo, nil)
 				mocks.fingerprintRepo.EXPECT().GetLatestFingerprintMessages(ctxType, pairedAddr).Return(&models.DecodedFingerprintData{}, fmt.Errorf("no fingerprint messages"))
 			},
-			expectedStatusCode: fiber.StatusInternalServerError,
+			expectedErrror: true,
 		},
 		{
 			name:    "fingerprint messages with different VINs",
@@ -160,7 +158,6 @@ func TestVCController_GetVINVC(t *testing.T) {
 				mocks.issuer.EXPECT().CreateVINVC(vinSubject, gomock.Any()).Return(testVCPayload, nil)
 				mocks.vcRepo.EXPECT().StoreVINVC(ctxType, tokenID, testVCPayload).Return(nil)
 			},
-			expectedStatusCode: fiber.StatusOK,
 		},
 		{
 			name:    "failed to decode VIN from fingerprint message",
@@ -181,7 +178,7 @@ func TestVCController_GetVINVC(t *testing.T) {
 				}, nil)
 				mocks.vinAPI.EXPECT().DecodeVIN(ctxType, "INVALIDVIN", "").Return("", errors.New("invalid VIN"))
 			},
-			expectedStatusCode: fiber.StatusInternalServerError,
+			expectedErrror: true,
 		},
 		{
 			name:    "invalid VIN from fingerprint message",
@@ -202,7 +199,7 @@ func TestVCController_GetVINVC(t *testing.T) {
 				}, nil)
 				mocks.vinAPI.EXPECT().DecodeVIN(ctxType, "1HGCM82633A123456", "").Return("bad_name", nil)
 			},
-			expectedStatusCode: fiber.StatusBadRequest,
+			expectedErrror: true,
 		},
 
 		{
@@ -235,7 +232,7 @@ func TestVCController_GetVINVC(t *testing.T) {
 				}
 				mocks.issuer.EXPECT().CreateVINVC(vinSubject, gomock.Any()).Return(nil, errors.New("store error"))
 			},
-			expectedStatusCode: fiber.StatusInternalServerError,
+			expectedErrror: true,
 		},
 		{
 			name:    "VC already exists",
@@ -246,7 +243,6 @@ func TestVCController_GetVINVC(t *testing.T) {
 					ValidFrom: time.Now().Add(time.Hour).Format(time.RFC3339),
 				}, nil)
 			},
-			expectedStatusCode: fiber.StatusOK,
 		},
 		{
 			name:    "VC is expired",
@@ -281,7 +277,6 @@ func TestVCController_GetVINVC(t *testing.T) {
 				mocks.issuer.EXPECT().CreateVINVC(vinSubject, gomock.Any()).Return(testVCPayload, nil)
 				mocks.vcRepo.EXPECT().StoreVINVC(ctxType, tokenID, testVCPayload).Return(nil)
 			},
-			expectedStatusCode: fiber.StatusOK,
 		},
 	}
 
@@ -309,7 +304,11 @@ func TestVCController_GetVINVC(t *testing.T) {
 			)
 
 			err := vcController.GetOrCreateVC(context.Background(), tt.tokenID, false)
-			require.NoError(t, err, "failed to create VC")
+			if tt.expectedErrror {
+				require.Error(t, err)
+				return
+			}
+			require.NoError(t, err)
 		})
 	}
 }
