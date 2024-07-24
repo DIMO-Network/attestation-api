@@ -131,7 +131,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_controllers_vc.getVINVCResponse"
+                            "$ref": "#/definitions/internal_controllers_httphandlers.getVINVCResponse"
                         }
                     }
                 }
@@ -284,7 +284,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_controllers_vc.getVINVCResponse": {
+        "internal_controllers_httphandlers.getVINVCResponse": {
             "type": "object",
             "properties": {
                 "message": {

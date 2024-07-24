@@ -11,7 +11,7 @@ import (
 	"strings"
 
 	"github.com/ClickHouse/clickhouse-go/v2"
-	"github.com/DIMO-Network/attestation-api/pkg/models"
+	"github.com/DIMO-Network/attestation-api/internal/models"
 	"github.com/DIMO-Network/nameindexer"
 	"github.com/DIMO-Network/nameindexer/pkg/clickhouse/service"
 	"github.com/ethereum/go-ethereum/common"
@@ -87,6 +87,7 @@ func decodeFingerprintMessage(data []byte) (*models.DecodedFingerprintData, erro
 	return &models.DecodedFingerprintData{
 		VIN:       vin,
 		Timestamp: msg.Timestamp,
+		Source:    msg.Source,
 	}, nil
 }
 

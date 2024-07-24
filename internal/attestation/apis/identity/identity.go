@@ -13,7 +13,7 @@ import (
 	"net/url"
 	"time"
 
-	"github.com/DIMO-Network/attestation-api/pkg/models"
+	"github.com/DIMO-Network/attestation-api/internal/models"
 	"github.com/ethereum/go-ethereum/common"
 )
 
