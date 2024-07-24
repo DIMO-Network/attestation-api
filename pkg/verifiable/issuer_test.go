@@ -103,7 +103,15 @@ func TestCreateVINVC(t *testing.T) {
 			issuerService, err := verifiable.NewIssuer(tt.config)
 			require.NoError(t, err)
 
-			vc, err := issuerService.CreateVINVC(tt.vin, tt.countryCode, tt.tokenID, tt.expirationDate)
+			subArg := verifiable.VINSubject{
+				VehicleIdentificationNumber: tt.vin,
+				VehicleTokenId:              tt.tokenID,
+				CountryCode:                 tt.countryCode,
+				RecordedBy:                  "this",
+				RecordedAt:                  time.Time{},
+			}
+
+			vc, err := issuerService.CreateVINVC(subArg, tt.expirationDate)
 			if tt.expectError {
 				require.Error(t, err)
 				return
@@ -247,7 +255,14 @@ func TestTamperedPayload(t *testing.T) {
 	vin := "1HGCM82633A123456"
 	tokenID := uint32(1)
 	expirationDate := time.Now().Add(24 * time.Hour)
-	vc, err := issuerService.CreateVINVC(vin, "US", tokenID, expirationDate)
+	subArg := verifiable.VINSubject{
+		VehicleIdentificationNumber: vin,
+		VehicleTokenId:              tokenID,
+		CountryCode:                 "US",
+		RecordedAt:                  time.Time{},
+		RecordedBy:                  "me",
+	}
+	vc, err := issuerService.CreateVINVC(subArg, expirationDate)
 	require.NoError(t, err)
 
 	var origCredential verifiable.Credential

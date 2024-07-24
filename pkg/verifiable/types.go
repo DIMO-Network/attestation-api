@@ -2,6 +2,7 @@ package verifiable
 
 import (
 	"encoding/json"
+	"time"
 )
 
 // Credential represents a verifiable credential.
@@ -20,8 +21,16 @@ type Credential struct {
 // VINSubject represents the subject of the VIN verifiable credential.
 type VINSubject struct {
 	ID                          string `json:"id,omitempty"`
+	VehicleTokenId              uint32
 	VehicleIdentificationNumber string `json:"vehicleIdentificationNumber,omitempty"`
-	CountryCode                 string `json:"countryCode,omitempty"`
+	// RecordedBy is the entity that recoreded the VIN.
+	RecordedBy string `json:"recordedBy,omitempty"`
+	// RecorededAt is the time the VIN was recoreded.
+	RecordedAt time.Time `josn:"recordedAt,omitempty"`
+	// CountryCodd that VIN belongs to.
+	CountryCode string `json:"countryCode,omitempty"`
+	// VehicleContractAdress is the adress of the contract for the vehicle NFT.
+	VehicleContractAdress string
 }
 
 // BitstringStatusListSubject represents the subject of the bitstring status list verifiable credential.

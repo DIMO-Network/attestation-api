@@ -51,7 +51,7 @@ type Issuer struct {
 	verificationMethod string
 	ldProcessor        *ld.JsonLdProcessor
 	ldOptions          *ld.JsonLdOptions
-	baseStatusURL      *url.URL
+	baseStatusURL      url.URL
 }
 
 // NewIssuer creates a new instance of Issuer.
@@ -90,16 +90,16 @@ func NewIssuer(config Config) (*Issuer, error) {
 		verificationMethod: verfifcationMethod,
 		ldProcessor:        ldProc,
 		ldOptions:          options,
-		baseStatusURL:      baseStatusURL,
+		baseStatusURL:      *baseStatusURL,
 	}, nil
 }
 
 // CreateVINVC creates a verifiable credential for a vehicle identification number and token ID.
-func (i *Issuer) CreateVINVC(vin, countryCode string, tokenID uint32, expirationDate time.Time) ([]byte, error) {
+func (i *Issuer) CreateVINVC(subject VINSubject, expirationDate time.Time) ([]byte, error) {
 	id := uuid.New().String()
 	issuanceDate := time.Now().UTC().Format(time.RFC3339)
 
-	tokenIDStr := strconv.FormatUint(uint64(tokenID), 10)
+	tokenIDStr := strconv.FormatUint(uint64(subject.VehicleTokenId), 10)
 	statusURL := i.baseStatusURL.JoinPath(tokenIDStr)
 	credential := Credential{
 		Context: []string{
@@ -119,11 +119,8 @@ func (i *Issuer) CreateVINVC(vin, countryCode string, tokenID uint32, expiration
 			StatusListCredential: i.baseStatusURL.String(),
 		},
 	}
-	subject := VINSubject{
-		ID:                          fmt.Sprintf("did:nft:%d_erc721:%s_%d", i.chainID, i.vehicleNFTAddress, tokenID),
-		VehicleIdentificationNumber: vin,
-		CountryCode:                 countryCode,
-	}
+	subject.ID = fmt.Sprintf("did:nft:%d_erc721:%s_%d", i.chainID, i.vehicleNFTAddress, subject.VehicleTokenId)
+
 	rawSubject, err := json.Marshal(subject)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal credential subject: %w", err)
