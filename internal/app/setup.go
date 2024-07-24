@@ -75,7 +75,7 @@ func createVINCService(logger *zerolog.Logger, settings *config.Settings, status
 	}
 
 	// Initialize VC service using the initialized services
-	vinvcService := vinvc.NewService(logger, vcRepo, identityAPI, fingerprintRepo, vinValidateSerivce, issuer, revokedList)
+	vinvcService := vinvc.NewService(logger, vcRepo, identityAPI, fingerprintRepo, vinValidateSerivce, issuer, revokedList, settings.VehicleNFTAddress)
 
 	return vinvcService, nil
 }

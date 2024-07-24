@@ -25,7 +25,7 @@ type PairedDevice struct {
 // FingerprintMessage represents the fingerprint message containing VIN and timestamp.
 type FingerprintMessage struct {
 	Timestamp time.Time      `json:"time"`
-	Source    string         `json:"source"`
+	Subject   string         `json:"subject"`
 	Data      map[string]any `json:"data"`
 	Data64    *string        `json:"data_base64"`
 }

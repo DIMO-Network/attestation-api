@@ -87,7 +87,7 @@ func decodeFingerprintMessage(data []byte) (*models.DecodedFingerprintData, erro
 	return &models.DecodedFingerprintData{
 		VIN:       vin,
 		Timestamp: msg.Timestamp,
-		Source:    msg.Source,
+		Source:    msg.Subject,
 	}, nil
 }
 

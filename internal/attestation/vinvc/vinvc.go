@@ -18,13 +18,14 @@ const daysInWeek = 7
 
 // Service handles VIN VC-related operations.
 type Service struct {
-	logger          *zerolog.Logger
-	vcRepo          VCRepo
-	identityAPI     IdentityAPI
-	fingerprintRepo FingerprintRepo
-	vinAPI          VINAPI
-	issuer          Issuer
-	revokedMap      map[uint32]struct{}
+	logger            *zerolog.Logger
+	vcRepo            VCRepo
+	identityAPI       IdentityAPI
+	fingerprintRepo   FingerprintRepo
+	vinAPI            VINAPI
+	issuer            Issuer
+	revokedMap        map[uint32]struct{}
+	vehicleNFTAddress string
 }
 
 // NewService creates a new Service for VIN VC operations.
@@ -36,19 +37,21 @@ func NewService(
 	vinService VINAPI,
 	issuer Issuer,
 	revokedList []uint32,
+	vehicleNFTAddress string,
 ) *Service {
 	revokeMap := make(map[uint32]struct{}, len(revokedList))
 	for _, id := range revokedList {
 		revokeMap[id] = struct{}{}
 	}
 	return &Service{
-		logger:          logger,
-		vcRepo:          vcRepo,
-		identityAPI:     identityService,
-		fingerprintRepo: fingerprintService,
-		vinAPI:          vinService,
-		issuer:          issuer,
-		revokedMap:      revokeMap,
+		logger:            logger,
+		vcRepo:            vcRepo,
+		identityAPI:       identityService,
+		fingerprintRepo:   fingerprintService,
+		vinAPI:            vinService,
+		issuer:            issuer,
+		revokedMap:        revokeMap,
+		vehicleNFTAddress: vehicleNFTAddress,
 	}
 }
 
@@ -92,10 +95,11 @@ func (v *Service) GenerateVINVC(ctx context.Context, tokenID uint32, logger *zer
 	// creatae the subject for the VC
 	vinSubject := verifiable.VINSubject{
 		VehicleIdentificationNumber: validFP.VIN,
-		VehicleTokenId:              tokenID,
+		VehicleTokenID:              tokenID,
 		CountryCode:                 "",
 		RecordedBy:                  validFP.Source,
 		RecordedAt:                  validFP.Timestamp,
+		VehicleContractAddress:      v.vehicleNFTAddress,
 	}
 
 	// create the new VC

@@ -99,7 +99,7 @@ func (i *Issuer) CreateVINVC(subject VINSubject, expirationDate time.Time) ([]by
 	id := uuid.New().String()
 	issuanceDate := time.Now().UTC().Format(time.RFC3339)
 
-	tokenIDStr := strconv.FormatUint(uint64(subject.VehicleTokenId), 10)
+	tokenIDStr := strconv.FormatUint(uint64(subject.VehicleTokenID), 10)
 	statusURL := i.baseStatusURL.JoinPath(tokenIDStr)
 	credential := Credential{
 		Context: []string{
@@ -119,7 +119,7 @@ func (i *Issuer) CreateVINVC(subject VINSubject, expirationDate time.Time) ([]by
 			StatusListCredential: i.baseStatusURL.String(),
 		},
 	}
-	subject.ID = fmt.Sprintf("did:nft:%d_erc721:%s_%d", i.chainID, i.vehicleNFTAddress, subject.VehicleTokenId)
+	subject.ID = fmt.Sprintf("did:nft:%d_erc721:%s_%d", i.chainID, i.vehicleNFTAddress, subject.VehicleTokenID)
 
 	rawSubject, err := json.Marshal(subject)
 	if err != nil {

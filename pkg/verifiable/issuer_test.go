@@ -105,7 +105,7 @@ func TestCreateVINVC(t *testing.T) {
 
 			subArg := verifiable.VINSubject{
 				VehicleIdentificationNumber: tt.vin,
-				VehicleTokenId:              tt.tokenID,
+				VehicleTokenID:              tt.tokenID,
 				CountryCode:                 tt.countryCode,
 				RecordedBy:                  "this",
 				RecordedAt:                  time.Time{},
@@ -257,7 +257,7 @@ func TestTamperedPayload(t *testing.T) {
 	expirationDate := time.Now().Add(24 * time.Hour)
 	subArg := verifiable.VINSubject{
 		VehicleIdentificationNumber: vin,
-		VehicleTokenId:              tokenID,
+		VehicleTokenID:              tokenID,
 		CountryCode:                 "US",
 		RecordedAt:                  time.Time{},
 		RecordedBy:                  "me",

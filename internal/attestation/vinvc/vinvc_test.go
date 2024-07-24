@@ -22,7 +22,10 @@ import (
 	"go.uber.org/mock/gomock"
 )
 
-const defaultNameSlug = "toyota_tacoma-4wd_2023"
+const (
+	defaultNameSlug   = "toyota_tacoma-4wd_2023"
+	defaultNFTAddress = "0x1234567890abcdef"
+)
 
 var testVCPayload = json.RawMessage(`{"test": "payload"}`)
 
@@ -81,10 +84,11 @@ func TestVCController_GetVINVC(t *testing.T) {
 				mocks.vinAPI.EXPECT().DecodeVIN(ctxType, validFP.VIN, "").Return(vehicleInfo.NameSlug, nil)
 				vinSubject := verifiable.VINSubject{
 					VehicleIdentificationNumber: validFP.VIN,
-					VehicleTokenId:              tokenID,
+					VehicleTokenID:              tokenID,
 					CountryCode:                 "",
 					RecordedBy:                  validFP.Source,
 					RecordedAt:                  validFP.Timestamp,
+					VehicleContractAddress:      defaultNFTAddress,
 				}
 				mocks.issuer.EXPECT().CreateVINVC(vinSubject, gomock.Any()).Return(testVCPayload, nil)
 				mocks.vcRepo.EXPECT().StoreVINVC(ctxType, tokenID, testVCPayload).Return(nil)
@@ -150,10 +154,11 @@ func TestVCController_GetVINVC(t *testing.T) {
 				mocks.vinAPI.EXPECT().DecodeVIN(ctxType, validFPLatest.VIN, "").Return(vehicleInfo.NameSlug, nil)
 				vinSubject := verifiable.VINSubject{
 					VehicleIdentificationNumber: validFPLatest.VIN,
-					VehicleTokenId:              tokenID,
+					VehicleTokenID:              tokenID,
 					CountryCode:                 "",
 					RecordedBy:                  validFPLatest.Source,
 					RecordedAt:                  validFPLatest.Timestamp,
+					VehicleContractAddress:      defaultNFTAddress,
 				}
 				mocks.issuer.EXPECT().CreateVINVC(vinSubject, gomock.Any()).Return(testVCPayload, nil)
 				mocks.vcRepo.EXPECT().StoreVINVC(ctxType, tokenID, testVCPayload).Return(nil)
@@ -225,10 +230,11 @@ func TestVCController_GetVINVC(t *testing.T) {
 				mocks.vinAPI.EXPECT().DecodeVIN(ctxType, validFP.VIN, "").Return(vehicleInfo.NameSlug, nil)
 				vinSubject := verifiable.VINSubject{
 					VehicleIdentificationNumber: validFP.VIN,
-					VehicleTokenId:              tokenID,
+					VehicleTokenID:              tokenID,
 					CountryCode:                 "",
 					RecordedBy:                  validFP.Source,
 					RecordedAt:                  validFP.Timestamp,
+					VehicleContractAddress:      defaultNFTAddress,
 				}
 				mocks.issuer.EXPECT().CreateVINVC(vinSubject, gomock.Any()).Return(nil, errors.New("store error"))
 			},
@@ -269,10 +275,11 @@ func TestVCController_GetVINVC(t *testing.T) {
 				mocks.vinAPI.EXPECT().DecodeVIN(ctxType, validFP.VIN, "").Return(vehicleInfo.NameSlug, nil)
 				vinSubject := verifiable.VINSubject{
 					VehicleIdentificationNumber: validFP.VIN,
-					VehicleTokenId:              tokenID,
+					VehicleTokenID:              tokenID,
 					CountryCode:                 "",
 					RecordedBy:                  validFP.Source,
 					RecordedAt:                  validFP.Timestamp,
+					VehicleContractAddress:      defaultNFTAddress,
 				}
 				mocks.issuer.EXPECT().CreateVINVC(vinSubject, gomock.Any()).Return(testVCPayload, nil)
 				mocks.vcRepo.EXPECT().StoreVINVC(ctxType, tokenID, testVCPayload).Return(nil)
@@ -300,7 +307,7 @@ func TestVCController_GetVINVC(t *testing.T) {
 			vcController := vinvc.NewService(&logger,
 				mocks.vcRepo, mocks.identityAPI,
 				mocks.fingerprintRepo, mocks.vinAPI,
-				mocks.issuer, nil,
+				mocks.issuer, nil, defaultNFTAddress,
 			)
 
 			err := vcController.GetOrCreateVC(context.Background(), tt.tokenID, false)
