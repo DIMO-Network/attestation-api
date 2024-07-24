@@ -9,8 +9,8 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/DIMO-Network/attestation-api/internal/services/identity"
-	"github.com/DIMO-Network/attestation-api/pkg/models"
+	"github.com/DIMO-Network/attestation-api/internal/attestation/apis/identity"
+	"github.com/DIMO-Network/attestation-api/internal/models"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/stretchr/testify/require"

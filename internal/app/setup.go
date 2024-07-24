@@ -1,4 +1,4 @@
-package main
+package app
 
 import (
 	"context"
@@ -10,12 +10,12 @@ import (
 	"strings"
 	"time"
 
+	"github.com/DIMO-Network/attestation-api/internal/attestation/apis/identity"
+	"github.com/DIMO-Network/attestation-api/internal/attestation/apis/vinvalidator"
+	"github.com/DIMO-Network/attestation-api/internal/attestation/repos/fingerprint"
+	"github.com/DIMO-Network/attestation-api/internal/attestation/repos/vcrepo"
+	"github.com/DIMO-Network/attestation-api/internal/attestation/vinvc"
 	"github.com/DIMO-Network/attestation-api/internal/config"
-	"github.com/DIMO-Network/attestation-api/internal/controllers/vc"
-	"github.com/DIMO-Network/attestation-api/internal/services/fingerprint"
-	"github.com/DIMO-Network/attestation-api/internal/services/identity"
-	"github.com/DIMO-Network/attestation-api/internal/services/vinvalidator"
-	"github.com/DIMO-Network/attestation-api/internal/services/vinvc"
 	"github.com/DIMO-Network/attestation-api/pkg/verifiable"
 	"github.com/DIMO-Network/clickhouse-infra/pkg/connect"
 	ddgrpc "github.com/DIMO-Network/device-definitions-api/pkg/grpc"
@@ -28,7 +28,8 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 )
 
-func createVINController(logger *zerolog.Logger, settings *config.Settings, statusRoute, keysRoute string) (*vc.Controller, error) {
+// createVINController creates a new VINVC controller by initializing the required services using the provided settings.
+func createVINCService(logger *zerolog.Logger, settings *config.Settings, statusRoute, keysRoute string) (*vinvc.Service, error) {
 	// Initialize ClickHouse connection
 	chConn, err := connect.GetClickhouseConn(&settings.Clickhouse)
 	if err != nil {
@@ -36,14 +37,15 @@ func createVINController(logger *zerolog.Logger, settings *config.Settings, stat
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
 	defer cancel()
-
 	err = chConn.Ping(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to ping ClickHouse: %w", err)
 	}
 
+	// Initialize S3 client
 	s3Client := s3ClientFromSettings(settings)
 
+	// Initialize VC issuer and revoked list
 	issuer, err := issuerFromSettings(settings, statusRoute, keysRoute)
 	if err != nil {
 		return nil, err
@@ -53,23 +55,29 @@ func createVINController(logger *zerolog.Logger, settings *config.Settings, stat
 		return nil, err
 	}
 
-	fingerprintService := fingerprint.New(chConn, s3Client, settings.FingerprintBucket, settings.FingerprintDataType)
-	identityService, err := identity.NewService(settings.IdentityAPIURL, nil)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create identity service: %w", err)
-	}
-	vinvcService := vinvc.New(chConn, s3Client, issuer, settings.VINVCBucket, settings.VINVCDataType, revokedList)
-	deviceDefAPIClient, err := deviceDefAPIClientFromSettings(settings)
+	// Initialize device definition API client
+	deviceDefGRPCClient, err := deviceDefAPIClientFromSettings(settings)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create device definition API client: %w", err)
 	}
-	vinValidateSerivce := vinvalidator.New(deviceDefAPIClient)
-	vinvcCtrl, err := vc.NewVCController(logger, vinvcService, identityService, fingerprintService, vinValidateSerivce, settings.TelemetryURL)
+	vinValidateSerivce := vinvalidator.New(deviceDefGRPCClient)
+
+	// Initialize fingerprint repository
+	fingerprintRepo := fingerprint.New(chConn, s3Client, settings.FingerprintBucket, settings.FingerprintDataType)
+
+	// Initialize VC repository
+	vcRepo := vcrepo.New(chConn, s3Client, settings.VINVCBucket, settings.VINVCDataType)
+
+	// Initialize identity API client
+	identityAPI, err := identity.NewService(settings.IdentityAPIURL, nil)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create VC controller: %w", err)
+		return nil, fmt.Errorf("failed to create identity service: %w", err)
 	}
 
-	return vinvcCtrl, nil
+	// Initialize VC service using the initialized services
+	vinvcService := vinvc.NewService(logger, vcRepo, identityAPI, fingerprintRepo, vinValidateSerivce, issuer, revokedList)
+
+	return vinvcService, nil
 }
 
 // s3ClientFromSettings creates an S3 client from the given settings.

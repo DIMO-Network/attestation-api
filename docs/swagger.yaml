@@ -94,7 +94,7 @@ definitions:
           $ref: '#/definitions/github_com_DIMO-Network_attestation-api_pkg_verifiable.MultiKey'
         type: array
     type: object
-  internal_controllers_vc.getVINVCResponse:
+  internal_controllers_httphandlers.getVINVCResponse:
     properties:
       message:
         type: string
@@ -183,7 +183,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/internal_controllers_vc.getVINVCResponse'
+            $ref: '#/definitions/internal_controllers_httphandlers.getVINVCResponse'
       security:
       - BearerAuth: []
       summary: Get VIN VC

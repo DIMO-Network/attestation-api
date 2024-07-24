@@ -1,0 +1,25 @@
+syntax = "proto3";
+
+option go_package = "github.com/DIMO-Network/attestation-api/pkg/grpc";
+
+package grpc;
+
+service AttestationService {
+  rpc BatchCreateVINVC(BatchCreateVINVCRequest) returns (BatchCreateVINVCResponse);
+}
+
+
+message BatchCreateVINVCRequest {
+  repeated uint32 tokenIds = 1;
+  bool force = 2;
+}
+
+message BatchCreateVINVCResponse {
+  repeated VINVCResult results = 1;
+}
+
+message VINVCResult {
+    uint32  tokenId  = 1;
+    string rawVC  = 2;
+    optional string error  = 3;
+}
