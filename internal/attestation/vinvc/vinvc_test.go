@@ -19,6 +19,7 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/gofiber/fiber/v2"
 	"github.com/rs/zerolog"
+	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 )
 
@@ -307,8 +308,8 @@ func TestVCController_GetVINVC(t *testing.T) {
 				mocks.issuer, nil,
 			)
 
-			// Register the handler
-			vcController.GetOrCreateVC(context.Background(), tt.tokenID, false)
+			err := vcController.GetOrCreateVC(context.Background(), tt.tokenID, false)
+			require.NoError(t, err, "failed to create VC")
 		})
 	}
 }

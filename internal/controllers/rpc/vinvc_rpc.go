@@ -57,7 +57,3 @@ func (s *Server) BatchCreateVINVC(ctx context.Context, req *grpc.BatchCreateVINV
 	}
 	return &resp, nil
 }
-
-func ref[T any](val T) *T {
-	return &val
-}
