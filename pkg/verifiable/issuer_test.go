@@ -10,6 +10,7 @@ import (
 	"io"
 	"math/big"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 	"testing"
@@ -26,6 +27,10 @@ import (
 func TestCreateVINVC(t *testing.T) {
 	// Start a test server for querying the public key
 	ts := getTestServer(t)
+	keyURL, err := url.Parse(ts.URL)
+	require.NoError(t, err)
+	baseURL, err := url.Parse("https://example.com")
+	require.NoError(t, err)
 
 	tests := []struct {
 		name           string
@@ -42,8 +47,10 @@ func TestCreateVINVC(t *testing.T) {
 				PrivateKey:        crypto.FromECDSA(privateKey),
 				ChainID:           big.NewInt(1),
 				VehicleNFTAddress: common.HexToAddress("0x1234567890abcdef1234567890abcdef12345678"),
-				BaseStatusURL:     "https://status.example.com",
-				BaseKeyURL:        ts.URL,
+				BaseStatusURL:     baseURL,
+				BaseKeyURL:        keyURL,
+				BaseVocabURL:      baseURL,
+				BaseJSONLDURL:     baseURL,
 			},
 			vin:            "1HGCM82633A123456",
 			countryCode:    "US",
@@ -57,8 +64,10 @@ func TestCreateVINVC(t *testing.T) {
 				PrivateKey:        crypto.FromECDSA(privateKey),
 				ChainID:           big.NewInt(2),
 				VehicleNFTAddress: common.HexToAddress("0xabcdefabcdefabcdefabcdefabcdefabcdef"),
-				BaseStatusURL:     "https://status.example.org",
-				BaseKeyURL:        ts.URL,
+				BaseStatusURL:     baseURL,
+				BaseKeyURL:        keyURL,
+				BaseVocabURL:      baseURL,
+				BaseJSONLDURL:     baseURL,
 			},
 			vin:            "1HGCM82633B654321",
 			countryCode:    "CA",
@@ -72,8 +81,10 @@ func TestCreateVINVC(t *testing.T) {
 				PrivateKey:        crypto.FromECDSA(privateKey),
 				ChainID:           big.NewInt(1),
 				VehicleNFTAddress: common.HexToAddress("0x1234567890abcdef1234567890abcdef12345678"),
-				BaseStatusURL:     "https://status.example.com",
-				BaseKeyURL:        ts.URL,
+				BaseStatusURL:     baseURL,
+				BaseKeyURL:        keyURL,
+				BaseVocabURL:      baseURL,
+				BaseJSONLDURL:     baseURL,
 			},
 			vin:            "1HGCM82633A123456",
 			countryCode:    "US",
@@ -87,8 +98,10 @@ func TestCreateVINVC(t *testing.T) {
 				PrivateKey:        crypto.FromECDSA(privateKey),
 				ChainID:           big.NewInt(1),
 				VehicleNFTAddress: common.HexToAddress("0x1234567890abcdef1234567890abcdef12345678"),
-				BaseStatusURL:     "https://status.example.com",
-				BaseKeyURL:        ts.URL,
+				BaseStatusURL:     baseURL,
+				BaseKeyURL:        keyURL,
+				BaseVocabURL:      baseURL,
+				BaseJSONLDURL:     baseURL,
 			},
 			vin:            "1HGCM82633A123456",
 			countryCode:    "US",
@@ -128,6 +141,7 @@ func TestCreateVINVC(t *testing.T) {
 			// Verify credential fields
 			require.Equal(t, "https://www.w3.org/ns/credentials/v2", credential.Context[0])
 			require.Equal(t, "https://schema.org", credential.Context[1])
+			require.Equal(t, baseURL.String(), credential.Context[2])
 			require.Equal(t, "urn:uuid:"+credential.ID[9:], credential.ID)
 			require.Equal(t, "VerifiableCredential", credential.Type[0])
 			require.Equal(t, "Vehicle", credential.Type[1])
@@ -136,7 +150,7 @@ func TestCreateVINVC(t *testing.T) {
 
 			require.Contains(t, subject.ID, strconv.FormatInt(tt.config.ChainID.Int64(), 10))
 			require.Contains(t, subject.ID, tt.config.VehicleNFTAddress.Hex())
-			require.Contains(t, credential.CredentialStatus.ID, tt.config.BaseStatusURL)
+			require.Contains(t, credential.CredentialStatus.ID, tt.config.BaseStatusURL.String())
 
 			// Verify credential proof
 			pubKey, err := extractPublicKeyFromVerificationMethod(credential.Proof.VerificationMethod)
@@ -150,6 +164,10 @@ func TestCreateVINVC(t *testing.T) {
 func TestCreateBitstringStatusListVC(t *testing.T) {
 	// Start a test server for querying the public key
 	ts := getTestServer(t)
+	keyURL, err := url.Parse(ts.URL)
+	require.NoError(t, err)
+	baseURL, err := url.Parse("https://example.com")
+	require.NoError(t, err)
 
 	tests := []struct {
 		name        string
@@ -165,8 +183,10 @@ func TestCreateBitstringStatusListVC(t *testing.T) {
 				PrivateKey:        crypto.FromECDSA(privateKey),
 				ChainID:           big.NewInt(1),
 				VehicleNFTAddress: common.HexToAddress("0x1234567890abcdef1234567890abcdef12345678"),
-				BaseStatusURL:     "https://status.example.com",
-				BaseKeyURL:        ts.URL,
+				BaseStatusURL:     baseURL,
+				BaseKeyURL:        keyURL,
+				BaseVocabURL:      baseURL,
+				BaseJSONLDURL:     baseURL,
 			},
 			tokenID:     1,
 			revoked:     false,
@@ -179,8 +199,10 @@ func TestCreateBitstringStatusListVC(t *testing.T) {
 				PrivateKey:        crypto.FromECDSA(privateKey),
 				ChainID:           big.NewInt(1),
 				VehicleNFTAddress: common.HexToAddress("0x1234567890abcdef1234567890abcdef12345678"),
-				BaseStatusURL:     "https://status.example.com",
-				BaseKeyURL:        ts.URL,
+				BaseStatusURL:     baseURL,
+				BaseKeyURL:        keyURL,
+				BaseVocabURL:      baseURL,
+				BaseJSONLDURL:     baseURL,
 			},
 			tokenID:     2,
 			revoked:     true,
@@ -235,19 +257,24 @@ func TestCreateBitstringStatusListVC(t *testing.T) {
 }
 
 func TestTamperedPayload(t *testing.T) {
+	ts := getTestServer(t)
+	keyURL, err := url.Parse(ts.URL)
+	require.NoError(t, err)
+	baseURL, err := url.Parse("https://example.com")
+	require.NoError(t, err)
+
 	config := verifiable.Config{
 		PrivateKey:        crypto.FromECDSA(privateKey),
 		ChainID:           big.NewInt(1),
 		VehicleNFTAddress: common.HexToAddress("0x1234567890abcdef1234567890abcdef12345678"),
-		BaseStatusURL:     "https://status.example.com",
-		BaseKeyURL:        "https://key.example.com",
+		BaseStatusURL:     baseURL,
+		BaseKeyURL:        keyURL,
+		BaseVocabURL:      baseURL,
+		BaseJSONLDURL:     baseURL,
 	}
 
-	// Start a test server for querying the public key
-	ts := getTestServer(t)
-
 	// Update the BaseKeyURL to point to the test server
-	config.BaseKeyURL = ts.URL
+	// config.BaseKeyURL = keyURL
 	issuerService, err := verifiable.NewIssuer(config)
 	require.NoError(t, err)
 
@@ -377,7 +404,29 @@ func extractPublicKeyFromVerificationMethod(verificationMethod string) (*ecdsa.P
 func validateProof(t *testing.T, proof verifiable.Proof, credential verifiable.Credential, publicKey *ecdsa.PublicKey) bool {
 	// Canonicalize the credential
 	ldProcessor := ld.NewJsonLdProcessor()
-	ldOptions, err := verifiable.DefaultLdOptions()
+	testJSONLDContext := `{
+  "@context": {
+    "id": "@id",
+    "recordedAt": {
+      "@id": "https://example.com#recordedAt",
+      "@type": "@id"
+    },
+    "recordedBy": {
+      "@id": "https://example.com#recordedBy",
+      "@type": "@id"
+    },
+    "type": "@type",
+    "vehicleContractAddress": {
+      "@id": "https://example.com#vehicleContractAddress",
+      "@type": "@id"
+    },
+    "vehicleTokenId": {
+      "@id": "https://example.com#vehicleTokenId",
+      "@type": "@id"
+    }
+  }
+}`
+	ldOptions, err := verifiable.DefaultLdOptions("https://example.com", testJSONLDContext)
 	require.NoError(t, err)
 
 	proofOptions := credential.Proof.ProofOptions
@@ -395,6 +444,7 @@ func validateProof(t *testing.T, proof verifiable.Proof, credential verifiable.C
 	require.NoError(t, err)
 
 	// Hash the data
+
 	hashData, err := verifiable.HashData(canonicalizedCredential, canonicalizedProofOptions)
 	require.NoError(t, err)
 

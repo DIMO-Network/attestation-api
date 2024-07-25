@@ -37,4 +37,6 @@ type Issuer interface {
 	CreateBitstringStatusListVC(tokenID uint32, revoked bool) ([]byte, error)
 	CreateKeyControlDoc() ([]byte, error)
 	CreateVINVC(vinSubject verifiable.VINSubject, expTime time.Time) ([]byte, error)
+	CreateJSONLDDoc() ([]byte, error)
+	CreateVocabWebpage() ([]byte, error)
 }

@@ -225,6 +225,21 @@ func (mr *MockIssuerMockRecorder) CreateBitstringStatusListVC(tokenID, revoked a
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateBitstringStatusListVC", reflect.TypeOf((*MockIssuer)(nil).CreateBitstringStatusListVC), tokenID, revoked)
 }
 
+// CreateJSONLDDoc mocks base method.
+func (m *MockIssuer) CreateJSONLDDoc() ([]byte, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CreateJSONLDDoc")
+	ret0, _ := ret[0].([]byte)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// CreateJSONLDDoc indicates an expected call of CreateJSONLDDoc.
+func (mr *MockIssuerMockRecorder) CreateJSONLDDoc() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateJSONLDDoc", reflect.TypeOf((*MockIssuer)(nil).CreateJSONLDDoc))
+}
+
 // CreateKeyControlDoc mocks base method.
 func (m *MockIssuer) CreateKeyControlDoc() ([]byte, error) {
 	m.ctrl.T.Helper()
@@ -253,4 +268,19 @@ func (m *MockIssuer) CreateVINVC(vinSubject verifiable.VINSubject, expTime time.
 func (mr *MockIssuerMockRecorder) CreateVINVC(vinSubject, expTime any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateVINVC", reflect.TypeOf((*MockIssuer)(nil).CreateVINVC), vinSubject, expTime)
+}
+
+// CreateVocabWebpage mocks base method.
+func (m *MockIssuer) CreateVocabWebpage() ([]byte, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CreateVocabWebpage")
+	ret0, _ := ret[0].([]byte)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// CreateVocabWebpage indicates an expected call of CreateVocabWebpage.
+func (mr *MockIssuerMockRecorder) CreateVocabWebpage() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateVocabWebpage", reflect.TypeOf((*MockIssuer)(nil).CreateVocabWebpage))
 }

@@ -114,7 +114,7 @@ func signData(hashData []byte, privateKey *ecdsa.PrivateKey, cryptosuite string)
 	return signature, nil
 }
 
-func DefaultDocumentLoader() (ld.DocumentLoader, error) {
+func DefaultDocumentLoader(localSchemaURL, localSchema string) (ld.DocumentLoader, error) {
 	docLoader := ld.NewCachingDocumentLoader(ld.NewRFC7324CachingDocumentLoader(nil))
 
 	w3c, err := os.CreateTemp("", "")
@@ -139,9 +139,21 @@ func DefaultDocumentLoader() (ld.DocumentLoader, error) {
 		return nil, fmt.Errorf("failed to close temp schema file: %w", err)
 	}
 
+	localSchemaFile, err := os.CreateTemp("", "")
+	if err != nil {
+		return nil, fmt.Errorf("failed to create temp local schema file: %w", err)
+	}
+	if _, err := localSchemaFile.Write([]byte(localSchema)); err != nil {
+		return nil, fmt.Errorf("failed to write to temp local schema file: %w", err)
+	}
+	if err := localSchemaFile.Close(); err != nil {
+		return nil, fmt.Errorf("failed to close temp local schema file: %w", err)
+	}
+
 	err = docLoader.PreloadWithMapping(map[string]string{
 		"https://www.w3.org/ns/credentials/v2": w3c.Name(),
 		"https://schema.org":                   schema.Name(),
+		localSchemaURL:                         localSchemaFile.Name(),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to preload with mapping: %w", err)
@@ -150,13 +162,13 @@ func DefaultDocumentLoader() (ld.DocumentLoader, error) {
 }
 
 // DefaultLdOptions returns the default JSON-LD options.
-func DefaultLdOptions() (*ld.JsonLdOptions, error) {
+func DefaultLdOptions(localSchemaURL, localSchema string) (*ld.JsonLdOptions, error) {
 	options := ld.NewJsonLdOptions("")
 	options.Format = Format
 	options.Algorithm = AlgorithmURDNA2015
 	options.ProcessingMode = procMode
 	options.ProduceGeneralizedRdf = true
-	docLoader, err := DefaultDocumentLoader()
+	docLoader, err := DefaultDocumentLoader(localSchemaURL, localSchema)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create document loader: %w", err)
 	}

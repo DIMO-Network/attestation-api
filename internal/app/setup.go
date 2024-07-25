@@ -29,7 +29,7 @@ import (
 )
 
 // createVINController creates a new VINVC controller by initializing the required services using the provided settings.
-func createVINCService(logger *zerolog.Logger, settings *config.Settings, statusRoute, keysRoute string) (*vinvc.Service, error) {
+func createVINCService(logger *zerolog.Logger, settings *config.Settings, statusRoute, keysRoute, vocabRoute, jsonLDRoute string) (*vinvc.Service, error) {
 	// Initialize ClickHouse connection
 	chConn, err := connect.GetClickhouseConn(&settings.Clickhouse)
 	if err != nil {
@@ -46,7 +46,7 @@ func createVINCService(logger *zerolog.Logger, settings *config.Settings, status
 	s3Client := s3ClientFromSettings(settings)
 
 	// Initialize VC issuer and revoked list
-	issuer, err := issuerFromSettings(settings, statusRoute, keysRoute)
+	issuer, err := issuerFromSettings(settings, statusRoute, keysRoute, vocabRoute, jsonLDRoute)
 	if err != nil {
 		return nil, err
 	}
@@ -94,17 +94,15 @@ func s3ClientFromSettings(settings *config.Settings) *s3.Client {
 	return s3.NewFromConfig(conf)
 }
 
-func issuerFromSettings(settings *config.Settings, statusRoute, keysRoute string) (*verifiable.Issuer, error) {
-	baseStatusURL := url.URL{
+func issuerFromSettings(settings *config.Settings, statusRoute, keysRoute, vocabRoute, jsonLDRoute string) (*verifiable.Issuer, error) {
+	baseURL := url.URL{
 		Scheme: "https",
 		Host:   settings.ExternalHostname,
-		Path:   statusRoute,
 	}
-	baseKeyURL := url.URL{
-		Scheme: "https",
-		Host:   settings.ExternalHostname,
-		Path:   keysRoute,
-	}
+	baseStatusURL := baseURL.JoinPath(statusRoute)
+	baseKeyURL := baseURL.JoinPath(keysRoute)
+	baseVocabURL := baseURL.JoinPath(vocabRoute)
+	baseJSONLDURL := baseURL.JoinPath(jsonLDRoute)
 	privateKey, err := hex.DecodeString(settings.VINVCPrivateKey)
 	if err != nil {
 		return nil, fmt.Errorf("failed to decode private key: %w", err)
@@ -113,8 +111,10 @@ func issuerFromSettings(settings *config.Settings, statusRoute, keysRoute string
 		PrivateKey:        privateKey,
 		ChainID:           big.NewInt(settings.DIMORegistryChainID),
 		VehicleNFTAddress: common.HexToAddress(settings.VehicleNFTAddress),
-		BaseStatusURL:     baseStatusURL.String(),
-		BaseKeyURL:        baseKeyURL.String(),
+		BaseStatusURL:     baseStatusURL,
+		BaseKeyURL:        baseKeyURL,
+		BaseVocabURL:      baseVocabURL,
+		BaseJSONLDURL:     baseJSONLDURL,
 	}
 	issuer, err := verifiable.NewIssuer(verifiableConfig)
 	if err != nil {

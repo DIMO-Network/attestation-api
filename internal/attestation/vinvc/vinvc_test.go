@@ -88,7 +88,7 @@ func TestVCController_GetVINVC(t *testing.T) {
 					CountryCode:                 "",
 					RecordedBy:                  validFP.Source,
 					RecordedAt:                  validFP.Timestamp,
-					VehicleContractAddress:      defaultNFTAddress,
+					VehicleContractAddress:      "eth:" + defaultNFTAddress,
 				}
 				mocks.issuer.EXPECT().CreateVINVC(vinSubject, gomock.Any()).Return(testVCPayload, nil)
 				mocks.vcRepo.EXPECT().StoreVINVC(ctxType, tokenID, testVCPayload).Return(nil)
@@ -158,7 +158,7 @@ func TestVCController_GetVINVC(t *testing.T) {
 					CountryCode:                 "",
 					RecordedBy:                  validFPLatest.Source,
 					RecordedAt:                  validFPLatest.Timestamp,
-					VehicleContractAddress:      defaultNFTAddress,
+					VehicleContractAddress:      "eth:" + defaultNFTAddress,
 				}
 				mocks.issuer.EXPECT().CreateVINVC(vinSubject, gomock.Any()).Return(testVCPayload, nil)
 				mocks.vcRepo.EXPECT().StoreVINVC(ctxType, tokenID, testVCPayload).Return(nil)
@@ -234,7 +234,7 @@ func TestVCController_GetVINVC(t *testing.T) {
 					CountryCode:                 "",
 					RecordedBy:                  validFP.Source,
 					RecordedAt:                  validFP.Timestamp,
-					VehicleContractAddress:      defaultNFTAddress,
+					VehicleContractAddress:      "eth:" + defaultNFTAddress,
 				}
 				mocks.issuer.EXPECT().CreateVINVC(vinSubject, gomock.Any()).Return(nil, errors.New("store error"))
 			},
@@ -279,7 +279,7 @@ func TestVCController_GetVINVC(t *testing.T) {
 					CountryCode:                 "",
 					RecordedBy:                  validFP.Source,
 					RecordedAt:                  validFP.Timestamp,
-					VehicleContractAddress:      defaultNFTAddress,
+					VehicleContractAddress:      "eth:" + defaultNFTAddress,
 				}
 				mocks.issuer.EXPECT().CreateVINVC(vinSubject, gomock.Any()).Return(testVCPayload, nil)
 				mocks.vcRepo.EXPECT().StoreVINVC(ctxType, tokenID, testVCPayload).Return(nil)

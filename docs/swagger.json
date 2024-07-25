@@ -30,6 +30,55 @@
                 }
             }
         },
+        "/v1/vc/context": {
+            "get": {
+                "description": "Returns the JSON-LD document for all VC types.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "VINVC"
+                ],
+                "summary": "Get JSON-LD document",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "type": "integer"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/vc/context/vocab": {
+            "get": {
+                "description": "Returns the vocabulary document for all VC types.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "text/html"
+                ],
+                "tags": [
+                    "VINVC"
+                ],
+                "summary": "Get vocabulary document",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
         "/v1/vc/keys": {
             "get": {
                 "description": "Returns the public key document for verifying VCs.",

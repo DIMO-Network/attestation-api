@@ -6,6 +6,7 @@ import (
 	"math/big"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"os"
 	"sync"
 	"testing"
@@ -45,12 +46,18 @@ func getTestServer(t *testing.T) *httptest.Server {
 			require.NoError(t, err)
 		}))
 
+		keyURL, err := url.Parse(testServer.URL)
+		require.NoError(t, err)
+		baseURL, err := url.Parse("https://status.example.com")
+		require.NoError(t, err)
 		issuerService, err := verifiable.NewIssuer(verifiable.Config{
 			PrivateKey:        crypto.FromECDSA(privateKey),
 			ChainID:           big.NewInt(1),
 			VehicleNFTAddress: common.HexToAddress("0x1234567890abcdef1234567890abcdef12345678"),
-			BaseStatusURL:     "https://status.example.com",
-			BaseKeyURL:        testServer.URL,
+			BaseStatusURL:     baseURL,
+			BaseKeyURL:        keyURL,
+			BaseVocabURL:      baseURL,
+			BaseJSONLDURL:     baseURL,
 		})
 		require.NoError(t, err)
 		doc, err = issuerService.CreateKeyControlDoc()

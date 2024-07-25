@@ -33,7 +33,9 @@ func StartWebAPI(logger *zerolog.Logger, settings *config.Settings) {
 	})
 	statusRoute := "/v1/vc/status"
 	keysRoute := "/v1/vc/keys"
-	vinvcService, err := createVINCService(logger, settings, statusRoute, keysRoute)
+	vocabRoute := "/v1/vc/context/vocab"
+	jsonLDRoute := "/v1/vc/context"
+	vinvcService, err := createVINCService(logger, settings, statusRoute, keysRoute, vocabRoute, jsonLDRoute)
 	if err != nil {
 		logger.Fatal().Err(err).Msg("Failed to create VC service")
 	}
@@ -55,9 +57,11 @@ func StartWebAPI(logger *zerolog.Logger, settings *config.Settings) {
 	app.Get("/v1/swagger/*", swagger.HandlerDefault)
 	app.Get("/swagger/*", swagger.HandlerDefault)
 
-	// status route for any vc
+	// unauthenticated routes for vc
 	app.Get(statusRoute+"/:"+httphandlers.StatusGroupParam, httpHandler.GetVCStatus)
 	app.Get(keysRoute, httpHandler.GetPublicKeyDoc)
+	app.Get(vocabRoute, httpHandler.GetVocabDoc)
+	app.Get(jsonLDRoute, httpHandler.GetJSONLDDoc)
 
 	vehicleAddr := common.HexToAddress(settings.VehicleNFTAddress)
 

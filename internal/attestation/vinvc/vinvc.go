@@ -99,7 +99,7 @@ func (v *Service) GenerateVINVC(ctx context.Context, tokenID uint32, logger *zer
 		CountryCode:                 "",
 		RecordedBy:                  validFP.Source,
 		RecordedAt:                  validFP.Timestamp,
-		VehicleContractAddress:      v.vehicleNFTAddress,
+		VehicleContractAddress:      "eth:" + v.vehicleNFTAddress,
 	}
 
 	// create the new VC
@@ -172,6 +172,22 @@ func (v *Service) GenerateKeyControlDocument() (json.RawMessage, error) {
 		return nil, fmt.Errorf("failed to create key control document: %w", err)
 	}
 	return keyDoc, nil
+}
+
+func (v *Service) GenerateJSONLDDocument() (json.RawMessage, error) {
+	jsonLDDoc, err := v.issuer.CreateJSONLDDoc()
+	if err != nil {
+		return nil, fmt.Errorf("failed to create JSON-LD document: %w", err)
+	}
+	return jsonLDDoc, nil
+}
+
+func (v *Service) GenerateVocabDocument() (json.RawMessage, error) {
+	vocabDoc, err := v.issuer.CreateVocabWebpage()
+	if err != nil {
+		return nil, fmt.Errorf("failed to create vocabulary document: %w", err)
+	}
+	return vocabDoc, nil
 }
 
 // GenerateStatusVC generates a new status VC.
