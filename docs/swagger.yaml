@@ -2,8 +2,7 @@ definitions:
   github_com_DIMO-Network_attestation-api_pkg_verifiable.Credential:
     properties:
       '@context':
-        items:
-          type: string
+        items: {}
         type: array
       credentialStatus:
         $ref: '#/definitions/github_com_DIMO-Network_attestation-api_pkg_verifiable.CredentialStatus'
@@ -124,6 +123,38 @@ paths:
       summary: Show the status of server.
       tags:
       - root
+  /v1/vc/context:
+    get:
+      consumes:
+      - application/json
+      description: Returns the JSON-LD document for all VC types.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              type: integer
+            type: array
+      summary: Get JSON-LD document
+      tags:
+      - VINVC
+  /v1/vc/context/vocab:
+    get:
+      consumes:
+      - application/json
+      description: Returns the vocabulary document for all VC types.
+      produces:
+      - text/html
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+      summary: Get vocabulary document
+      tags:
+      - VINVC
   /v1/vc/keys:
     get:
       consumes:

@@ -5,7 +5,6 @@ import (
 	"bytes"
 	"compress/gzip"
 	"crypto/ecdsa"
-	_ "embed"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -14,6 +13,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/DIMO-Network/attestation-api/pkg/verifiable/vocab"
 	"github.com/btcsuite/btcd/btcutil/base58"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -25,11 +25,6 @@ var (
 	secp256k1Prefix = []byte{0xe7, 0x01}
 	trueList        = MustEncodeList([]byte{1})
 	falseList       = MustEncodeList([]byte{0})
-
-	//go:embed w3.org_ns_credentials_v2.json
-	w3cNSCredentialsV2 []byte
-	//go:embed schema_vin.json
-	vinSchema []byte
 )
 
 // Config contains the configuration for a Issuer.
@@ -37,8 +32,10 @@ type Config struct {
 	PrivateKey        []byte
 	ChainID           *big.Int
 	VehicleNFTAddress common.Address
-	BaseStatusURL     string
-	BaseKeyURL        string
+	BaseStatusURL     *url.URL
+	BaseKeyURL        *url.URL
+	BaseVocabURL      *url.URL
+	BaseJSONLDURL     *url.URL
 }
 
 // Issuer issues various Verifiable Credentials.
@@ -52,6 +49,8 @@ type Issuer struct {
 	ldProcessor        *ld.JsonLdProcessor
 	ldOptions          *ld.JsonLdOptions
 	baseStatusURL      url.URL
+	vocabulary         *vocab.Vocabulary
+	localContext       string
 }
 
 // NewIssuer creates a new instance of Issuer.
@@ -63,22 +62,33 @@ func NewIssuer(config Config) (*Issuer, error) {
 	pubKeyEnc := "z" + base58.Encode(append(secp256k1Prefix, crypto.CompressPubkey(&privateKey.PublicKey)...))
 
 	ldProc := ld.NewJsonLdProcessor()
-	options, err := DefaultLdOptions()
+
+	if config.BaseStatusURL == nil {
+		return nil, fmt.Errorf("base status URL is required")
+	}
+	if config.BaseKeyURL == nil {
+		return nil, fmt.Errorf("base key URL is required")
+	}
+	if config.BaseVocabURL == nil {
+		return nil, fmt.Errorf("base vocab URL is required")
+	}
+	if config.BaseJSONLDURL == nil {
+		return nil, fmt.Errorf("base JSON-LD URL is required")
+	}
+	vocabulary := createVocab(config.BaseVocabURL)
+	localSchemaContext := config.BaseJSONLDURL.String()
+
+	contextDoc, err := vocabulary.RenderJSONLD()
+	if err != nil {
+		return nil, fmt.Errorf("failed to render JSON-LD document: %w", err)
+	}
+
+	options, err := DefaultLdOptions(localSchemaContext, string(contextDoc))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create JSON-LD options: %w", err)
 	}
 
-	baseStatusURL, err := url.Parse(config.BaseStatusURL)
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse base status URL: %w", err)
-	}
-
-	baseKeyURL, err := url.Parse(config.BaseKeyURL)
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse base key URL: %w", err)
-	}
-
-	issuer := baseKeyURL.String()
+	issuer := config.BaseKeyURL.String()
 	verfifcationMethod := issuer + "#key1"
 
 	return &Issuer{
@@ -90,7 +100,9 @@ func NewIssuer(config Config) (*Issuer, error) {
 		verificationMethod: verfifcationMethod,
 		ldProcessor:        ldProc,
 		ldOptions:          options,
-		baseStatusURL:      *baseStatusURL,
+		baseStatusURL:      *config.BaseStatusURL,
+		vocabulary:         vocabulary,
+		localContext:       localSchemaContext,
 	}, nil
 }
 
@@ -99,12 +111,13 @@ func (i *Issuer) CreateVINVC(subject VINSubject, expirationDate time.Time) ([]by
 	id := uuid.New().String()
 	issuanceDate := time.Now().UTC().Format(time.RFC3339)
 
-	tokenIDStr := strconv.FormatUint(uint64(subject.VehicleTokenId), 10)
+	tokenIDStr := strconv.FormatUint(uint64(subject.VehicleTokenID), 10)
 	statusURL := i.baseStatusURL.JoinPath(tokenIDStr)
 	credential := Credential{
-		Context: []string{
+		Context: []any{
 			"https://www.w3.org/ns/credentials/v2",
-			"https://schema.org",
+			map[string]string{"vehicleIdentificationNumber": "https://schema.org/vehicleIdentificationNumber"},
+			i.localContext,
 		},
 		ID:        "urn:uuid:" + id,
 		Type:      []string{"VerifiableCredential", "Vehicle"},
@@ -119,7 +132,7 @@ func (i *Issuer) CreateVINVC(subject VINSubject, expirationDate time.Time) ([]by
 			StatusListCredential: i.baseStatusURL.String(),
 		},
 	}
-	subject.ID = fmt.Sprintf("did:nft:%d_erc721:%s_%d", i.chainID, i.vehicleNFTAddress, subject.VehicleTokenId)
+	subject.ID = fmt.Sprintf("did:nft:%d_erc721:%s_%d", i.chainID, i.vehicleNFTAddress, subject.VehicleTokenID)
 
 	rawSubject, err := json.Marshal(subject)
 	if err != nil {
@@ -155,7 +168,7 @@ func (i *Issuer) CreateBitstringStatusListVC(tokenID uint32, revoked bool) ([]by
 	issuanceDate := time.Now().UTC().Format(time.RFC3339)
 
 	credential := Credential{
-		Context: []string{
+		Context: []any{
 			"https://www.w3.org/ns/credentials/v2",
 		},
 		ID:        statusURL.String(),
@@ -254,4 +267,48 @@ func (i *Issuer) CreateKeyControlDoc() ([]byte, error) {
 	}
 
 	return jsonDoc, nil
+}
+
+// CreateJSONLDDoc creates a JSON-LD document for all VC types.
+func (i *Issuer) CreateJSONLDDoc() ([]byte, error) {
+	doc, err := i.vocabulary.RenderJSONLD()
+	if err != nil {
+		return nil, fmt.Errorf("failed to render JSON-LD document: %w", err)
+	}
+	return doc, nil
+}
+
+// CreateVocabWebpage creates a webpage for the vocabulary.
+func (i *Issuer) CreateVocabWebpage() ([]byte, error) {
+	page, err := i.vocabulary.RenderWebpage()
+	if err != nil {
+		return nil, fmt.Errorf("failed to render webpage: %w", err)
+	}
+	return page, nil
+}
+
+func createVocab(baseURL *url.URL) *vocab.Vocabulary {
+	terms := []vocab.Term{
+		{
+			Name:        "recordedAt",
+			Description: "The date and time the event was recorded. Format should be in RFC3339.",
+			Usage:       "Use this term to record the date and time the information was recorded.",
+		},
+		{
+			Name:        "recordedBy",
+			Description: "The entity that recorded the event. This can be an Ethereum address or an entity name. If an Ethereum address, it should be prefixed with 'eth:', and if an entity name, it should be prefixed with 'ent:'.",
+			Usage:       "Use this term to record the entity that recorded the event.",
+		},
+		{
+			Name:        "vehicleTokenId",
+			Description: "The token ID of the vehicle NFT.",
+			Usage:       "Use this term to record the token ID of the vehicle NFT.",
+		},
+		{
+			Name:        "vehicleContractAddress",
+			Description: "The address of the vehicle NFT contract. Format should be in hexadecimal Ethereum address.",
+			Usage:       "Use this term to record the address of the vehicle NFT contract.",
+		},
+	}
+	return vocab.NewVocabulary(terms, *baseURL)
 }

@@ -1,9 +1,0 @@
-{
-  "@context": {
-    "vehicleIdentificationNumber": "https://schema.org/vehicleIdentificationNumber",
-    "recoredAt": "https://schema.org/Time",
-    "recorededBy": "null",
-    "vehicleTokenId": "null",
-    "vehilceContractAddress": "null"
-  }
-}

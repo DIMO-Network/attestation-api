@@ -31,6 +31,8 @@ type VINVCController struct {
 	vinService       VINVCService
 	telemetryBaseURL *url.URL
 	publicKeyDoc     json.RawMessage
+	jsonLDDoc        json.RawMessage
+	vocabDoc         json.RawMessage
 }
 
 // VINVCService defines the interface for VIN VC operations.
@@ -38,6 +40,8 @@ type VINVCService interface {
 	GetOrCreateVC(ctx context.Context, tokenID uint32, force bool) error
 	GenerateStatusVC(tokenID uint32) (json.RawMessage, error)
 	GenerateKeyControlDocument() (json.RawMessage, error)
+	GenerateJSONLDDocument() (json.RawMessage, error)
+	GenerateVocabDocument() (json.RawMessage, error)
 }
 
 // NewVCController creates a new http VCController.
@@ -51,10 +55,23 @@ func NewVCController(vinService VINVCService, telemetryURL string) (*VINVCContro
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate key control document: %w", err)
 	}
+
+	jsonLDDoc, err := vinService.GenerateJSONLDDocument()
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate JSON-LD document: %w", err)
+	}
+
+	vocabDoc, err := vinService.GenerateVocabDocument()
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate vocabulary document: %w", err)
+	}
+
 	return &VINVCController{
 		publicKeyDoc:     publicKeyDoc,
 		vinService:       vinService,
 		telemetryBaseURL: parsedURL,
+		jsonLDDoc:        jsonLDDoc,
+		vocabDoc:         vocabDoc,
 	}, nil
 }
 
@@ -125,6 +142,29 @@ func (v *VINVCController) GetVCStatus(fiberCtx *fiber.Ctx) error {
 // @Router /v1/vc/keys [get]
 func (v *VINVCController) GetPublicKeyDoc(fiberCtx *fiber.Ctx) error {
 	return fiberCtx.Status(fiber.StatusOK).JSON(v.publicKeyDoc)
+}
+
+// @Summary Get JSON-LD document
+// @Description Returns the JSON-LD document for all VC types.
+// @Tags VINVC
+// @Accept json
+// @Produce json
+// @Success 200 {object} json.RawMessage
+// @Router /v1/vc/context [get]
+func (v *VINVCController) GetJSONLDDoc(fiberCtx *fiber.Ctx) error {
+	return fiberCtx.Status(fiber.StatusOK).JSON(v.jsonLDDoc)
+}
+
+// @Summary Get vocabulary document
+// @Description Returns the vocabulary document for all VC types.
+// @Tags VINVC
+// @Accept json
+// @Produce html
+// @Success 200 {string} string
+// @Router /v1/vc/context/vocab [get]
+func (v *VINVCController) GetVocabDoc(fiberCtx *fiber.Ctx) error {
+	fiberCtx.Set(fiber.HeaderContentType, fiber.MIMETextHTML)
+	return fiberCtx.Send(v.vocabDoc)
 }
 
 // successResponse generates a success response for the given token ID.

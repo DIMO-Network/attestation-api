@@ -7,7 +7,7 @@ import (
 
 // Credential represents a verifiable credential.
 type Credential struct {
-	Context           []string         `json:"@context,omitempty"`
+	Context           []any            `json:"@context,omitempty"`
 	ID                string           `json:"id,omitempty"`
 	Type              []string         `json:"type,omitempty"`
 	Issuer            string           `json:"issuer,omitempty"`
@@ -21,16 +21,16 @@ type Credential struct {
 // VINSubject represents the subject of the VIN verifiable credential.
 type VINSubject struct {
 	ID                          string `json:"id,omitempty"`
-	VehicleTokenId              uint32
+	VehicleTokenID              uint32 `json:"vehicleTokenId,omitempty"`
 	VehicleIdentificationNumber string `json:"vehicleIdentificationNumber,omitempty"`
 	// RecordedBy is the entity that recoreded the VIN.
 	RecordedBy string `json:"recordedBy,omitempty"`
 	// RecorededAt is the time the VIN was recoreded.
-	RecordedAt time.Time `josn:"recordedAt,omitempty"`
+	RecordedAt time.Time `json:"recordedAt,omitempty"`
 	// CountryCodd that VIN belongs to.
 	CountryCode string `json:"countryCode,omitempty"`
-	// VehicleContractAdress is the adress of the contract for the vehicle NFT.
-	VehicleContractAdress string
+	// VehicleContractAddress is the address of the vehicle contract.
+	VehicleContractAddress string `json:"vehicleContractAddress,omitempty"`
 }
 
 // BitstringStatusListSubject represents the subject of the bitstring status list verifiable credential.
@@ -62,7 +62,7 @@ type ProofOptions struct {
 // proofOptionsWithContext contains the proof options with the context.
 // this is used for canonicalization.
 type ProofOptionsWithContext struct {
-	Context []string `json:"@context,omitempty"`
+	Context []any `json:"@context,omitempty"`
 	ProofOptions
 }
 
