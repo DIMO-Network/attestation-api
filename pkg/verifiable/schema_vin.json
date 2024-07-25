@@ -1,9 +1,0 @@
-{
-  "@context": {
-    "vehicleIdentificationNumber": "https://schema.org/vehicleIdentificationNumber",
-    "recoredAt": "how the data was recoreded",
-    "recorededBy": "who recored the data",
-    "vehicleTokenId": "nft token id for the vehicle",
-    "vehilceContractAddress": "nft contract address for the vehilce"
-  }
-}

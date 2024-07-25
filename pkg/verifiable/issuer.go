@@ -5,7 +5,6 @@ import (
 	"bytes"
 	"compress/gzip"
 	"crypto/ecdsa"
-	_ "embed"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -26,11 +25,6 @@ var (
 	secp256k1Prefix = []byte{0xe7, 0x01}
 	trueList        = MustEncodeList([]byte{1})
 	falseList       = MustEncodeList([]byte{0})
-
-	//go:embed w3.org_ns_credentials_v2.json
-	w3cNSCredentialsV2 []byte
-	//go:embed schema_vin.json
-	vinSchema []byte
 )
 
 // Config contains the configuration for a Issuer.
@@ -120,9 +114,9 @@ func (i *Issuer) CreateVINVC(subject VINSubject, expirationDate time.Time) ([]by
 	tokenIDStr := strconv.FormatUint(uint64(subject.VehicleTokenID), 10)
 	statusURL := i.baseStatusURL.JoinPath(tokenIDStr)
 	credential := Credential{
-		Context: []string{
+		Context: []any{
 			"https://www.w3.org/ns/credentials/v2",
-			"https://schema.org",
+			map[string]string{"vehicleIdentificationNumber": "https://schema.org/vehicleIdentificationNumber"},
 			i.localContext,
 		},
 		ID:        "urn:uuid:" + id,
@@ -174,7 +168,7 @@ func (i *Issuer) CreateBitstringStatusListVC(tokenID uint32, revoked bool) ([]by
 	issuanceDate := time.Now().UTC().Format(time.RFC3339)
 
 	credential := Credential{
-		Context: []string{
+		Context: []any{
 			"https://www.w3.org/ns/credentials/v2",
 		},
 		ID:        statusURL.String(),

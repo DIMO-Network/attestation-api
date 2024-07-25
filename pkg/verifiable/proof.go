@@ -116,29 +116,6 @@ func signData(hashData []byte, privateKey *ecdsa.PrivateKey, cryptosuite string)
 
 func DefaultDocumentLoader(localSchemaURL, localSchema string) (ld.DocumentLoader, error) {
 	docLoader := ld.NewCachingDocumentLoader(ld.NewRFC7324CachingDocumentLoader(nil))
-
-	w3c, err := os.CreateTemp("", "")
-	if err != nil {
-		return nil, fmt.Errorf("failed to create temp w3c file: %w", err)
-	}
-	if _, err := w3c.Write(w3cNSCredentialsV2); err != nil {
-		return nil, fmt.Errorf("failed to write to temp w3c file: %w", err)
-	}
-	if err := w3c.Close(); err != nil {
-		return nil, fmt.Errorf("failed to close temp w3c file: %w", err)
-	}
-
-	schema, err := os.CreateTemp("", "")
-	if err != nil {
-		return nil, fmt.Errorf("failed to create temp schema file: %w", err)
-	}
-	if _, err := schema.Write(vinSchema); err != nil {
-		return nil, fmt.Errorf("failed to write to temp schema file: %w", err)
-	}
-	if err := schema.Close(); err != nil {
-		return nil, fmt.Errorf("failed to close temp schema file: %w", err)
-	}
-
 	localSchemaFile, err := os.CreateTemp("", "")
 	if err != nil {
 		return nil, fmt.Errorf("failed to create temp local schema file: %w", err)
@@ -151,9 +128,7 @@ func DefaultDocumentLoader(localSchemaURL, localSchema string) (ld.DocumentLoade
 	}
 
 	err = docLoader.PreloadWithMapping(map[string]string{
-		"https://www.w3.org/ns/credentials/v2": w3c.Name(),
-		"https://schema.org":                   schema.Name(),
-		localSchemaURL:                         localSchemaFile.Name(),
+		localSchemaURL: localSchemaFile.Name(),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to preload with mapping: %w", err)

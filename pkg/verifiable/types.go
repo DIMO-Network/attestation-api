@@ -7,7 +7,7 @@ import (
 
 // Credential represents a verifiable credential.
 type Credential struct {
-	Context           []string         `json:"@context,omitempty"`
+	Context           []any            `json:"@context,omitempty"`
 	ID                string           `json:"id,omitempty"`
 	Type              []string         `json:"type,omitempty"`
 	Issuer            string           `json:"issuer,omitempty"`
@@ -62,7 +62,7 @@ type ProofOptions struct {
 // proofOptionsWithContext contains the proof options with the context.
 // this is used for canonicalization.
 type ProofOptionsWithContext struct {
-	Context []string `json:"@context,omitempty"`
+	Context []any `json:"@context,omitempty"`
 	ProofOptions
 }
 

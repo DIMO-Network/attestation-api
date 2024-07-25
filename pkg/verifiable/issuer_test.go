@@ -140,7 +140,7 @@ func TestCreateVINVC(t *testing.T) {
 
 			// Verify credential fields
 			require.Equal(t, "https://www.w3.org/ns/credentials/v2", credential.Context[0])
-			require.Equal(t, "https://schema.org", credential.Context[1])
+			require.Equal(t, map[string]any{"vehicleIdentificationNumber": "https://schema.org/vehicleIdentificationNumber"}, credential.Context[1])
 			require.Equal(t, baseURL.String(), credential.Context[2])
 			require.Equal(t, "urn:uuid:"+credential.ID[9:], credential.ID)
 			require.Equal(t, "VerifiableCredential", credential.Type[0])
@@ -273,8 +273,6 @@ func TestTamperedPayload(t *testing.T) {
 		BaseJSONLDURL:     baseURL,
 	}
 
-	// Update the BaseKeyURL to point to the test server
-	// config.BaseKeyURL = keyURL
 	issuerService, err := verifiable.NewIssuer(config)
 	require.NoError(t, err)
 
@@ -406,7 +404,6 @@ func validateProof(t *testing.T, proof verifiable.Proof, credential verifiable.C
 	ldProcessor := ld.NewJsonLdProcessor()
 	testJSONLDContext := `{
   "@context": {
-    "id": "@id",
     "recordedAt": {
       "@id": "https://example.com#recordedAt",
       "@type": "@id"
@@ -415,7 +412,6 @@ func validateProof(t *testing.T, proof verifiable.Proof, credential verifiable.C
       "@id": "https://example.com#recordedBy",
       "@type": "@id"
     },
-    "type": "@type",
     "vehicleContractAddress": {
       "@id": "https://example.com#vehicleContractAddress",
       "@type": "@id"
