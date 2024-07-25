@@ -2,8 +2,7 @@ definitions:
   github_com_DIMO-Network_attestation-api_pkg_verifiable.Credential:
     properties:
       '@context':
-        items:
-          type: string
+        items: {}
         type: array
       credentialStatus:
         $ref: '#/definitions/github_com_DIMO-Network_attestation-api_pkg_verifiable.CredentialStatus'

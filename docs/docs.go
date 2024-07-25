@@ -193,9 +193,7 @@ const docTemplate = `{
             "properties": {
                 "@context": {
                     "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
+                    "items": {}
                 },
                 "credentialStatus": {
                     "$ref": "#/definitions/github_com_DIMO-Network_attestation-api_pkg_verifiable.CredentialStatus"
