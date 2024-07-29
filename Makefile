@@ -2,7 +2,7 @@
 
 PATHINSTBIN = $(abspath ./bin)
 export PATH := $(PATHINSTBIN):$(PATH)
-SHELL := env PATH=$(PATH) /bin/sh
+SHELL := env PATH=$(PATH) $(SHELL)
 
 BIN_NAME					?= attestation-api
 DEFAULT_INSTALL_DIR			:= $(go env GOPATH)/$(PATHINSTBIN)
