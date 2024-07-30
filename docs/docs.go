@@ -144,7 +144,7 @@ const docTemplate = `{
             }
         },
         "/v1/vc/vin/{tokenId}": {
-            "get": {
+            "post": {
                 "security": [
                     {
                         "BearerAuth": []
