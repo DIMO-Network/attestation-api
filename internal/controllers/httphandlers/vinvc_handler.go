@@ -84,7 +84,7 @@ func NewVCController(vinService VINVCService, telemetryURL string) (*VINVCContro
 // @Param  force query bool false "force generation of a new VC even if an unexpired VC exists"
 // @Success 200 {object} getVINVCResponse
 // @Security     BearerAuth
-// @Router /v1/vc/vin/{tokenId} [get]
+// @Router /v1/vc/vin/{tokenId} [post]
 func (v *VINVCController) GetVINVC(fiberCtx *fiber.Ctx) error {
 	ctx := fiberCtx.Context()
 	tokenIDStr := fiberCtx.Params(TokenIDParam)
