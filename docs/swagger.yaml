@@ -193,7 +193,7 @@ paths:
       tags:
       - VINVC
   /v1/vc/vin/{tokenId}:
-    get:
+    post:
       consumes:
       - application/json
       description: Get the VIN VC for a given token Id of a vehicle NFT. If a unexpired
