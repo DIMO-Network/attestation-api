@@ -9,29 +9,34 @@ import (
 	"github.com/ClickHouse/clickhouse-go/v2"
 	"github.com/DIMO-Network/attestation-api/pkg/verifiable"
 	"github.com/DIMO-Network/nameindexer"
-	"github.com/DIMO-Network/nameindexer/pkg/clickhouse/service"
+	"github.com/DIMO-Network/nameindexer/pkg/clickhouse/indexrepo"
 )
 
 // Repo manages storing and retrieving VCs.
 type Repo struct {
-	indexService *service.Service
+	indexService *indexrepo.Service
 	dataType     string
+	bucketName   string
 }
 
 // New creates a new instance of VCRepo.
-func New(chConn clickhouse.Conn, objGetter service.ObjectGetter, bucketName, vinvcDataType string) *Repo {
+func New(chConn clickhouse.Conn, objGetter indexrepo.ObjectGetter, bucketName, vinvcDataType string) *Repo {
 	return &Repo{
-		indexService: service.New(chConn, objGetter, bucketName),
+		indexService: indexrepo.New(chConn, objGetter),
 		dataType:     vinvcDataType,
+		bucketName:   bucketName,
 	}
 }
 
 // GetLatestVINVC fetches the latest vinvc from S3.
 func (r *Repo) GetLatestVINVC(ctx context.Context, vehicleTokenID uint32) (*verifiable.Credential, error) {
-	subject := nameindexer.Subject{
-		TokenID: &vehicleTokenID,
+	opts := indexrepo.SearchOptions{
+		Subject: &nameindexer.Subject{
+			Identifier: nameindexer.TokenID(vehicleTokenID),
+		},
+		DataType: &r.dataType,
 	}
-	data, err := r.indexService.GetLatestData(ctx, r.dataType, subject)
+	data, err := r.indexService.GetLatestData(ctx, r.bucketName, opts)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get vc: %w", err)
 	}
@@ -48,12 +53,12 @@ func (r *Repo) StoreVINVC(ctx context.Context, vehicleTokenID uint32, rawVC json
 	index := nameindexer.Index{
 		Timestamp: time.Now(),
 		Subject: nameindexer.Subject{
-			TokenID: &vehicleTokenID,
+			Identifier: nameindexer.TokenID(vehicleTokenID),
 		},
 		DataType: r.dataType,
 	}
 
-	err := r.indexService.StoreFile(ctx, &index, rawVC)
+	err := r.indexService.StoreFile(ctx, &index, r.bucketName, rawVC)
 	if err != nil {
 		return fmt.Errorf("failed to store VC: %w", err)
 	}
