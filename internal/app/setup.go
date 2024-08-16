@@ -12,10 +12,13 @@ import (
 
 	"github.com/DIMO-Network/attestation-api/internal/attestation/apis/identity"
 	"github.com/DIMO-Network/attestation-api/internal/attestation/apis/vinvalidator"
+	"github.com/DIMO-Network/attestation-api/internal/attestation/pom"
+	"github.com/DIMO-Network/attestation-api/internal/attestation/repos/connectivity"
 	"github.com/DIMO-Network/attestation-api/internal/attestation/repos/fingerprint"
 	"github.com/DIMO-Network/attestation-api/internal/attestation/repos/vcrepo"
 	"github.com/DIMO-Network/attestation-api/internal/attestation/vinvc"
 	"github.com/DIMO-Network/attestation-api/internal/config"
+	"github.com/DIMO-Network/attestation-api/internal/controllers/httphandlers"
 	"github.com/DIMO-Network/attestation-api/pkg/verifiable"
 	"github.com/DIMO-Network/clickhouse-infra/pkg/connect"
 	ddgrpc "github.com/DIMO-Network/device-definitions-api/pkg/grpc"
@@ -28,8 +31,8 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 )
 
-// createVINController creates a new VINVC controller by initializing the required services using the provided settings.
-func createVINCService(logger *zerolog.Logger, settings *config.Settings, statusRoute, keysRoute, vocabRoute, jsonLDRoute string) (*vinvc.Service, error) {
+// createHttpController creates a new http controller with the given settings.
+func createHttpController(logger *zerolog.Logger, settings *config.Settings, statusRoute, keysRoute, vocabRoute, jsonLDRoute string) (*httphandlers.HTTPController, error) {
 	// Initialize ClickHouse connection
 	chConn, err := connect.GetClickhouseConn(&settings.Clickhouse)
 	if err != nil {
@@ -77,7 +80,17 @@ func createVINCService(logger *zerolog.Logger, settings *config.Settings, status
 	// Initialize VC service using the initialized services
 	vinvcService := vinvc.NewService(logger, vcRepo, identityAPI, fingerprintRepo, vinValidateSerivce, issuer, revokedList, settings.VehicleNFTAddress)
 
-	return vinvcService, nil
+	conRepo := connectivity.NewConnectivityRepo(chConn, s3Client, settings.AutoPiDataType, settings.AutoPiBucketName, settings.HashDogDataType, settings.HashDogBucketName, settings.StatusDataType, settings.StatusBucketName)
+
+	pomService := pom.NewService(logger, identityAPI, conRepo, vcRepo, issuer, settings.VehicleNFTAddress)
+	// func NewService(logger zerolog.Logger, identityAPI IdentityAPI, connectivityRepo ConnectivityRepo, vcRepo VCRepo, issuer Issuer, vehicleContractAddress string) *Service {
+
+	ctrl, err := httphandlers.NewVCController(vinvcService, pomService, settings.TelemetryURL)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create VC controller: %w", err)
+	}
+	return ctrl, nil
+
 }
 
 // s3ClientFromSettings creates an S3 client from the given settings.

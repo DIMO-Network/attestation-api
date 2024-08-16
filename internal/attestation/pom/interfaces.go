@@ -1,4 +1,4 @@
-//go:generate mockgen -source=interfaces.go -destination=interfaces_mock_test.go -package=pom_tests
+//go:generate mockgen -source=interfaces.go -destination=interfaces_mock_test.go -package=pom_test
 package pom
 
 import (
@@ -24,9 +24,9 @@ type IdentityAPI interface {
 
 // ConnectivityRepo defines the interface for retrieving connectivity events.
 type ConnectivityRepo interface {
-	GetAutoPiEvents(ctx context.Context, pairedDeviceIMEI string, after time.Time, limit int) ([][]byte, error)
-	GetHashDogEvents(ctx context.Context, pairedDeviceAddr common.Address, after time.Time, limit int) ([][]byte, error)
-	GetStatusEvents(ctx context.Context, vehicleTokenID uint32, after time.Time, limit int) ([][]byte, error)
+	GetAutoPiEvents(ctx context.Context, pairedDeviceIMEI string, after, before time.Time, limit int) ([][]byte, error)
+	GetHashDogEvents(ctx context.Context, pairedDeviceAddr common.Address, after, before time.Time, limit int) ([][]byte, error)
+	GetStatusEvents(ctx context.Context, vehicleTokenID uint32, after, before time.Time, limit int) ([][]byte, error)
 }
 
 // PairedDevice represents a device paired with a token.
@@ -51,11 +51,7 @@ type VINAPI interface {
 
 // Issuer defines the interface for creating control documents.
 type Issuer interface {
-	CreateBitstringStatusListVC(tokenID uint32, revoked bool) ([]byte, error)
-	CreateKeyControlDoc() ([]byte, error)
 	CreatePOMVC(vinSubject verifiable.POMSubject, expTime time.Time) ([]byte, error)
-	CreateJSONLDDoc() ([]byte, error)
-	CreateVocabWebpage() ([]byte, error)
 }
 
 // AutoPiLocation represents a location for AutoPi

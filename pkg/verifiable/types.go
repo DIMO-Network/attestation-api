@@ -103,6 +103,7 @@ type MultiKey struct {
 
 // POMSubject represents the subject of the Proof of Movement VC.
 type POMSubject struct {
+	ID string `json:"id,omitempty"`
 	// VehicleTokenID is the token ID of the vehicle NFT.
 	VehicleTokenID uint32 `json:"vehicleTokenId,omitempty"`
 	// VehicleContractAddress is the address of the vehicle contract.

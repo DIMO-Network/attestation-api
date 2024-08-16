@@ -93,6 +93,15 @@ definitions:
           $ref: '#/definitions/github_com_DIMO-Network_attestation-api_pkg_verifiable.MultiKey'
         type: array
     type: object
+  internal_controllers_httphandlers.getPOMVCResponse:
+    properties:
+      message:
+        type: string
+      vcQuery:
+        type: string
+      vcUrl:
+        type: string
+    type: object
   internal_controllers_httphandlers.getVINVCResponse:
     properties:
       message:
@@ -168,6 +177,30 @@ paths:
           schema:
             $ref: '#/definitions/github_com_DIMO-Network_attestation-api_pkg_verifiable.VerificationControlDocument'
       summary: Get verification control document
+      tags:
+      - VINVC
+  /v1/vc/pom/{tokenId}:
+    post:
+      consumes:
+      - application/json
+      description: Create a Proof of Movement VC for a given token Id of a vehicle
+        NFT.
+      parameters:
+      - description: token Id of the vehicle NFT
+        in: path
+        name: tokenId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_controllers_httphandlers.getPOMVCResponse'
+      security:
+      - BearerAuth: []
+      summary: Create POM VC
       tags:
       - VINVC
   /v1/vc/status/{group}:

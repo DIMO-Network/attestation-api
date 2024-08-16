@@ -162,6 +162,61 @@ func (i *Issuer) CreateVINVC(subject VINSubject, expirationDate time.Time) ([]by
 	return signedCreds, nil
 }
 
+func (i *Issuer) CreatePOMVC(subject POMSubject, expirationDate time.Time) ([]byte, error) {
+	id := uuid.New().String()
+	issuanceDate := time.Now().UTC().Format(time.RFC3339)
+
+	tokenIDStr := strconv.FormatUint(uint64(subject.VehicleTokenID), 10)
+	statusURL := i.baseStatusURL.JoinPath(tokenIDStr)
+	credential := Credential{
+		Context: []any{
+			"https://www.w3.org/ns/credentials/v2",
+			map[string]string{"vehicleIdentificationNumber": "https://schema.org/vehicleIdentificationNumber"},
+			i.localContext,
+		},
+		ID:        "urn:uuid:" + id,
+		Type:      []string{"VerifiableCredential", "Vehicle"},
+		Issuer:    i.issuer,
+		ValidFrom: issuanceDate,
+		ValidTo:   expirationDate.Format(time.RFC3339),
+		CredentialStatus: CredentialStatus{
+			ID:                   statusURL.String(),
+			Type:                 "BitstringStatusListEntry",
+			StatusPurpose:        "revocation",
+			StatusListIndex:      0,
+			StatusListCredential: i.baseStatusURL.String(),
+		},
+	}
+	subject.ID = fmt.Sprintf("did:nft:%d_erc721:%s_%d", i.chainID, i.vehicleNFTAddress, subject.VehicleTokenID)
+
+	rawSubject, err := json.Marshal(subject)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal credential subject: %w", err)
+	}
+	credential.CredentialSubject = rawSubject
+
+	proofOptions := ProofOptions{
+		Type:               dataIntegrityProof,
+		VerificationMethod: i.verificationMethod,
+		Cryptosuite:        ecdsaRdfc2019,
+		Created:            issuanceDate,
+		ProofPurpose:       "assertionMethod",
+	}
+
+	proof, err := CreateProof(credential, proofOptions, i.privateKey, i.ldProcessor, i.ldOptions)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create proof: %w", err)
+	}
+	credential.Proof = proof
+
+	signedCreds, err := json.Marshal(credential)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal signed credential: %w", err)
+	}
+
+	return signedCreds, nil
+}
+
 func (i *Issuer) CreateBitstringStatusListVC(tokenID uint32, revoked bool) ([]byte, error) {
 	tokenIDStr := strconv.FormatUint(uint64(tokenID), 10)
 	statusURL := i.baseStatusURL.JoinPath(tokenIDStr)

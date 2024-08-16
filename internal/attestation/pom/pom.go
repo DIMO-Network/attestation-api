@@ -1,30 +1,11 @@
 // Package pom manages the POM (Proof of Movement) verifiable credential.
-// ### Steps for Creating a Proof of Movement VC
-
-// 1. **Get Aftermarket Devices for a Vehicle**:
-
-//    - Query the identity-API to retrieve the aftermarket devices associated with the vehicle.
-
-// 2. **Device Data Retrieval**:
-
-//    - **AutoPi**:
-//      - Look up the device connectivity info in s3 using the device address.
-//      - Continue to pull Twilio logs for the device using the address until two records with different `location.cell_id` values are found.
-//    - **Smartcar or Tesla**:
-//      - Pull status payloads until there is a change in latitude and longitude with a significant difference. (0.5 miles?)
-//    - **Macaron**:
-//      - Look up the device payloads in s3 using the device address.
-//      - Continue to pull LoRaWAN logs for the device using the address until two records with different `via.[0].metadata.gatewayId` values are found.
-
-// 3. **Create Proof of Movement VC**:
-
-// - Create a new Proof of Movement VC that includes the times the vehicle was seen at each location (cell ID for AutoPi, latitude/longitude for Smartcar or Tesla, and gateway ID for Macaron).
 package pom
 
 import (
 	"cmp"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"math"
 	"slices"
@@ -32,6 +13,10 @@ import (
 
 	"github.com/DIMO-Network/attestation-api/internal/models"
 	"github.com/DIMO-Network/attestation-api/pkg/verifiable"
+	"github.com/DIMO-Network/model-garage/pkg/twilio"
+	"github.com/DIMO-Network/model-garage/pkg/vss"
+	"github.com/DIMO-Network/model-garage/pkg/vss/convert"
+	"github.com/DIMO-Network/shared"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/gofiber/fiber/v2"
 	"github.com/rs/zerolog"
@@ -42,6 +27,8 @@ const (
 	hashDogManufacturer = "HashDog"
 )
 
+var errNoLocation = fmt.Errorf("no location data found")
+
 type Service struct {
 	logger                 zerolog.Logger
 	identityAPI            IdentityAPI
@@ -51,8 +38,19 @@ type Service struct {
 	vehicleContractAddress string
 }
 
-// GeneratePOMVC generates a Proof of Movement VC.
-func (s *Service) GeneratePOMVC(ctx context.Context, tokenID uint32) error {
+func NewService(logger *zerolog.Logger, identityAPI IdentityAPI, connectivityRepo ConnectivityRepo, vcRepo VCRepo, issuer Issuer, vehicleContractAddress string) *Service {
+	return &Service{
+		logger:                 *logger,
+		identityAPI:            identityAPI,
+		connectivityRepo:       connectivityRepo,
+		vcRepo:                 vcRepo,
+		issuer:                 issuer,
+		vehicleContractAddress: vehicleContractAddress,
+	}
+}
+
+// CreatePOMVC generates a Proof of Movement VC.
+func (s *Service) CreatePOMVC(ctx context.Context, tokenID uint32) error {
 	logger := s.logger.With().Uint32("vehicleTokenId", tokenID).Logger()
 	// get meta data about the vehilce
 	vehicleInfo, err := s.identityAPI.GetVehicleInfo(ctx, tokenID)
@@ -60,7 +58,7 @@ func (s *Service) GeneratePOMVC(ctx context.Context, tokenID uint32) error {
 		return handleError(err, &logger, "Failed to get vehicle info")
 	}
 
-	locations, err := getLocation(ctx, vehicleInfo, &logger)
+	locations, err := s.getLocationForVehicle(ctx, vehicleInfo, &logger)
 	if err != nil {
 		return handleError(err, &logger, "Failed to get locations")
 	}
@@ -70,41 +68,45 @@ func (s *Service) GeneratePOMVC(ctx context.Context, tokenID uint32) error {
 		RecordedBy:             "DIMO", //TODO: what should this be?
 		Locations:              locations,
 	}
-	s.issuer.CreatePOMVC(pomSubject, time.Now().Add(24*time.Hour))
-
+	vc, err := s.issuer.CreatePOMVC(pomSubject, time.Now().Add(24*time.Hour))
+	if err != nil {
+		return handleError(err, &logger, "Failed to create POM VC")
+	}
+	fmt.Println(string(vc))
 	return nil
 }
 
-func getLocation(ctx context.Context, vehicleInfo *models.VehicleInfo, logger *zerolog.Logger) ([]verifiable.Location, error) {
+func (s *Service) getLocationForVehicle(ctx context.Context, vehicleInfo *models.VehicleInfo, logger *zerolog.Logger) ([]verifiable.Location, error) {
 	// first try and get the location from the aftermarket devices associated with the vehicle
 
 	// stable sort the paired devices for more consistent results.
 	// sort the paired devices to have the aftermarket devices first then. If neither is aftermarket, sort by type lexicographically.
 	slices.SortStableFunc(vehicleInfo.PairedDevices, pairedDeviceSorterfunc)
+	// slices.Reverse(vehicleInfo.PairedDevices)
 	for i := range vehicleInfo.PairedDevices {
-		locations, err := getLocations(ctx, vehicleInfo.TokenID, vehicleInfo.PairedDevices[i], logger)
-		if err != nil {
+		locations, err := s.getLocationsForDevice(ctx, vehicleInfo.TokenID, vehicleInfo.PairedDevices[i], logger)
+		if err == nil {
+			return locations, nil
+		}
+		if !errors.Is(err, errNoLocation) {
 			return nil, err
 		}
-		return locations, nil
-
 	}
 	return nil, fmt.Errorf("no location data found for vehicle")
 }
 
-func getLocations(ctx context.Context, vehicleTokenID uint32, device models.PairedDevice, logger *zerolog.Logger) ([]verifiable.Location, error) {
-	var repo ConnectivityRepo
+func (s *Service) getLocationsForDevice(ctx context.Context, vehicleTokenID uint32, device models.PairedDevice, logger *zerolog.Logger) ([]verifiable.Location, error) {
 	if device.Type == models.DeviceTypeAftermarket {
 		switch device.ManufacturerName {
 		case autoPiManufacturer:
-			return pullAutoPiEvents(ctx, repo, device.IMEI, time.Now())
+			return pullAutoPiEvents(ctx, s.connectivityRepo, device.IMEI, time.Now())
 		case hashDogManufacturer:
-			return pullMacaronEvents(ctx, repo, device.Address, time.Now())
+			return pullMacaronEvents(ctx, s.connectivityRepo, device.Address, time.Now())
 		default:
-			return nil, fmt.Errorf("unsupported device type: %s", device.Type)
+			return nil, fmt.Errorf("unsupported aftermarket Manufacture: %s", device.ManufacturerName)
 		}
 	}
-	return pullStatusEvents(ctx, repo, vehicleTokenID, time.Now())
+	return pullStatusEvents(ctx, s.connectivityRepo, vehicleTokenID, time.Now())
 }
 
 // handleError logs an error and returns a Fiber error with the given message.
@@ -131,92 +133,136 @@ func pairedDeviceSorterfunc(a, b models.PairedDevice) int {
 
 func pullAutoPiEvents(ctx context.Context, repo ConnectivityRepo, deviceIMEI string, startTime time.Time) ([]verifiable.Location, error) {
 	limit := 10
-	after := startTime
-	var prevLocation AutoPiLocation
-
+	before := startTime
+	weekAgo := startTime.Add(-7 * 24 * time.Hour)
+	var prevEvent twilio.ConnectionEvent
 	for time.Since(startTime) < 7*24*time.Hour {
-		events, err := repo.GetAutoPiEvents(ctx, deviceIMEI, after, limit)
+		events, err := repo.GetAutoPiEvents(ctx, deviceIMEI, weekAgo, before, limit)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get AutoPi events: %w", err)
 		}
-
-		for _, event := range events {
-			var loc AutoPiLocation
-			if err := json.Unmarshal(event, &loc); err != nil {
+		if len(events) == 0 {
+			break
+		}
+		for _, rawEvent := range events {
+			var cloudevent shared.CloudEvent[twilio.ConnectionEvent]
+			if err := json.Unmarshal(rawEvent, &cloudevent); err != nil {
 				return nil, fmt.Errorf("failed to unmarshal AutoPi event: %w", err)
 			}
-			if prevLocation.CellID != "" && prevLocation.CellID != loc.CellID {
-				return []verifiable.Location{
-					{
-						LocationType:  "cell_id",
-						LocationValue: verifiable.CellID{CellID: prevLocation.CellID},
-						Timestamp:     prevLocation.Timestamp,
-					},
-					{
-						LocationType:  "cell_id",
-						LocationValue: verifiable.CellID{CellID: loc.CellID},
-						Timestamp:     loc.Timestamp,
-					}}, nil
+			event := cloudevent.Data
+			if event.Location != nil && event.Location.CellID != "" {
+				if prevEvent.Location != nil && prevEvent.Location.CellID != event.Location.CellID {
+					return []verifiable.Location{
+						{
+							LocationType:  "cell_id",
+							LocationValue: verifiable.CellID{CellID: prevEvent.Location.CellID},
+							Timestamp:     prevEvent.Timestamp,
+						},
+						{
+							LocationType:  "cell_id",
+							LocationValue: verifiable.CellID{CellID: event.Location.CellID},
+							Timestamp:     event.Timestamp,
+						},
+					}, nil
+				}
+				prevEvent = event
 			}
-			prevLocation = loc
-			after = loc.Timestamp
+			before = event.Timestamp
 		}
 
 		limit = int(math.Min(1000, float64(limit*2)))
 	}
 
-	return nil, fmt.Errorf("no location change detected within a week")
+	return nil, errNoLocation
 }
 
 func pullStatusEvents(ctx context.Context, repo ConnectivityRepo, vehicleTokenID uint32, startTime time.Time) ([]verifiable.Location, error) {
 	limit := 10
-	after := startTime
+	before := startTime
+	weekAgo := startTime.Add(-7 * 24 * time.Hour)
 	var prevLatitude, prevLongitude float64
 
-	for time.Since(startTime) < 7*24*time.Hour {
-		events, err := repo.GetStatusEvents(ctx, vehicleTokenID, after, limit)
+	prevSource := ""
+	for weekAgo.Before(before) {
+		events, err := repo.GetStatusEvents(ctx, vehicleTokenID, weekAgo, before, limit)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get status events: %w", err)
 		}
-
+		if len(events) == 0 {
+			break
+		}
 		for _, event := range events {
-			var loc StatusLocation
-			if err := json.Unmarshal(event, &loc); err != nil {
-				return nil, fmt.Errorf("failed to unmarshal status event: %w", err)
+			signals, err := convert.SignalsFromPayload(context.Background(), nil, event)
+			if err != nil {
+				return nil, fmt.Errorf("failed to convert signals: %w", err)
 			}
-			if prevLatitude != 0 && prevLongitude != 0 && distance(prevLatitude, prevLongitude, loc.Latitude, loc.Longitude) > 0.5 {
+			if len(signals) == 0 {
+				continue
+			}
+			source := signals[0].Source
+			if source != prevSource {
+				fmt.Println("source", source)
+				prevSource = source
+			}
+
+			// if signals[0].Source ==
+			var curLatitude, curLongitude float64
+			timeStamp := time.Time{}
+			for _, signal := range signals {
+				if signal.Name == vss.FieldCurrentLocationLatitude {
+					curLatitude = signal.ValueNumber
+					timeStamp = signal.Timestamp
+				} else if signal.Name == vss.FieldCurrentLocationLongitude {
+					curLongitude = signal.ValueNumber
+				}
+			}
+			if curLatitude == 0 || curLongitude == 0 {
+				continue
+			}
+			if prevLatitude == 0 && prevLongitude == 0 {
+				prevLatitude = curLatitude
+				prevLongitude = curLongitude
+				continue
+			}
+			if prevLatitude != curLatitude && prevLongitude != curLongitude {
+				fmt.Println("new location", curLatitude, curLongitude)
+			}
+			dist := distance(prevLatitude, prevLongitude, curLatitude, curLongitude)
+			if dist > 0.5 {
 				return []verifiable.Location{
 					{
 						LocationType:  "lat_lng",
 						LocationValue: verifiable.LatLng{Latitude: prevLatitude, Longitude: prevLongitude},
-						Timestamp:     after,
+						Timestamp:     before,
 					},
 					{
 						LocationType:  "lat_lng",
-						LocationValue: verifiable.LatLng{Latitude: loc.Latitude, Longitude: loc.Longitude},
-						Timestamp:     loc.Timestamp,
+						LocationValue: verifiable.LatLng{Latitude: curLatitude, Longitude: curLongitude},
+						Timestamp:     timeStamp,
 					}}, nil
 			}
-			prevLatitude = loc.Latitude
-			prevLongitude = loc.Longitude
-			after = loc.Timestamp
+			before = timeStamp
 		}
 
 		limit = int(math.Min(1000, float64(limit*2)))
 	}
 
-	return nil, fmt.Errorf("no location change detected within a week")
+	return nil, errNoLocation
 }
 
 func pullMacaronEvents(ctx context.Context, repo ConnectivityRepo, deviceAddr common.Address, startTime time.Time) ([]verifiable.Location, error) {
 	limit := 10
-	after := startTime
+	before := startTime
+	weekAgo := startTime.Add(-7 * 24 * time.Hour)
 	var prevGatewayID string
 
 	for time.Since(startTime) < 7*24*time.Hour {
-		events, err := repo.GetHashDogEvents(ctx, deviceAddr, after, limit)
+		events, err := repo.GetHashDogEvents(ctx, deviceAddr, weekAgo, before, limit)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get Macaron events: %w", err)
+		}
+		if len(events) == 0 {
+			break
 		}
 
 		for _, event := range events {
@@ -229,7 +275,7 @@ func pullMacaronEvents(ctx context.Context, repo ConnectivityRepo, deviceAddr co
 					{
 						LocationType:  "gateway_id",
 						LocationValue: verifiable.GatewayID{GatewayID: prevGatewayID},
-						Timestamp:     after,
+						Timestamp:     before,
 					},
 					{
 						LocationType:  "gateway_id",
@@ -238,13 +284,13 @@ func pullMacaronEvents(ctx context.Context, repo ConnectivityRepo, deviceAddr co
 					}}, nil
 			}
 			prevGatewayID = loc.GatewayID
-			after = loc.Timestamp
+			before = loc.Timestamp
 		}
 
 		limit = int(math.Min(1000, float64(limit*2)))
 	}
 
-	return nil, fmt.Errorf("no location change detected within a week")
+	return nil, errNoLocation
 }
 
 func distance(lat1, lon1, lat2, lon2 float64) float64 {

@@ -18,17 +18,21 @@ const (
 
 	// StatusGroupParam is the parameter name for the status group.
 	StatusGroupParam = "group"
+
+	vinvcQuery = "query {vinVCLatest(tokenId: %d) {rawVC}}"
+	pomQuery   = "query {pomVCLatest(tokenId: %d) {rawVC}}"
 )
 
-type getVINVCResponse struct {
+type getVCResponse struct {
 	VCURL   string `json:"vcUrl"`
 	VCQuery string `json:"vcQuery"`
 	Message string `json:"message"`
 }
 
-// VINVCController handles VIN VC-related http requests.
-type VINVCController struct {
+// HTTPController handles VIN VC-related http requests.
+type HTTPController struct {
 	vinService       VINVCService
+	pomService       POMVCService
 	telemetryBaseURL *url.URL
 	publicKeyDoc     json.RawMessage
 	jsonLDDoc        json.RawMessage
@@ -44,8 +48,12 @@ type VINVCService interface {
 	GenerateVocabDocument() (json.RawMessage, error)
 }
 
+type POMVCService interface {
+	CreatePOMVC(ctx context.Context, tokenID uint32) error
+}
+
 // NewVCController creates a new http VCController.
-func NewVCController(vinService VINVCService, telemetryURL string) (*VINVCController, error) {
+func NewVCController(vinService VINVCService, pomService POMVCService, telemetryURL string) (*HTTPController, error) {
 	parsedURL, err := sanitizeTelemetryURL(telemetryURL)
 	if err != nil {
 		return nil, err
@@ -66,9 +74,10 @@ func NewVCController(vinService VINVCService, telemetryURL string) (*VINVCContro
 		return nil, fmt.Errorf("failed to generate vocabulary document: %w", err)
 	}
 
-	return &VINVCController{
+	return &HTTPController{
 		publicKeyDoc:     publicKeyDoc,
 		vinService:       vinService,
+		pomService:       pomService,
 		telemetryBaseURL: parsedURL,
 		jsonLDDoc:        jsonLDDoc,
 		vocabDoc:         vocabDoc,
@@ -82,10 +91,10 @@ func NewVCController(vinService VINVCService, telemetryURL string) (*VINVCContro
 // @Produce json
 // @Param  tokenId path int true "token Id of the vehicle NFT"
 // @Param  force query bool false "force generation of a new VC even if an unexpired VC exists"
-// @Success 200 {object} getVINVCResponse
+// @Success 200 {object} getVCResponse
 // @Security     BearerAuth
 // @Router /v1/vc/vin/{tokenId} [post]
-func (v *VINVCController) GetVINVC(fiberCtx *fiber.Ctx) error {
+func (v *HTTPController) GetVINVC(fiberCtx *fiber.Ctx) error {
 	ctx := fiberCtx.Context()
 	tokenIDStr := fiberCtx.Params(TokenIDParam)
 	if tokenIDStr == "" {
@@ -103,7 +112,7 @@ func (v *VINVCController) GetVINVC(fiberCtx *fiber.Ctx) error {
 	if err != nil {
 		return fmt.Errorf("failed to get or create VC: %w", err)
 	}
-	return fiberCtx.Status(fiber.StatusOK).JSON(v.successResponse(tokenID))
+	return fiberCtx.Status(fiber.StatusOK).JSON(v.successResponse(tokenID, vinvcQuery))
 }
 
 // @Summary Get VC Status
@@ -114,7 +123,7 @@ func (v *VINVCController) GetVINVC(fiberCtx *fiber.Ctx) error {
 // @Param  group path int true "status list group"
 // @Success 200 {object} verifiable.Credential
 // @Router /v1/vc/status/{group} [get]
-func (v *VINVCController) GetVCStatus(fiberCtx *fiber.Ctx) error {
+func (v *HTTPController) GetVCStatus(fiberCtx *fiber.Ctx) error {
 	tokenIDStr := fiberCtx.Params(StatusGroupParam)
 	if tokenIDStr == "" {
 		return fiber.NewError(fiber.StatusBadRequest, "tokenId path parameter is required")
@@ -140,7 +149,7 @@ func (v *VINVCController) GetVCStatus(fiberCtx *fiber.Ctx) error {
 // @Produce json
 // @Success 200 {object} verifiable.VerificationControlDocument
 // @Router /v1/vc/keys [get]
-func (v *VINVCController) GetPublicKeyDoc(fiberCtx *fiber.Ctx) error {
+func (v *HTTPController) GetPublicKeyDoc(fiberCtx *fiber.Ctx) error {
 	return fiberCtx.Status(fiber.StatusOK).JSON(v.publicKeyDoc)
 }
 
@@ -151,7 +160,7 @@ func (v *VINVCController) GetPublicKeyDoc(fiberCtx *fiber.Ctx) error {
 // @Produce json
 // @Success 200 {object} json.RawMessage
 // @Router /v1/vc/context [get]
-func (v *VINVCController) GetJSONLDDoc(fiberCtx *fiber.Ctx) error {
+func (v *HTTPController) GetJSONLDDoc(fiberCtx *fiber.Ctx) error {
 	return fiberCtx.Status(fiber.StatusOK).JSON(v.jsonLDDoc)
 }
 
@@ -162,16 +171,16 @@ func (v *VINVCController) GetJSONLDDoc(fiberCtx *fiber.Ctx) error {
 // @Produce html
 // @Success 200 {string} string
 // @Router /v1/vc/context/vocab [get]
-func (v *VINVCController) GetVocabDoc(fiberCtx *fiber.Ctx) error {
+func (v *HTTPController) GetVocabDoc(fiberCtx *fiber.Ctx) error {
 	fiberCtx.Set(fiber.HeaderContentType, fiber.MIMETextHTML)
 	return fiberCtx.Send(v.vocabDoc)
 }
 
 // successResponse generates a success response for the given token ID.
-func (v *VINVCController) successResponse(tokenID uint32) *getVINVCResponse {
+func (v *HTTPController) successResponse(tokenID uint32, query string) *getVCResponse {
 	queryURL := v.telemetryBaseURL.JoinPath("query")
-	gqlQuery := fmt.Sprintf("query {vinVCLatest(tokenId: %d) {rawVC}}", tokenID)
-	return &getVINVCResponse{
+	gqlQuery := fmt.Sprintf(query, tokenID)
+	return &getVCResponse{
 		VCURL:   queryURL.String(),
 		VCQuery: gqlQuery,
 		Message: "VC generated successfully. Retrieve using the provided GQL URL and query parameter.",
@@ -185,4 +194,33 @@ func sanitizeTelemetryURL(telemetryURL string) (*url.URL, error) {
 		return nil, fmt.Errorf("invalid telemetry URL: %s", telemetryURL)
 	}
 	return parsedURL, nil
+}
+
+// @Summary Create POM VC
+// @Description Create a Proof of Movement VC for a given token Id of a vehicle NFT.
+// @Tags VINVC
+// @Accept json
+// @Produce json
+// @Param  tokenId path int true "token Id of the vehicle NFT"
+// @Success 200 {object} getVCResponse
+// @Security     BearerAuth
+// @Router /v1/vc/pom/{tokenId} [post]
+func (v *HTTPController) GetPOMVC(fiberCtx *fiber.Ctx) error {
+	ctx := fiberCtx.Context()
+	tokenIDStr := fiberCtx.Params(TokenIDParam)
+	if tokenIDStr == "" {
+		return fiber.NewError(fiber.StatusBadRequest, "token_id query parameter is required")
+	}
+
+	tokenID64, err := strconv.ParseUint(tokenIDStr, 10, 32)
+	if err != nil {
+		return fiber.NewError(fiber.StatusBadRequest, "invalid token_id format")
+	}
+
+	tokenID := uint32(tokenID64)
+	err = v.pomService.CreatePOMVC(ctx, tokenID)
+	if err != nil {
+		return fmt.Errorf("failed to get or create VC: %w", err)
+	}
+	return fiberCtx.Status(fiber.StatusOK).JSON(v.successResponse(tokenID, pomQuery))
 }

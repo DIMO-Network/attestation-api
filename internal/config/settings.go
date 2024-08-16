@@ -15,6 +15,12 @@ type Settings struct {
 	FingerprintDataType       string          `yaml:"FINGERPRINT_DATA_TYPE"`
 	VINVCBucket               string          `yaml:"VINVC_BUCKET"`
 	VINVCDataType             string          `yaml:"VINVC_DATA_TYPE"`
+	AutoPiDataType            string          `yaml:"AUTOPI_DATA_TYPE"`
+	AutoPiBucketName          string          `yaml:"AUTOPI_BUCKET_NAME"`
+	HashDogDataType           string          `yaml:"HASHDOG_DATA_TYPE"`
+	HashDogBucketName         string          `yaml:"HASHDOG_BUCKET_NAME"`
+	StatusDataType            string          `yaml:"STATUS_DATA_TYPE"`
+	StatusBucketName          string          `yaml:"STATUS_BUCKET_NAME"`
 	IdentityAPIURL            string          `yaml:"IDENTITY_API_URL"`
 	S3AWSRegion               string          `yaml:"S3_AWS_REGION"`
 	S3AWSAccessKeyID          string          `yaml:"S3_AWS_ACCESS_KEY_ID"`
@@ -25,3 +31,5 @@ type Settings struct {
 	RevokedTokenIDs           string          `yaml:"REVOKED_TOKEN_IDS"`
 	Clickhouse                config.Settings `yaml:",inline"`
 }
+
+//settings.AutoPiDataType, settings.AutoPiBucketName, settings.HashDogDataType, settings.HashDogBucketName, settings.StatusDataType, settings.StatusBucketName)
