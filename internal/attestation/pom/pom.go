@@ -1,4 +1,3 @@
-// Package pom manages the POM (Proof of Movement) verifiable credential.
 package pom
 
 import (
@@ -13,11 +12,11 @@ import (
 
 	"github.com/DIMO-Network/attestation-api/internal/models"
 	"github.com/DIMO-Network/attestation-api/pkg/verifiable"
+	"github.com/DIMO-Network/model-garage/pkg/cloudevent"
 	"github.com/DIMO-Network/model-garage/pkg/lorawan"
 	"github.com/DIMO-Network/model-garage/pkg/twilio"
 	"github.com/DIMO-Network/model-garage/pkg/vss"
 	"github.com/DIMO-Network/model-garage/pkg/vss/convert"
-	"github.com/DIMO-Network/shared"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/gofiber/fiber/v2"
 	"github.com/rs/zerolog"
@@ -53,7 +52,7 @@ func NewService(logger *zerolog.Logger, identityAPI IdentityAPI, connectivityRep
 // CreatePOMVC generates a Proof of Movement VC.
 func (s *Service) CreatePOMVC(ctx context.Context, tokenID uint32) error {
 	logger := s.logger.With().Uint32("vehicleTokenId", tokenID).Logger()
-	// get meta data about the vehilce
+
 	vehicleInfo, err := s.identityAPI.GetVehicleInfo(ctx, tokenID)
 	if err != nil {
 		return handleError(err, &logger, "Failed to get vehicle info")
@@ -63,12 +62,14 @@ func (s *Service) CreatePOMVC(ctx context.Context, tokenID uint32) error {
 	if err != nil {
 		return handleError(err, &logger, "Failed to get locations")
 	}
+
 	pomSubject := verifiable.POMSubject{
 		VehicleTokenID:         tokenID,
 		VehicleContractAddress: s.vehicleContractAddress,
-		RecordedBy:             "DIMO", //TODO: what should this be?
+		RecordedBy:             "DIMO",
 		Locations:              locations,
 	}
+
 	vc, err := s.issuer.CreatePOMVC(pomSubject, time.Now().Add(24*time.Hour))
 	if err != nil {
 		return handleError(err, &logger, "Failed to create POM VC")
@@ -77,15 +78,21 @@ func (s *Service) CreatePOMVC(ctx context.Context, tokenID uint32) error {
 	return nil
 }
 
+// getLocationForVehicle retrieves location data from paired devices.
 func (s *Service) getLocationForVehicle(ctx context.Context, vehicleInfo *models.VehicleInfo, logger *zerolog.Logger) ([]verifiable.Location, error) {
-	// first try and get the location from the aftermarket devices associated with the vehicle
+	slices.SortStableFunc(vehicleInfo.PairedDevices, pairedDeviceSorter)
+	for _, device := range vehicleInfo.PairedDevices {
+		var locations []verifiable.Location
+		var err error
 
-	// stable sort the paired devices for more consistent results.
-	// sort the paired devices to have the aftermarket devices first then. If neither is aftermarket, sort by type lexicographically.
-	slices.SortStableFunc(vehicleInfo.PairedDevices, pairedDeviceSorterfunc)
-	// slices.Reverse(vehicleInfo.PairedDevices)
-	for i := range vehicleInfo.PairedDevices {
-		locations, err := s.getLocationsForDevice(ctx, vehicleInfo.TokenID, vehicleInfo.PairedDevices[i], logger)
+		switch {
+		case device.Type == models.DeviceTypeAftermarket && device.ManufacturerName == autoPiManufacturer:
+			locations, err = s.pullAutoPiEvents(ctx, device.IMEI)
+		case device.Type == models.DeviceTypeAftermarket && device.ManufacturerName == hashDogManufacturer:
+			locations, err = s.pullMacaronEvents(ctx, device.Address)
+		default:
+			locations, err = s.pullStatusEvents(ctx, vehicleInfo.TokenID)
+		}
 		if err == nil {
 			return locations, nil
 		}
@@ -93,30 +100,76 @@ func (s *Service) getLocationForVehicle(ctx context.Context, vehicleInfo *models
 			return nil, err
 		}
 	}
-	return nil, fmt.Errorf("no location data found for vehicle")
+	return nil, errNoLocation
 }
 
-func (s *Service) getLocationsForDevice(ctx context.Context, vehicleTokenID uint32, device models.PairedDevice, logger *zerolog.Logger) ([]verifiable.Location, error) {
-	if device.Type == models.DeviceTypeAftermarket {
-		switch device.ManufacturerName {
-		case autoPiManufacturer:
-			return pullAutoPiEvents(ctx, s.connectivityRepo, device.IMEI, time.Now())
-		case hashDogManufacturer:
-			return pullMacaronEvents(ctx, s.connectivityRepo, device.Address, time.Now())
-		default:
-			return nil, fmt.Errorf("unsupported aftermarket Manufacture: %s", device.ManufacturerName)
+// pullAutoPiEvents retrieves AutoPi events and extracts locations.
+func (s *Service) pullAutoPiEvents(ctx context.Context, deviceIMEI string) ([]verifiable.Location, error) {
+	return s.pullEvents(ctx, func(after, before time.Time, limit int) ([][]byte, error) {
+		return s.connectivityRepo.GetAutoPiEvents(ctx, deviceIMEI, after, before, limit)
+	}, parseAutoPiEvent)
+}
+
+// pullMacaronEvents retrieves Macaron events and extracts locations.
+func (s *Service) pullMacaronEvents(ctx context.Context, deviceAddr common.Address) ([]verifiable.Location, error) {
+	return s.pullEvents(ctx, func(after, before time.Time, limit int) ([][]byte, error) {
+		return s.connectivityRepo.GetHashDogEvents(ctx, deviceAddr, after, before, limit)
+	}, parseMacaronEvent)
+}
+
+// pullStatusEvents retrieves Status events and extracts locations.
+func (s *Service) pullStatusEvents(ctx context.Context, vehicleTokenID uint32) ([]verifiable.Location, error) {
+	return s.pullEvents(ctx, func(after, before time.Time, limit int) ([][]byte, error) {
+		return s.connectivityRepo.GetStatusEvents(ctx, vehicleTokenID, after, before, limit)
+	}, parseStatusEvent)
+}
+
+// pullEvents is a generic function for fetching events and extracting locations.
+func (s *Service) pullEvents(ctx context.Context, fetchEvents func(time.Time, time.Time, int) ([][]byte, error), parseEvent func([]byte) (cloudevent.CloudEvent[any], error)) ([]verifiable.Location, error) {
+	limit, weekAgo := 10, time.Now().Add(-7*24*time.Hour)
+	before := time.Now()
+
+	var firstEvent cloudevent.CloudEvent[any]
+
+	for weekAgo.Before(before) {
+		events, err := fetchEvents(weekAgo, before, limit)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get events: %w", err)
 		}
+		if len(events) == 0 {
+			break
+		}
+
+		for _, rawEvent := range events {
+			cloudEvent, err := parseEvent(rawEvent)
+			if err != nil {
+				return nil, err
+			}
+			before = cloudEvent.Time
+
+			// Skip events without location data
+			if cloudEvent.Data == nil {
+				continue
+			}
+
+			if firstEvent.Data == nil {
+				firstEvent = cloudEvent
+				continue
+			}
+
+			// Compare with the first event
+			if locations := compareLocations(firstEvent, cloudEvent); len(locations) > 0 {
+				return locations, nil
+			}
+		}
+
+		limit = int(math.Min(1000, float64(limit*2)))
 	}
-	return pullStatusEvents(ctx, s.connectivityRepo, vehicleTokenID, time.Now())
+	return nil, errNoLocation
 }
 
-// handleError logs an error and returns a Fiber error with the given message.
-func handleError(err error, logger *zerolog.Logger, message string) error {
-	logger.Error().Err(err).Msg(message)
-	return fiber.NewError(fiber.StatusInternalServerError, message)
-}
-
-func pairedDeviceSorterfunc(a, b models.PairedDevice) int {
+// pairedDeviceSorter compares two paired devices.
+func pairedDeviceSorter(a, b models.PairedDevice) int {
 	if a.Type == b.Type {
 		if a.ManufacturerName == b.ManufacturerName {
 			return a.Address.Cmp(b.Address)
@@ -132,170 +185,141 @@ func pairedDeviceSorterfunc(a, b models.PairedDevice) int {
 	return cmp.Compare(a.Type, b.Type)
 }
 
-func pullAutoPiEvents(ctx context.Context, repo ConnectivityRepo, deviceIMEI string, startTime time.Time) ([]verifiable.Location, error) {
-	limit := 10
-	before := startTime
-	weekAgo := startTime.Add(-7 * 24 * time.Hour)
-	var prevEvent twilio.ConnectionEvent
-	for time.Since(startTime) < 7*24*time.Hour {
-		events, err := repo.GetAutoPiEvents(ctx, deviceIMEI, weekAgo, before, limit)
-		if err != nil {
-			return nil, fmt.Errorf("failed to get AutoPi events: %w", err)
-		}
-		if len(events) == 0 {
-			break
-		}
-		for _, rawEvent := range events {
-			var cloudevent shared.CloudEvent[twilio.ConnectionEvent]
-			if err := json.Unmarshal(rawEvent, &cloudevent); err != nil {
-				return nil, fmt.Errorf("failed to unmarshal AutoPi event: %w", err)
+// compareLocations compares locations of two events and returns verifiable locations.
+func compareLocations(firstEvent, curEvent cloudevent.CloudEvent[any]) []verifiable.Location {
+	switch currData := curEvent.Data.(type) {
+	case twilio.ConnectionEvent:
+		firstCellID, curCellID := firstEvent.Data.(twilio.ConnectionEvent).Location.CellID, currData.Location.CellID
+		if firstCellID != curCellID && firstCellID != "" {
+			return []verifiable.Location{
+				{
+					LocationType:  "cell_id",
+					LocationValue: verifiable.CellID{CellID: firstCellID},
+					Timestamp:     firstEvent.Time,
+				},
+				{
+					LocationType:  "cell_id",
+					LocationValue: verifiable.CellID{CellID: curCellID},
+					Timestamp:     curEvent.Time,
+				},
 			}
-			event := cloudevent.Data
-			if event.Location != nil && event.Location.CellID != "" {
-				if prevEvent.Location != nil && prevEvent.Location.CellID != event.Location.CellID {
-					return []verifiable.Location{
-						{
-							LocationType:  "cell_id",
-							LocationValue: verifiable.CellID{CellID: prevEvent.Location.CellID},
-							Timestamp:     prevEvent.Timestamp,
-						},
-						{
-							LocationType:  "cell_id",
-							LocationValue: verifiable.CellID{CellID: event.Location.CellID},
-							Timestamp:     event.Timestamp,
-						},
-					}, nil
-				}
-				prevEvent = event
-			}
-			before = event.Timestamp
 		}
-
-		limit = int(math.Min(1000, float64(limit*2)))
+	case lorawan.Data:
+		firstGatewayID, curGatewayID := getFirstGWMeta(firstEvent.Data.(lorawan.Data).Via).GatewayID, getFirstGWMeta(currData.Via).GatewayID
+		if firstGatewayID != curGatewayID && firstGatewayID != "" {
+			return []verifiable.Location{
+				{
+					LocationType:  "gateway_id",
+					LocationValue: verifiable.GatewayID{GatewayID: firstGatewayID},
+					Timestamp:     firstEvent.Time,
+				},
+				{
+					LocationType:  "gateway_id",
+					LocationValue: verifiable.GatewayID{GatewayID: curGatewayID},
+					Timestamp:     curEvent.Time,
+				},
+			}
+		}
+	case LatLongData:
+		firstLatLong, curLatLong := firstEvent.Data.(LatLongData), currData
+		dist := distance(firstLatLong.Latitude, firstLatLong.Longitude, curLatLong.Latitude, curLatLong.Longitude)
+		if dist > 0.5 {
+			return []verifiable.Location{
+				{
+					LocationType:  "lat_lng",
+					LocationValue: verifiable.LatLng{Latitude: firstLatLong.Latitude, Longitude: firstLatLong.Longitude},
+					Timestamp:     firstEvent.Time,
+				},
+				{
+					LocationType:  "lat_lng",
+					LocationValue: verifiable.LatLng{Latitude: curLatLong.Latitude, Longitude: curLatLong.Longitude},
+					Timestamp:     curEvent.Time,
+				},
+			}
+		}
 	}
-
-	return nil, errNoLocation
+	return nil
 }
 
-func pullStatusEvents(ctx context.Context, repo ConnectivityRepo, vehicleTokenID uint32, startTime time.Time) ([]verifiable.Location, error) {
-	limit := 10
-	before := startTime
-	weekAgo := startTime.Add(-7 * 24 * time.Hour)
-	var prevLatitude, prevLongitude float64
-
-	prevSource := ""
-	for weekAgo.Before(before) {
-		events, err := repo.GetStatusEvents(ctx, vehicleTokenID, weekAgo, before, limit)
-		if err != nil {
-			return nil, fmt.Errorf("failed to get status events: %w", err)
-		}
-		if len(events) == 0 {
-			break
-		}
-		for _, event := range events {
-			signals, err := convert.SignalsFromPayload(context.Background(), nil, event)
-			if err != nil {
-				return nil, fmt.Errorf("failed to convert signals: %w", err)
-			}
-			if len(signals) == 0 {
-				continue
-			}
-			source := signals[0].Source
-			if source != prevSource {
-				fmt.Println("source", source)
-				prevSource = source
-			}
-
-			// if signals[0].Source ==
-			var curLatitude, curLongitude float64
-			timeStamp := time.Time{}
-			for _, signal := range signals {
-				if signal.Name == vss.FieldCurrentLocationLatitude {
-					curLatitude = signal.ValueNumber
-					timeStamp = signal.Timestamp
-				} else if signal.Name == vss.FieldCurrentLocationLongitude {
-					curLongitude = signal.ValueNumber
-				}
-			}
-			if curLatitude == 0 || curLongitude == 0 {
-				continue
-			}
-			if prevLatitude == 0 && prevLongitude == 0 {
-				prevLatitude = curLatitude
-				prevLongitude = curLongitude
-				continue
-			}
-			if prevLatitude != curLatitude && prevLongitude != curLongitude {
-				fmt.Println("new location", curLatitude, curLongitude)
-			}
-			dist := distance(prevLatitude, prevLongitude, curLatitude, curLongitude)
-			if dist > 0.5 {
-				return []verifiable.Location{
-					{
-						LocationType:  "lat_lng",
-						LocationValue: verifiable.LatLng{Latitude: prevLatitude, Longitude: prevLongitude},
-						Timestamp:     before,
-					},
-					{
-						LocationType:  "lat_lng",
-						LocationValue: verifiable.LatLng{Latitude: curLatitude, Longitude: curLongitude},
-						Timestamp:     timeStamp,
-					}}, nil
-			}
-			before = timeStamp
-		}
-
-		limit = int(math.Min(1000, float64(limit*2)))
+// parseAutoPiEvent parses twilo events and returns data for events with cell data.
+func parseAutoPiEvent(data []byte) (cloudevent.CloudEvent[any], error) {
+	var event cloudevent.CloudEvent[twilio.ConnectionEvent]
+	err := json.Unmarshal(data, &event)
+	if err != nil {
+		return cloudevent.CloudEvent[any]{}, fmt.Errorf("failed to unmarshal twilio event: %w", err)
 	}
-
-	return nil, errNoLocation
+	// only return events with cell data
+	if event.Data.Location == nil || event.Data.Location.CellID == "" {
+		return cloudevent.CloudEvent[any]{CloudEventHeader: event.CloudEventHeader}, nil
+	}
+	return cloudevent.CloudEvent[any]{CloudEventHeader: event.CloudEventHeader, Data: event.Data}, nil
 }
 
-func pullMacaronEvents(ctx context.Context, repo ConnectivityRepo, deviceAddr common.Address, startTime time.Time) ([]verifiable.Location, error) {
-	limit := 10
-	before := startTime
-	weekAgo := startTime.Add(-7 * 24 * time.Hour)
-	var prevEvent shared.CloudEvent[lorawan.Data]
-
-	for weekAgo.Before(before) {
-		events, err := repo.GetHashDogEvents(ctx, deviceAddr, weekAgo, before, limit)
-		if err != nil {
-			return nil, fmt.Errorf("failed to get Macaron events: %w", err)
-		}
-		if len(events) == 0 {
-			break
-		}
-
-		for _, rawEvent := range events {
-			cloudEvent := shared.CloudEvent[lorawan.Data]{}
-			if err := json.Unmarshal(rawEvent, &cloudEvent); err != nil {
-				return nil, fmt.Errorf("failed to unmarshal Macaron event: %w", err)
-			}
-			gwMeta := getFirstGWMeta(cloudEvent.Data.Via)
-			prevGWMeta := getFirstGWMeta(prevEvent.Data.Via)
-			if gwMeta.GatewayID != "" {
-				if prevGWMeta.GatewayID != "" && prevGWMeta.GatewayID != gwMeta.GatewayID {
-					return []verifiable.Location{
-						{
-							LocationType:  "gateway_id",
-							LocationValue: verifiable.GatewayID{GatewayID: prevGWMeta.GatewayID},
-							Timestamp:     prevEvent.Time,
-						},
-						{
-							LocationType:  "gateway_id",
-							LocationValue: verifiable.GatewayID{GatewayID: gwMeta.GatewayID},
-							Timestamp:     cloudEvent.Time,
-						},
-					}, nil
-				}
-				prevEvent = cloudEvent
-			}
-			before = cloudEvent.Time
-		}
-		limit = int(math.Min(1000, float64(limit*2)))
+// parseMacaronEvent parses lorawan events and returns data for events with gateway data.
+func parseMacaronEvent(data []byte) (cloudevent.CloudEvent[any], error) {
+	var event cloudevent.CloudEvent[lorawan.Data]
+	err := json.Unmarshal(data, &event)
+	if err != nil {
+		return cloudevent.CloudEvent[any]{}, fmt.Errorf("failed to unmarshal lorawan event: %w", err)
 	}
 
-	return nil, errNoLocation
+	// only return events with gateway data
+	if getFirstGWMeta(event.Data.Via).GatewayID == "" {
+		return cloudevent.CloudEvent[any]{CloudEventHeader: event.CloudEventHeader}, nil
+	}
+
+	return cloudevent.CloudEvent[any]{CloudEventHeader: event.CloudEventHeader, Data: event.Data}, nil
+}
+
+// parseStatusEvent parses status events and returns data for events with lat and long data.
+func parseStatusEvent(data []byte) (cloudevent.CloudEvent[any], error) {
+	var event cloudevent.CloudEvent[any]
+	err := json.Unmarshal(data, &event)
+	if err != nil {
+		return event, fmt.Errorf("failed to unmarshal event: %w", err)
+	}
+	signals, err := convert.SignalsFromPayload(context.TODO(), nil, data)
+	if err != nil {
+		return event, fmt.Errorf("failed to convert signals: %w", err)
+	}
+	latLong, ok := getLatAndLong(signals)
+	if !ok {
+		return cloudevent.CloudEvent[any]{CloudEventHeader: event.CloudEventHeader}, nil
+	}
+	return cloudevent.CloudEvent[any]{CloudEventHeader: event.CloudEventHeader, Data: latLong}, err
+}
+
+// handleError logs an error and returns a Fiber error with the given message.
+func handleError(err error, logger *zerolog.Logger, message string) error {
+	logger.Error().Err(err).Msg(message)
+	return fiber.NewError(fiber.StatusInternalServerError, message)
+}
+
+// getFirstGWMeta retrieves the first gateway metadata from a list of Via events.
+func getFirstGWMeta(vias []lorawan.Via) lorawan.GWMetadata {
+	for _, via := range vias {
+		if via.Metadata.GatewayID != "" {
+			return via.Metadata
+		}
+	}
+	return lorawan.GWMetadata{}
+}
+
+func getLatAndLong(signals []vss.Signal) (LatLongData, bool) {
+	const notFound = 181.0 // invalid latitude and longitude value
+	ret := LatLongData{Latitude: notFound, Longitude: notFound}
+
+	for _, signal := range signals {
+		if signal.Name == vss.FieldCurrentLocationLatitude {
+			ret.Latitude = signal.ValueNumber
+		} else if signal.Name == vss.FieldCurrentLocationLongitude {
+			ret.Longitude = signal.ValueNumber
+		}
+	}
+	if ret.Latitude == notFound || ret.Longitude == notFound {
+		return ret, false
+	}
+	return ret, true
 }
 
 func distance(lat1, lon1, lat2, lon2 float64) float64 {
@@ -309,11 +333,7 @@ func distance(lat1, lon1, lat2, lon2 float64) float64 {
 	return R * c * 0.621371 // Convert to miles
 }
 
-func getFirstGWMeta(vias []lorawan.Via) lorawan.GWMetadata {
-	for _, via := range vias {
-		if via.Metadata.GatewayID != "" {
-			return via.Metadata
-		}
-	}
-	return lorawan.GWMetadata{}
+type LatLongData struct {
+	Latitude  float64 `json:"latitude"`
+	Longitude float64 `json:"longitude"`
 }
