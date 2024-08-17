@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	// TokenIDParam is the parameter name for the vehilce token ID.
+	// TokenIDParam is the parameter name for the vehicle token id.
 	TokenIDParam = "tokenId"
 
 	// StatusGroupParam is the parameter name for the status group.
