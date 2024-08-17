@@ -27,7 +27,7 @@ type graphQLResponse struct {
 
 // dataField represents the top-level data field in the GraphQL response.
 type dataField struct {
-	Vehicle vehicleField `json:"vehicle"`
+	Vehicle *vehicleField `json:"vehicle"`
 }
 
 // vehicleField represents the vehicle field in the GraphQL response.
@@ -48,7 +48,12 @@ type definitionResponse struct {
 
 // graphQLError represents an error returned from the GraphQL API.
 type graphQLError struct {
-	Message string `json:"message"`
+	Message    string                 `json:"message"`
+	Extensions graphQLErrorExtensions `json:"extensions"`
+}
+
+type graphQLErrorExtensions struct {
+	Code string `json:"code"`
 }
 
 // nullableString is a string that can interpret "null" as nil.
