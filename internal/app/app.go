@@ -65,8 +65,8 @@ func StartWebAPI(logger *zerolog.Logger, settings *config.Settings) {
 
 	vehicleAddr := common.HexToAddress(settings.VehicleNFTAddress)
 
-	vinMiddlewre := auth.AllOf(vehicleAddr, "tokenId", []privileges.Privilege{privileges.VehicleVinCredential})
-	app.Post("/v1/vc/vin/:"+httphandlers.TokenIDParam, jwtAuth, vinMiddlewre, httpHandler.GetVINVC)
+	vinMiddleware := auth.AllOf(vehicleAddr, "tokenId", []privileges.Privilege{privileges.VehicleVinCredential})
+	app.Post("/v1/vc/vin/:"+httphandlers.TokenIDParam, jwtAuth, vinMiddleware, httpHandler.GetVINVC)
 
 	logger.Info().Int("port", settings.Port).Msg("Server Started")
 
