@@ -29,21 +29,6 @@ type ConnectivityRepo interface {
 	GetStatusEvents(ctx context.Context, vehicleTokenID uint32, after, before time.Time, limit int) ([][]byte, error)
 }
 
-// PairedDevice represents a device paired with a token.
-type PairedDevice struct {
-	Address common.Address `json:"address"`
-	Type    DeviceType     `json:"type"`
-}
-
-type DeviceType string
-
-const (
-	AutoPi   DeviceType = "AutoPi"
-	Smartcar DeviceType = "Smartcar"
-	Tesla    DeviceType = "Tesla"
-	Macaron  DeviceType = "Macaron"
-)
-
 // VINAPI defines the interface for VIN validation.
 type VINAPI interface {
 	DecodeVIN(ctx context.Context, vin, countryCode string) (string, error)
@@ -52,23 +37,4 @@ type VINAPI interface {
 // Issuer defines the interface for creating control documents.
 type Issuer interface {
 	CreatePOMVC(vinSubject verifiable.POMSubject, expTime time.Time) ([]byte, error)
-}
-
-// AutoPiLocation represents a location for AutoPi
-type AutoPiLocation struct {
-	Timestamp time.Time `json:"timestamp"`
-	CellID    string    `json:"cell_id"`
-}
-
-// StatusLocation represents a location for Smartcar and Tesla
-type StatusLocation struct {
-	Timestamp time.Time `json:"timestamp"`
-	Latitude  float64   `json:"latitude"`
-	Longitude float64   `json:"longitude"`
-}
-
-// MacaronLocation represents a location for Macaron
-type MacaronLocation struct {
-	Timestamp time.Time `json:"timestamp"`
-	GatewayID string    `json:"gateway_id"`
 }

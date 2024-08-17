@@ -13,6 +13,7 @@ import (
 
 	"github.com/DIMO-Network/attestation-api/internal/models"
 	"github.com/DIMO-Network/attestation-api/pkg/verifiable"
+	"github.com/DIMO-Network/model-garage/pkg/lorawan"
 	"github.com/DIMO-Network/model-garage/pkg/twilio"
 	"github.com/DIMO-Network/model-garage/pkg/vss"
 	"github.com/DIMO-Network/model-garage/pkg/vss/convert"
@@ -254,9 +255,9 @@ func pullMacaronEvents(ctx context.Context, repo ConnectivityRepo, deviceAddr co
 	limit := 10
 	before := startTime
 	weekAgo := startTime.Add(-7 * 24 * time.Hour)
-	var prevGatewayID string
+	var prevEvent shared.CloudEvent[lorawan.Data]
 
-	for time.Since(startTime) < 7*24*time.Hour {
+	for weekAgo.Before(before) {
 		events, err := repo.GetHashDogEvents(ctx, deviceAddr, weekAgo, before, limit)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get Macaron events: %w", err)
@@ -265,28 +266,32 @@ func pullMacaronEvents(ctx context.Context, repo ConnectivityRepo, deviceAddr co
 			break
 		}
 
-		for _, event := range events {
-			var loc MacaronLocation
-			if err := json.Unmarshal(event, &loc); err != nil {
+		for _, rawEvent := range events {
+			cloudEvent := shared.CloudEvent[lorawan.Data]{}
+			if err := json.Unmarshal(rawEvent, &cloudEvent); err != nil {
 				return nil, fmt.Errorf("failed to unmarshal Macaron event: %w", err)
 			}
-			if prevGatewayID != "" && prevGatewayID != loc.GatewayID {
-				return []verifiable.Location{
-					{
-						LocationType:  "gateway_id",
-						LocationValue: verifiable.GatewayID{GatewayID: prevGatewayID},
-						Timestamp:     before,
-					},
-					{
-						LocationType:  "gateway_id",
-						LocationValue: verifiable.GatewayID{GatewayID: loc.GatewayID},
-						Timestamp:     loc.Timestamp,
-					}}, nil
+			gwMeta := getFirstGWMeta(cloudEvent.Data.Via)
+			prevGWMeta := getFirstGWMeta(prevEvent.Data.Via)
+			if gwMeta.GatewayID != "" {
+				if prevGWMeta.GatewayID != "" && prevGWMeta.GatewayID != gwMeta.GatewayID {
+					return []verifiable.Location{
+						{
+							LocationType:  "gateway_id",
+							LocationValue: verifiable.GatewayID{GatewayID: prevGWMeta.GatewayID},
+							Timestamp:     prevEvent.Time,
+						},
+						{
+							LocationType:  "gateway_id",
+							LocationValue: verifiable.GatewayID{GatewayID: gwMeta.GatewayID},
+							Timestamp:     cloudEvent.Time,
+						},
+					}, nil
+				}
+				prevEvent = cloudEvent
 			}
-			prevGatewayID = loc.GatewayID
-			before = loc.Timestamp
+			before = cloudEvent.Time
 		}
-
 		limit = int(math.Min(1000, float64(limit*2)))
 	}
 
@@ -302,4 +307,13 @@ func distance(lat1, lon1, lat2, lon2 float64) float64 {
 			math.Sin(dLon/2)*math.Sin(dLon/2)
 	c := 2 * math.Atan2(math.Sqrt(a), math.Sqrt(1-a))
 	return R * c * 0.621371 // Convert to miles
+}
+
+func getFirstGWMeta(vias []lorawan.Via) lorawan.GWMetadata {
+	for _, via := range vias {
+		if via.Metadata.GatewayID != "" {
+			return via.Metadata
+		}
+	}
+	return lorawan.GWMetadata{}
 }
