@@ -164,44 +164,6 @@ func (mr *MockConnectivityRepoMockRecorder) GetStatusEvents(ctx, vehicleTokenID,
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetStatusEvents", reflect.TypeOf((*MockConnectivityRepo)(nil).GetStatusEvents), ctx, vehicleTokenID, after, before, limit)
 }
 
-// MockVINAPI is a mock of VINAPI interface.
-type MockVINAPI struct {
-	ctrl     *gomock.Controller
-	recorder *MockVINAPIMockRecorder
-}
-
-// MockVINAPIMockRecorder is the mock recorder for MockVINAPI.
-type MockVINAPIMockRecorder struct {
-	mock *MockVINAPI
-}
-
-// NewMockVINAPI creates a new mock instance.
-func NewMockVINAPI(ctrl *gomock.Controller) *MockVINAPI {
-	mock := &MockVINAPI{ctrl: ctrl}
-	mock.recorder = &MockVINAPIMockRecorder{mock}
-	return mock
-}
-
-// EXPECT returns an object that allows the caller to indicate expected use.
-func (m *MockVINAPI) EXPECT() *MockVINAPIMockRecorder {
-	return m.recorder
-}
-
-// DecodeVIN mocks base method.
-func (m *MockVINAPI) DecodeVIN(ctx context.Context, vin, countryCode string) (string, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "DecodeVIN", ctx, vin, countryCode)
-	ret0, _ := ret[0].(string)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// DecodeVIN indicates an expected call of DecodeVIN.
-func (mr *MockVINAPIMockRecorder) DecodeVIN(ctx, vin, countryCode any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DecodeVIN", reflect.TypeOf((*MockVINAPI)(nil).DecodeVIN), ctx, vin, countryCode)
-}
-
 // MockIssuer is a mock of Issuer interface.
 type MockIssuer struct {
 	ctrl     *gomock.Controller
