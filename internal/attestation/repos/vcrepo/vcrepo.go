@@ -9,29 +9,38 @@ import (
 	"github.com/ClickHouse/clickhouse-go/v2"
 	"github.com/DIMO-Network/attestation-api/pkg/verifiable"
 	"github.com/DIMO-Network/nameindexer"
-	"github.com/DIMO-Network/nameindexer/pkg/clickhouse/service"
+	"github.com/DIMO-Network/nameindexer/pkg/clickhouse/indexrepo"
 )
 
 // Repo manages storing and retrieving VCs.
 type Repo struct {
-	indexService *service.Service
-	dataType     string
+	indexService  *indexrepo.Service
+	vinDataType   string
+	vinBucketName string
+	pomDataType   string
+	pomBucketName string
 }
 
 // New creates a new instance of VCRepo.
-func New(chConn clickhouse.Conn, objGetter service.ObjectGetter, bucketName, vinvcDataType string) *Repo {
+func New(chConn clickhouse.Conn, objGetter indexrepo.ObjectGetter, vinbucketName, vinvcDataType, pombucketName, pomvcDataType string) *Repo {
 	return &Repo{
-		indexService: service.New(chConn, objGetter, bucketName),
-		dataType:     vinvcDataType,
+		indexService:  indexrepo.New(chConn, objGetter),
+		vinDataType:   vinvcDataType,
+		vinBucketName: vinbucketName,
+		pomDataType:   pomvcDataType,
+		pomBucketName: pombucketName,
 	}
 }
 
 // GetLatestVINVC fetches the latest vinvc from S3.
 func (r *Repo) GetLatestVINVC(ctx context.Context, vehicleTokenID uint32) (*verifiable.Credential, error) {
-	subject := nameindexer.Subject{
-		TokenID: &vehicleTokenID,
+	opts := indexrepo.SearchOptions{
+		Subject: &nameindexer.Subject{
+			Identifier: nameindexer.TokenID(vehicleTokenID),
+		},
+		DataType: &r.vinDataType,
 	}
-	data, err := r.indexService.GetLatestData(ctx, r.dataType, subject)
+	data, err := r.indexService.GetLatestData(ctx, r.vinBucketName, opts)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get vc: %w", err)
 	}
@@ -48,12 +57,31 @@ func (r *Repo) StoreVINVC(ctx context.Context, vehicleTokenID uint32, rawVC json
 	index := nameindexer.Index{
 		Timestamp: time.Now(),
 		Subject: nameindexer.Subject{
-			TokenID: &vehicleTokenID,
+			Identifier: nameindexer.TokenID(vehicleTokenID),
 		},
-		DataType: r.dataType,
+		DataType: r.vinDataType,
 	}
 
-	err := r.indexService.StoreFile(ctx, &index, rawVC)
+	err := r.indexService.StoreFile(ctx, &index, r.vinBucketName, rawVC)
+	if err != nil {
+		return fmt.Errorf("failed to store VC: %w", err)
+	}
+
+	return nil
+}
+
+// StorePOMVC stores a new VC in S3.
+func (r *Repo) StorePOMVC(ctx context.Context, vehicleTokenID uint32, rawVC json.RawMessage) error {
+	// expire at the end of the wee
+	index := nameindexer.Index{
+		Timestamp: time.Now(),
+		Subject: nameindexer.Subject{
+			Identifier: nameindexer.TokenID(vehicleTokenID),
+		},
+		DataType: r.pomDataType,
+	}
+
+	err := r.indexService.StoreFile(ctx, &index, r.pomBucketName, rawVC)
 	if err != nil {
 		return fmt.Errorf("failed to store VC: %w", err)
 	}

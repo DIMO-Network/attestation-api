@@ -111,6 +111,43 @@ const docTemplate = `{
                 }
             }
         },
+        "/v1/vc/pom/{tokenId}": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Create a Proof of Movement VC for a given token Id of a vehicle NFT.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "VINVC"
+                ],
+                "summary": "Create POM VC",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "token Id of the vehicle NFT",
+                        "name": "tokenId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/internal_controllers_httphandlers.getVCResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/v1/vc/status/{group}": {
             "get": {
                 "description": "Get the VC status for a given status group (currently this is just the vehcilesTokenId)",
@@ -180,7 +217,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_controllers_httphandlers.getVINVCResponse"
+                            "$ref": "#/definitions/internal_controllers_httphandlers.getVCResponse"
                         }
                     }
                 }
@@ -331,7 +368,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_controllers_httphandlers.getVINVCResponse": {
+        "internal_controllers_httphandlers.getVCResponse": {
             "type": "object",
             "properties": {
                 "message": {

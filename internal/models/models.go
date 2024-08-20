@@ -18,8 +18,10 @@ const (
 
 // PairedDevice represents a device paired with a token.
 type PairedDevice struct {
-	Address common.Address `json:"address"`
-	Type    DeviceType     `json:"type"`
+	Address          common.Address `json:"address"`
+	IMEI             string         `json:"imei"`
+	Type             DeviceType     `json:"type"`
+	ManufacturerName string         `json:"manufacturerName"`
 }
 
 // FingerprintMessage represents the fingerprint message containing VIN and timestamp.

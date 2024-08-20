@@ -35,14 +35,9 @@ func StartWebAPI(logger *zerolog.Logger, settings *config.Settings) {
 	keysRoute := "/v1/vc/keys"
 	vocabRoute := "/v1/vc/context/vocab"
 	jsonLDRoute := "/v1/vc/context"
-	vinvcService, err := createVINCService(logger, settings, statusRoute, keysRoute, vocabRoute, jsonLDRoute)
+	httpCtrl, err := createHttpController(logger, settings, statusRoute, keysRoute, vocabRoute, jsonLDRoute)
 	if err != nil {
 		logger.Fatal().Err(err).Msg("Failed to create VC service")
-	}
-
-	httpHandler, err := httphandlers.NewVCController(vinvcService, settings.TelemetryURL)
-	if err != nil {
-		logger.Fatal().Err(err).Msg("Failed to create VC controller")
 	}
 
 	app.Use(recover.New(recover.Config{
@@ -58,15 +53,18 @@ func StartWebAPI(logger *zerolog.Logger, settings *config.Settings) {
 	app.Get("/swagger/*", swagger.HandlerDefault)
 
 	// unauthenticated routes for vc
-	app.Get(statusRoute+"/:"+httphandlers.StatusGroupParam, httpHandler.GetVCStatus)
-	app.Get(keysRoute, httpHandler.GetPublicKeyDoc)
-	app.Get(vocabRoute, httpHandler.GetVocabDoc)
-	app.Get(jsonLDRoute, httpHandler.GetJSONLDDoc)
+	app.Get(statusRoute+"/:"+httphandlers.StatusGroupParam, httpCtrl.GetVCStatus)
+	app.Get(keysRoute, httpCtrl.GetPublicKeyDoc)
+	app.Get(vocabRoute, httpCtrl.GetVocabDoc)
+	app.Get(jsonLDRoute, httpCtrl.GetJSONLDDoc)
 
 	vehicleAddr := common.HexToAddress(settings.VehicleNFTAddress)
 
 	vinMiddleware := auth.AllOf(vehicleAddr, "tokenId", []privileges.Privilege{privileges.VehicleVinCredential})
-	app.Post("/v1/vc/vin/:"+httphandlers.TokenIDParam, jwtAuth, vinMiddleware, httpHandler.GetVINVC)
+	app.Post("/v1/vc/vin/:"+httphandlers.TokenIDParam, jwtAuth, vinMiddleware, httpCtrl.GetVINVC)
+
+	pomMiddleware := auth.AllOf(vehicleAddr, "tokenId", []privileges.Privilege{privileges.VehicleAllTimeLocation})
+	app.Post("/v1/vc/pom/:"+httphandlers.TokenIDParam, jwtAuth, pomMiddleware, httpCtrl.GetPOMVC)
 
 	logger.Info().Int("port", settings.Port).Msg("Server Started")
 

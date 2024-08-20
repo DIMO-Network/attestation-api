@@ -93,8 +93,10 @@ func (s *Service) GetVehicleInfo(ctx context.Context, tokenID uint32) (*models.V
 	var pairedDevices []models.PairedDevice
 	if respBody.Data.Vehicle.AftermarketDevice != nil {
 		pairedDevices = append(pairedDevices, models.PairedDevice{
-			Address: common.HexToAddress(respBody.Data.Vehicle.AftermarketDevice.Address),
-			Type:    models.DeviceTypeAftermarket,
+			Address:          common.HexToAddress(respBody.Data.Vehicle.AftermarketDevice.Address),
+			Type:             models.DeviceTypeAftermarket,
+			ManufacturerName: respBody.Data.Vehicle.AftermarketDevice.Manufacturer.Name,
+			IMEI:             respBody.Data.Vehicle.AftermarketDevice.IMEI,
 		})
 	}
 	if respBody.Data.Vehicle.SyntheticDevice != nil {
