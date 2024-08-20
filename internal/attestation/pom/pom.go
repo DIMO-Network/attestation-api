@@ -108,9 +108,11 @@ func (s *Service) getLocationForVehicle(ctx context.Context, vehicleInfo *models
 		if err == nil {
 			return &device, locations, nil
 		}
-		if !errors.Is(err, errNoLocation) {
-			return nil, nil, err
+		if errors.Is(err, errNoLocation) {
+			// if no location data found try the next device
+			continue
 		}
+		return nil, nil, err
 	}
 	return nil, nil, errNoLocation
 }
@@ -304,7 +306,7 @@ func parseStatusEvent(data []byte) (cloudevent.CloudEvent[any], error) {
 	if !ok {
 		return cloudevent.CloudEvent[any]{CloudEventHeader: event.CloudEventHeader}, nil
 	}
-	return cloudevent.CloudEvent[any]{CloudEventHeader: event.CloudEventHeader, Data: latLong}, err
+	return cloudevent.CloudEvent[any]{CloudEventHeader: event.CloudEventHeader, Data: latLong}, nil
 }
 
 // handleError logs an error and returns a Fiber error with the given message.

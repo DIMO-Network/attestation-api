@@ -83,7 +83,6 @@ func createHttpController(logger *zerolog.Logger, settings *config.Settings, sta
 	conRepo := connectivity.NewConnectivityRepo(chConn, s3Client, settings.AutoPiDataType, settings.AutoPiBucketName, settings.HashDogDataType, settings.HashDogBucketName, settings.StatusDataType, settings.StatusBucketName)
 
 	pomService := pom.NewService(logger, identityAPI, conRepo, vcRepo, issuer, settings.VehicleNFTAddress)
-	// func NewService(logger zerolog.Logger, identityAPI IdentityAPI, connectivityRepo ConnectivityRepo, vcRepo VCRepo, issuer Issuer, vehicleContractAddress string) *Service {
 
 	ctrl, err := httphandlers.NewVCController(vinvcService, pomService, settings.TelemetryURL)
 	if err != nil {

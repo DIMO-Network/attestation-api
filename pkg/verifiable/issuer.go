@@ -171,7 +171,6 @@ func (i *Issuer) CreatePOMVC(subject POMSubject) ([]byte, error) {
 	credential := Credential{
 		Context: []any{
 			"https://www.w3.org/ns/credentials/v2",
-			map[string]string{"vehicleIdentificationNumber": "https://schema.org/vehicleIdentificationNumber"},
 			i.localContext,
 		},
 		ID:        "urn:uuid:" + id,
@@ -360,11 +359,6 @@ func createVocab(baseURL *url.URL) *vocab.Vocabulary {
 		},
 		{
 			Name:        "vehicleContractAddress",
-			Description: "The address of the vehicle NFT contract. Format should be in hexadecimal Ethereum address.",
-			Usage:       "Use this term to record the address of the vehicle NFT contract.",
-		},
-		{
-			Name:        "Location",
 			Description: "The address of the vehicle NFT contract. Format should be in hexadecimal Ethereum address.",
 			Usage:       "Use this term to record the address of the vehicle NFT contract.",
 		},

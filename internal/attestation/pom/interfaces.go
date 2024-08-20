@@ -28,11 +28,6 @@ type ConnectivityRepo interface {
 	GetStatusEvents(ctx context.Context, vehicleTokenID uint32, after, before time.Time, limit int) ([][]byte, error)
 }
 
-// VINAPI defines the interface for VIN validation.
-type VINAPI interface {
-	DecodeVIN(ctx context.Context, vin, countryCode string) (string, error)
-}
-
 // Issuer defines the interface for creating control documents.
 type Issuer interface {
 	CreatePOMVC(vinSubject verifiable.POMSubject) ([]byte, error)
