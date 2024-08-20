@@ -15,6 +15,8 @@ type Settings struct {
 	FingerprintDataType       string          `yaml:"FINGERPRINT_DATA_TYPE"`
 	VINVCBucket               string          `yaml:"VINVC_BUCKET"`
 	VINVCDataType             string          `yaml:"VINVC_DATA_TYPE"`
+	POMVCBucket               string          `yaml:"POMVC_BUCKET"`
+	POMVCDataType             string          `yaml:"POMVC_DATA_TYPE"`
 	AutoPiDataType            string          `yaml:"AUTOPI_DATA_TYPE"`
 	AutoPiBucketName          string          `yaml:"AUTOPI_BUCKET_NAME"`
 	HashDogDataType           string          `yaml:"HASHDOG_DATA_TYPE"`

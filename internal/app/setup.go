@@ -69,7 +69,7 @@ func createHttpController(logger *zerolog.Logger, settings *config.Settings, sta
 	fingerprintRepo := fingerprint.New(chConn, s3Client, settings.FingerprintBucket, settings.FingerprintDataType)
 
 	// Initialize VC repository
-	vcRepo := vcrepo.New(chConn, s3Client, settings.VINVCBucket, settings.VINVCDataType)
+	vcRepo := vcrepo.New(chConn, s3Client, settings.VINVCBucket, settings.VINVCDataType, settings.POMVCBucket, settings.POMVCDataType)
 
 	// Initialize identity API client
 	identityAPI, err := identity.NewService(settings.IdentityAPIURL, nil)

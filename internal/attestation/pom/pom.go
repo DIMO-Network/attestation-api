@@ -82,14 +82,17 @@ func (s *Service) CreatePOMVC(ctx context.Context, tokenID uint32) error {
 	if err != nil {
 		return handleError(err, &logger, "Failed to create POM VC")
 	}
-	fmt.Println(string(vc))
+
+	if err = s.vcRepo.StorePOMVC(ctx, tokenID, vc); err != nil {
+		return handleError(err, &logger, "Failed to store POM VC")
+	}
+
 	return nil
 }
 
 // getLocationForVehicle retrieves location data from paired devices.
 func (s *Service) getLocationForVehicle(ctx context.Context, vehicleInfo *models.VehicleInfo, logger *zerolog.Logger) (*models.PairedDevice, []verifiable.Location, error) {
 	slices.SortStableFunc(vehicleInfo.PairedDevices, pairedDeviceSorter)
-	// slices.Reverse(vehicleInfo.PairedDevices)
 	for _, device := range vehicleInfo.PairedDevices {
 		var locations []verifiable.Location
 		var err error
