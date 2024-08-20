@@ -375,7 +375,7 @@ func createVocab(baseURL *url.URL) *vocab.Vocabulary {
 		},
 		{
 			Name:        "locationType",
-			Description: "The type of location value. This can be 'cell_id', 'lat_lng', or 'gateway_id'.",
+			Description: fmt.Sprintf("The type of location value. Must be one of: '%s', '%s', '%s'", LocationTypeCellID, LocationTypeGatewayID, LocationTypeLatLng),
 			Usage:       "Use this term to record the type of location value.",
 		},
 		{

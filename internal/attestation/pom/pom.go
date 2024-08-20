@@ -206,12 +206,12 @@ func compareLocations(firstEvent, curEvent cloudevent.CloudEvent[any]) []verifia
 		if firstCellID != curCellID && firstCellID != "" {
 			return []verifiable.Location{
 				{
-					LocationType:  "cell_id",
+					LocationType:  verifiable.LocationTypeCellID,
 					LocationValue: verifiable.CellID{CellID: firstCellID},
 					Timestamp:     firstEvent.Time,
 				},
 				{
-					LocationType:  "cell_id",
+					LocationType:  verifiable.LocationTypeCellID,
 					LocationValue: verifiable.CellID{CellID: curCellID},
 					Timestamp:     curEvent.Time,
 				},
@@ -222,12 +222,12 @@ func compareLocations(firstEvent, curEvent cloudevent.CloudEvent[any]) []verifia
 		if firstGatewayID != curGatewayID && firstGatewayID != "" {
 			return []verifiable.Location{
 				{
-					LocationType:  "gateway_id",
+					LocationType:  verifiable.LocationTypeGatewayID,
 					LocationValue: verifiable.GatewayID{GatewayID: firstGatewayID},
 					Timestamp:     firstEvent.Time,
 				},
 				{
-					LocationType:  "gateway_id",
+					LocationType:  verifiable.LocationTypeGatewayID,
 					LocationValue: verifiable.GatewayID{GatewayID: curGatewayID},
 					Timestamp:     curEvent.Time,
 				},
@@ -239,12 +239,12 @@ func compareLocations(firstEvent, curEvent cloudevent.CloudEvent[any]) []verifia
 		if dist > 0.5 {
 			return []verifiable.Location{
 				{
-					LocationType:  "lat_lng",
+					LocationType:  verifiable.LocationTypeLatLng,
 					LocationValue: verifiable.LatLng{Latitude: firstLatLong.Latitude, Longitude: firstLatLong.Longitude},
 					Timestamp:     firstEvent.Time,
 				},
 				{
-					LocationType:  "lat_lng",
+					LocationType:  verifiable.LocationTypeLatLng,
 					LocationValue: verifiable.LatLng{Latitude: curLatLong.Latitude, Longitude: curLatLong.Longitude},
 					Timestamp:     curEvent.Time,
 				},
