@@ -142,7 +142,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_controllers_httphandlers.getPOMVCResponse"
+                            "$ref": "#/definitions/internal_controllers_httphandlers.getVCResponse"
                         }
                     }
                 }
@@ -217,7 +217,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_controllers_httphandlers.getVINVCResponse"
+                            "$ref": "#/definitions/internal_controllers_httphandlers.getVCResponse"
                         }
                     }
                 }
@@ -368,21 +368,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_controllers_httphandlers.getPOMVCResponse": {
-            "type": "object",
-            "properties": {
-                "message": {
-                    "type": "string"
-                },
-                "vcQuery": {
-                    "type": "string"
-                },
-                "vcUrl": {
-                    "type": "string"
-                }
-            }
-        },
-        "internal_controllers_httphandlers.getVINVCResponse": {
+        "internal_controllers_httphandlers.getVCResponse": {
             "type": "object",
             "properties": {
                 "message": {

@@ -93,16 +93,7 @@ definitions:
           $ref: '#/definitions/github_com_DIMO-Network_attestation-api_pkg_verifiable.MultiKey'
         type: array
     type: object
-  internal_controllers_httphandlers.getPOMVCResponse:
-    properties:
-      message:
-        type: string
-      vcQuery:
-        type: string
-      vcUrl:
-        type: string
-    type: object
-  internal_controllers_httphandlers.getVINVCResponse:
+  internal_controllers_httphandlers.getVCResponse:
     properties:
       message:
         type: string
@@ -197,7 +188,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/internal_controllers_httphandlers.getPOMVCResponse'
+            $ref: '#/definitions/internal_controllers_httphandlers.getVCResponse'
       security:
       - BearerAuth: []
       summary: Create POM VC
@@ -247,7 +238,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/internal_controllers_httphandlers.getVINVCResponse'
+            $ref: '#/definitions/internal_controllers_httphandlers.getVCResponse'
       security:
       - BearerAuth: []
       summary: Get VIN VC
