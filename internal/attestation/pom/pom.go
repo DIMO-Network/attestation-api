@@ -17,6 +17,7 @@ import (
 	"github.com/DIMO-Network/model-garage/pkg/twilio"
 	"github.com/DIMO-Network/model-garage/pkg/vss"
 	"github.com/DIMO-Network/model-garage/pkg/vss/convert"
+	"github.com/DIMO-Network/shared/set"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/gofiber/fiber/v2"
 	"github.com/rs/zerolog"
@@ -28,6 +29,13 @@ const (
 )
 
 var errNoLocation = fmt.Errorf("no location data found")
+
+var acceptableStatusSources = set.New(
+	// Tesla source
+	"dimo/integration/22N2xaPOq2WW2gAHBHd0Ikn4Zob",
+	// Smartcar source
+	"dimo/integration/26A5Dk3vvvQutjSyF0Jka2DP5lg",
+)
 
 type Service struct {
 	logger                 zerolog.Logger
@@ -58,7 +66,7 @@ func (s *Service) CreatePOMVC(ctx context.Context, tokenID uint32) error {
 		return handleError(err, &logger, "Failed to get vehicle info")
 	}
 
-	locations, err := s.getLocationForVehicle(ctx, vehicleInfo, &logger)
+	pairedDevice, locations, err := s.getLocationForVehicle(ctx, vehicleInfo, &logger)
 	if err != nil {
 		return handleError(err, &logger, "Failed to get locations")
 	}
@@ -66,7 +74,7 @@ func (s *Service) CreatePOMVC(ctx context.Context, tokenID uint32) error {
 	pomSubject := verifiable.POMSubject{
 		VehicleTokenID:         tokenID,
 		VehicleContractAddress: s.vehicleContractAddress,
-		RecordedBy:             "DIMO",
+		RecordedBy:             pairedDevice.Address.Hex(),
 		Locations:              locations,
 	}
 
@@ -79,8 +87,9 @@ func (s *Service) CreatePOMVC(ctx context.Context, tokenID uint32) error {
 }
 
 // getLocationForVehicle retrieves location data from paired devices.
-func (s *Service) getLocationForVehicle(ctx context.Context, vehicleInfo *models.VehicleInfo, logger *zerolog.Logger) ([]verifiable.Location, error) {
+func (s *Service) getLocationForVehicle(ctx context.Context, vehicleInfo *models.VehicleInfo, logger *zerolog.Logger) (*models.PairedDevice, []verifiable.Location, error) {
 	slices.SortStableFunc(vehicleInfo.PairedDevices, pairedDeviceSorter)
+	// slices.Reverse(vehicleInfo.PairedDevices)
 	for _, device := range vehicleInfo.PairedDevices {
 		var locations []verifiable.Location
 		var err error
@@ -94,13 +103,13 @@ func (s *Service) getLocationForVehicle(ctx context.Context, vehicleInfo *models
 			locations, err = s.pullStatusEvents(ctx, vehicleInfo.TokenID)
 		}
 		if err == nil {
-			return locations, nil
+			return &device, locations, nil
 		}
 		if !errors.Is(err, errNoLocation) {
-			return nil, err
+			return nil, nil, err
 		}
 	}
-	return nil, errNoLocation
+	return nil, nil, errNoLocation
 }
 
 // pullAutoPiEvents retrieves AutoPi events and extracts locations.
@@ -126,7 +135,8 @@ func (s *Service) pullStatusEvents(ctx context.Context, vehicleTokenID uint32) (
 
 // pullEvents is a generic function for fetching events and extracting locations.
 func (s *Service) pullEvents(ctx context.Context, fetchEvents func(time.Time, time.Time, int) ([][]byte, error), parseEvent func([]byte) (cloudevent.CloudEvent[any], error)) ([]verifiable.Location, error) {
-	limit, weekAgo := 10, time.Now().Add(-7*24*time.Hour)
+	limit := 10
+	weekAgo := time.Now().Add(-7 * 24 * time.Hour)
 	before := time.Now()
 
 	var firstEvent cloudevent.CloudEvent[any]
@@ -252,7 +262,9 @@ func parseAutoPiEvent(data []byte) (cloudevent.CloudEvent[any], error) {
 	if event.Data.Location == nil || event.Data.Location.CellID == "" {
 		return cloudevent.CloudEvent[any]{CloudEventHeader: event.CloudEventHeader}, nil
 	}
-	return cloudevent.CloudEvent[any]{CloudEventHeader: event.CloudEventHeader, Data: event.Data}, nil
+	return cloudevent.CloudEvent[any]{
+		CloudEventHeader: event.CloudEventHeader,
+		Data:             event.Data}, nil
 }
 
 // parseMacaronEvent parses lorawan events and returns data for events with gateway data.
@@ -277,6 +289,9 @@ func parseStatusEvent(data []byte) (cloudevent.CloudEvent[any], error) {
 	err := json.Unmarshal(data, &event)
 	if err != nil {
 		return event, fmt.Errorf("failed to unmarshal event: %w", err)
+	}
+	if !acceptableStatusSources.Contains(event.Source) {
+		return cloudevent.CloudEvent[any]{CloudEventHeader: event.CloudEventHeader}, nil
 	}
 	signals, err := convert.SignalsFromPayload(context.TODO(), nil, data)
 	if err != nil {
