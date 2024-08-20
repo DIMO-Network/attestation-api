@@ -35,5 +35,5 @@ type VINAPI interface {
 
 // Issuer defines the interface for creating control documents.
 type Issuer interface {
-	CreatePOMVC(vinSubject verifiable.POMSubject, expTime time.Time) ([]byte, error)
+	CreatePOMVC(vinSubject verifiable.POMSubject) ([]byte, error)
 }

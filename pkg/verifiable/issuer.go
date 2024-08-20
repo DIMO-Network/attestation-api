@@ -162,7 +162,7 @@ func (i *Issuer) CreateVINVC(subject VINSubject, expirationDate time.Time) ([]by
 	return signedCreds, nil
 }
 
-func (i *Issuer) CreatePOMVC(subject POMSubject, expirationDate time.Time) ([]byte, error) {
+func (i *Issuer) CreatePOMVC(subject POMSubject) ([]byte, error) {
 	id := uuid.New().String()
 	issuanceDate := time.Now().UTC().Format(time.RFC3339)
 
@@ -178,7 +178,6 @@ func (i *Issuer) CreatePOMVC(subject POMSubject, expirationDate time.Time) ([]by
 		Type:      []string{"VerifiableCredential", "Vehicle"},
 		Issuer:    i.issuer,
 		ValidFrom: issuanceDate,
-		ValidTo:   expirationDate.Format(time.RFC3339),
 		CredentialStatus: CredentialStatus{
 			ID:                   statusURL.String(),
 			Type:                 "BitstringStatusListEntry",
@@ -364,6 +363,47 @@ func createVocab(baseURL *url.URL) *vocab.Vocabulary {
 			Description: "The address of the vehicle NFT contract. Format should be in hexadecimal Ethereum address.",
 			Usage:       "Use this term to record the address of the vehicle NFT contract.",
 		},
+		{
+			Name:        "Location",
+			Description: "The address of the vehicle NFT contract. Format should be in hexadecimal Ethereum address.",
+			Usage:       "Use this term to record the address of the vehicle NFT contract.",
+		},
+		{
+			Name:        "locations",
+			Description: "The recorded locations of the vehicle.",
+			Usage:       "Use this term to record the physical locations of the vehicle.",
+		},
+		{
+			Name:        "locationType",
+			Description: "The type of location value. This can be 'cell_id', 'lat_lng', or 'gateway_id'.",
+			Usage:       "Use this term to record the type of location value.",
+		},
+		{
+			Name:        "locationValue",
+			Description: "The value of the location. This can be a cell ID, latitude/longitude, or gateway ID.",
+			Usage:       "Use this term to record the value of the location.",
+		},
+		{
+			Name:        "cellId",
+			Description: "The cell ID of cellular tower that the vehicle connected to.",
+			Usage:       "Use this term to record the cell ID of the cellular tower.",
+		},
+		{
+			Name:        "latitude",
+			Description: "The latitude of the vehicle.",
+			Usage:       "Use this term to record the latitude of the vehicle.",
+		},
+		{
+			Name:        "longitude",
+			Description: "The longitude of the vehicle.",
+			Usage:       "Use this term to record the longitude of the vehicle.",
+		},
+		{
+			Name:        "gatewayId",
+			Description: "The ID of the gateway that the vehicle connected to.",
+			Usage:       "Use this term to record the ID of the gateway.",
+		},
 	}
+
 	return vocab.NewVocabulary(terms, *baseURL)
 }

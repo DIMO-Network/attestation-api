@@ -78,7 +78,7 @@ func (s *Service) CreatePOMVC(ctx context.Context, tokenID uint32) error {
 		Locations:              locations,
 	}
 
-	vc, err := s.issuer.CreatePOMVC(pomSubject, time.Now().Add(24*time.Hour))
+	vc, err := s.issuer.CreatePOMVC(pomSubject)
 	if err != nil {
 		return handleError(err, &logger, "Failed to create POM VC")
 	}
