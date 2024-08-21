@@ -234,11 +234,7 @@ func compareLocations(firstEvent, curEvent cloudevent.CloudEvent[any]) []verifia
 		}
 		firstGatewayID := getFirstGWMeta(firstEvent.Data.(lorawan.Data).Via).GatewayID
 		for _, via := range currData.Via {
-			currGatewayID := via.Metadata.GatewayID
-			if currGatewayID == "" {
-				continue
-			}
-			if firstGatewayID != via.Metadata.GatewayID {
+			if via.Metadata.GatewayID != "" && firstGatewayID != via.Metadata.GatewayID {
 				return []verifiable.Location{
 					{
 						LocationType:  verifiable.LocationTypeGatewayID,
@@ -247,7 +243,7 @@ func compareLocations(firstEvent, curEvent cloudevent.CloudEvent[any]) []verifia
 					},
 					{
 						LocationType:  verifiable.LocationTypeGatewayID,
-						LocationValue: verifiable.GatewayID{GatewayID: currGatewayID},
+						LocationValue: verifiable.GatewayID{GatewayID: via.Metadata.GatewayID},
 						Timestamp:     curEvent.Time,
 					},
 				}
