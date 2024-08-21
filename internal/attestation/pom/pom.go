@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"reflect"
 	"slices"
 	"time"
 
@@ -21,11 +22,14 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/gofiber/fiber/v2"
 	"github.com/rs/zerolog"
+	"github.com/uber/h3-go/v4"
 )
 
 const (
 	autoPiManufacturer  = "AutoPi"
 	hashDogManufacturer = "HashDog"
+	// h3Resolution resolution for h3 hex 8 ~= 0.737327598 km2
+	h3Resolution = 8
 )
 
 var errNoLocation = fmt.Errorf("no location data found")
@@ -169,7 +173,6 @@ func (s *Service) pullEvents(ctx context.Context, fetchEvents func(time.Time, ti
 
 			if firstEvent.Data == nil {
 				firstEvent = cloudEvent
-				continue
 			}
 
 			// Compare with the first event
@@ -202,9 +205,14 @@ func pairedDeviceSorter(a, b models.PairedDevice) int {
 
 // compareLocations compares locations of two events and returns verifiable locations.
 func compareLocations(firstEvent, curEvent cloudevent.CloudEvent[any]) []verifiable.Location {
+	if reflect.TypeOf(firstEvent.Data) != reflect.TypeOf(curEvent.Data) {
+		return nil
+	}
+
 	switch currData := curEvent.Data.(type) {
 	case twilio.ConnectionEvent:
-		firstCellID, curCellID := firstEvent.Data.(twilio.ConnectionEvent).Location.CellID, currData.Location.CellID
+		curCellID := currData.Location.CellID
+		firstCellID := firstEvent.Data.(twilio.ConnectionEvent).Location.CellID
 		if firstCellID != curCellID && firstCellID != "" {
 			return []verifiable.Location{
 				{
@@ -220,36 +228,48 @@ func compareLocations(firstEvent, curEvent cloudevent.CloudEvent[any]) []verifia
 			}
 		}
 	case lorawan.Data:
-		firstGatewayID, curGatewayID := getFirstGWMeta(firstEvent.Data.(lorawan.Data).Via).GatewayID, getFirstGWMeta(currData.Via).GatewayID
-		if firstGatewayID != curGatewayID && firstGatewayID != "" {
-			return []verifiable.Location{
-				{
-					LocationType:  verifiable.LocationTypeGatewayID,
-					LocationValue: verifiable.GatewayID{GatewayID: firstGatewayID},
-					Timestamp:     firstEvent.Time,
-				},
-				{
-					LocationType:  verifiable.LocationTypeGatewayID,
-					LocationValue: verifiable.GatewayID{GatewayID: curGatewayID},
-					Timestamp:     curEvent.Time,
-				},
+		if firstEvent.CloudEventHeader == curEvent.CloudEventHeader {
+			// gatway differences must be from different events
+			return nil
+		}
+		firstGatewayID := getFirstGWMeta(firstEvent.Data.(lorawan.Data).Via).GatewayID
+		for _, via := range currData.Via {
+			if via.Metadata.GatewayID != "" && firstGatewayID != via.Metadata.GatewayID {
+				return []verifiable.Location{
+					{
+						LocationType:  verifiable.LocationTypeGatewayID,
+						LocationValue: verifiable.GatewayID{GatewayID: firstGatewayID},
+						Timestamp:     firstEvent.Time,
+					},
+					{
+						LocationType:  verifiable.LocationTypeGatewayID,
+						LocationValue: verifiable.GatewayID{GatewayID: via.Metadata.GatewayID},
+						Timestamp:     curEvent.Time,
+					},
+				}
 			}
 		}
-	case LatLongData:
-		firstLatLong, curLatLong := firstEvent.Data.(LatLongData), currData
-		dist := distance(firstLatLong.Latitude, firstLatLong.Longitude, curLatLong.Latitude, curLatLong.Longitude)
-		if dist > 0.5 {
-			return []verifiable.Location{
-				{
-					LocationType:  verifiable.LocationTypeLatLng,
-					LocationValue: verifiable.LatLng{Latitude: firstLatLong.Latitude, Longitude: firstLatLong.Longitude},
-					Timestamp:     firstEvent.Time,
-				},
-				{
-					LocationType:  verifiable.LocationTypeLatLng,
-					LocationValue: verifiable.LatLng{Latitude: curLatLong.Latitude, Longitude: curLatLong.Longitude},
-					Timestamp:     curEvent.Time,
-				},
+	case []h3.Cell:
+		currCells := currData
+		firstCells := firstEvent.Data.([]h3.Cell)
+		if len(firstCells) == 0 {
+			return nil
+		}
+		firstCell := firstCells[0]
+		for _, cell := range currCells {
+			if cell != firstCell {
+				return []verifiable.Location{
+					{
+						LocationType:  verifiable.LocationTypeH3Cell,
+						LocationValue: verifiable.H3Cell{CellID: cell.String()},
+						Timestamp:     firstEvent.Time,
+					},
+					{
+						LocationType:  verifiable.LocationTypeH3Cell,
+						LocationValue: verifiable.H3Cell{CellID: cell.String()},
+						Timestamp:     curEvent.Time,
+					},
+				}
 			}
 		}
 	}
@@ -267,9 +287,7 @@ func parseAutoPiEvent(data []byte) (cloudevent.CloudEvent[any], error) {
 	if event.Data.Location == nil || event.Data.Location.CellID == "" {
 		return cloudevent.CloudEvent[any]{CloudEventHeader: event.CloudEventHeader}, nil
 	}
-	return cloudevent.CloudEvent[any]{
-		CloudEventHeader: event.CloudEventHeader,
-		Data:             event.Data}, nil
+	return cloudevent.CloudEvent[any]{CloudEventHeader: event.CloudEventHeader, Data: event.Data}, nil
 }
 
 // parseMacaronEvent parses lorawan events and returns data for events with gateway data.
@@ -302,7 +320,7 @@ func parseStatusEvent(data []byte) (cloudevent.CloudEvent[any], error) {
 	if err != nil {
 		return event, fmt.Errorf("failed to convert signals: %w", err)
 	}
-	latLong, ok := getLatAndLong(signals)
+	latLong, ok := getH3Cells(signals)
 	if !ok {
 		return cloudevent.CloudEvent[any]{CloudEventHeader: event.CloudEventHeader}, nil
 	}
@@ -325,35 +343,32 @@ func getFirstGWMeta(vias []lorawan.Via) lorawan.GWMetadata {
 	return lorawan.GWMetadata{}
 }
 
-func getLatAndLong(signals []vss.Signal) (LatLongData, bool) {
-	const notFound = 181.0 // invalid latitude and longitude value
-	ret := LatLongData{Latitude: notFound, Longitude: notFound}
-
+func getH3Cells(signals []vss.Signal) ([]h3.Cell, bool) {
+	latLongPairs := map[int64]LatLng{}
 	for _, signal := range signals {
+		timeInSecs := signal.Timestamp.Unix()
 		if signal.Name == vss.FieldCurrentLocationLatitude {
-			ret.Latitude = signal.ValueNumber
+			latLng := latLongPairs[timeInSecs]
+			latLng.Latitude = &signal.ValueNumber
+			latLongPairs[timeInSecs] = latLng
 		} else if signal.Name == vss.FieldCurrentLocationLongitude {
-			ret.Longitude = signal.ValueNumber
+			latLng := latLongPairs[timeInSecs]
+			latLng.Longitude = &signal.ValueNumber
+			latLongPairs[timeInSecs] = latLng
 		}
 	}
-	if ret.Latitude == notFound || ret.Longitude == notFound {
-		return ret, false
+	var cells []h3.Cell
+	for _, latLng := range latLongPairs {
+		if latLng.Latitude != nil && latLng.Longitude != nil {
+			h3LatLng := h3.NewLatLng(*latLng.Latitude, *latLng.Longitude)
+			cells = append(cells, h3.LatLngToCell(h3LatLng, h3Resolution))
+		}
 	}
-	return ret, true
+
+	return cells, len(cells) > 0
 }
 
-func distance(lat1, lon1, lat2, lon2 float64) float64 {
-	const R = 6371 // Radius of the Earth in kilometers
-	dLat := (lat2 - lat1) * (math.Pi / 180)
-	dLon := (lon2 - lon1) * (math.Pi / 180)
-	a := math.Sin(dLat/2)*math.Sin(dLat/2) +
-		math.Cos(lat1*(math.Pi/180))*math.Cos(lat2*(math.Pi/180))*
-			math.Sin(dLon/2)*math.Sin(dLon/2)
-	c := 2 * math.Atan2(math.Sqrt(a), math.Sqrt(1-a))
-	return R * c * 0.621371 // Convert to miles
-}
-
-type LatLongData struct {
-	Latitude  float64 `json:"latitude"`
-	Longitude float64 `json:"longitude"`
+type LatLng struct {
+	Latitude  *float64 `json:"latitude"`
+	Longitude *float64 `json:"longitude"`
 }

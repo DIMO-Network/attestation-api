@@ -9,8 +9,8 @@ import (
 const (
 	// LocationTypeCellID represents the cell ID location type.
 	LocationTypeCellID = "cellId"
-	// LocationTypeLatLng represents the latitude/longitude location type.
-	LocationTypeLatLng = "latitude/longitude"
+	// LocationTypeH3Cell represents the latitude/longitude location type.
+	LocationTypeH3Cell = "h3Cell"
 	// LocationTypeGatewayID represents the gateway ID location type.
 	LocationTypeGatewayID = "gatewayId"
 )
@@ -132,13 +132,12 @@ type CellID struct {
 
 func (CellID) isLocationValue() {}
 
-// LatLng represents a latitude/longitude location value.
-type LatLng struct {
-	Latitude  float64 `json:"latitude"`
-	Longitude float64 `json:"longitude"`
+// H3Cell represents a latitude/longitude location value.
+type H3Cell struct {
+	CellID string `json:"h3CellId"`
 }
 
-func (LatLng) isLocationValue() {}
+func (H3Cell) isLocationValue() {}
 
 // GatewayID represents a gateway ID location value.
 type GatewayID struct {
@@ -167,8 +166,8 @@ func (l *Location) UnmarshalJSON(data []byte) error {
 			return err
 		}
 		l.LocationValue = cellID
-	case LocationTypeLatLng:
-		var latLng LatLng
+	case LocationTypeH3Cell:
+		var latLng H3Cell
 		if err := json.Unmarshal(aux.LocationValue, &latLng); err != nil {
 			return err
 		}
