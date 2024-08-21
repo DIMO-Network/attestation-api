@@ -348,7 +348,7 @@ var (
                     "value": -56.5017
                 },
                 {
-                    "timestamp": 1713460848435,
+                    "timestamp": 1713460847435,
                     "name": "latitude",
                     "value": 56.271
                 }

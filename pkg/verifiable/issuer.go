@@ -369,7 +369,7 @@ func createVocab(baseURL *url.URL) *vocab.Vocabulary {
 		},
 		{
 			Name:        "locationType",
-			Description: fmt.Sprintf("The type of location value. Must be one of: '%s', '%s', '%s'", LocationTypeCellID, LocationTypeGatewayID, LocationTypeLatLng),
+			Description: fmt.Sprintf("The type of location value. Must be one of: '%s', '%s', '%s'", LocationTypeCellID, LocationTypeGatewayID, LocationTypeH3Cell),
 			Usage:       "Use this term to record the type of location value.",
 		},
 		{
@@ -383,14 +383,9 @@ func createVocab(baseURL *url.URL) *vocab.Vocabulary {
 			Usage:       "Use this term to record the cell ID of the cellular tower.",
 		},
 		{
-			Name:        "latitude",
-			Description: "The latitude of the vehicle.",
-			Usage:       "Use this term to record the latitude of the vehicle.",
-		},
-		{
-			Name:        "longitude",
-			Description: "The longitude of the vehicle.",
-			Usage:       "Use this term to record the longitude of the vehicle.",
+			Name:        "h3CellId",
+			Description: "The H3 cell ID of the vehicle's location.",
+			Usage:       "Use this term to record the H3 cell ID of the vehicle's location.",
 		},
 		{
 			Name:        "gatewayId",
