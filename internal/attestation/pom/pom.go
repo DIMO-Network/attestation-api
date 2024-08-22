@@ -72,7 +72,11 @@ func (s *Service) CreatePOMVC(ctx context.Context, tokenID uint32) error {
 
 	pairedDevice, locations, err := s.getLocationForVehicle(ctx, vehicleInfo, &logger)
 	if err != nil {
-		return handleError(err, &logger, "Failed to get locations")
+		msg := "Failed to get location data"
+		if errors.Is(err, errNoLocation) {
+			msg = "No movement detected in the last 7 days"
+		}
+		return handleError(err, &logger, msg)
 	}
 
 	pomSubject := verifiable.POMSubject{
