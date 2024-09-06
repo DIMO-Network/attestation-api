@@ -37,6 +37,7 @@ func New(chConn clickhouse.Conn, objGetter indexrepo.ObjectGetter, bucketName, f
 	return &Service{
 		indexService: indexrepo.New(chConn, objGetter),
 		dataType:     fingerprintDataType,
+		bucketName:   bucketName,
 	}
 }
 
