@@ -15,9 +15,9 @@ import (
 	"github.com/DIMO-Network/attestation-api/pkg/verifiable"
 	"github.com/DIMO-Network/model-garage/pkg/cloudevent"
 	"github.com/DIMO-Network/model-garage/pkg/lorawan"
+	"github.com/DIMO-Network/model-garage/pkg/nativestatus"
 	"github.com/DIMO-Network/model-garage/pkg/twilio"
 	"github.com/DIMO-Network/model-garage/pkg/vss"
-	"github.com/DIMO-Network/model-garage/pkg/vss/convert"
 	"github.com/DIMO-Network/shared/set"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/gofiber/fiber/v2"
@@ -320,7 +320,7 @@ func parseStatusEvent(data []byte) (cloudevent.CloudEvent[any], error) {
 	if !acceptableStatusSources.Contains(event.Source) {
 		return cloudevent.CloudEvent[any]{CloudEventHeader: event.CloudEventHeader}, nil
 	}
-	signals, err := convert.SignalsFromPayload(context.TODO(), nil, data)
+	signals, err := nativestatus.SignalsFromPayload(context.TODO(), nil, data)
 	if err != nil {
 		return event, fmt.Errorf("failed to convert signals: %w", err)
 	}
