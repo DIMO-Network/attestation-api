@@ -2,7 +2,7 @@ replicaCount: 2
 image:
   repository: dimozone/attestation-api
   pullPolicy: IfNotPresent
-  tag: 0.0.5
+  tag: 0.0.9
 cronJob:
   enabled: false
   schedule: 0 0 * * 0
@@ -16,7 +16,11 @@ env:
   TELEMETRY_URL: http://telemetry-api.dimo.zone
   IDENTITY_API_URL: https://identity-api.dimo.zone
   FINGERPRINT_BUCKET: dimo-network-fingerprint-prod
+  AUTOPI_BUCKET_NAME: dimo-network-connectivity-prod
+  HASHDOG_BUCKET_NAME: dimo-network-connectivity-prod
+  STATUS_BUCKET_NAME: dimo-network-status-prod
   VINVC_BUCKET: dimo-network-vinvc-prod
+  POMVC_BUCKET: dimo-network-pomvc-prod
   DIMO_REGISTRY_CHAIN_ID: 137
 ingress:
   enabled: true

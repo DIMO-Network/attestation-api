@@ -2,7 +2,7 @@ replicaCount: 1
 image:
   repository: dimozone/attestation-api
   pullPolicy: IfNotPresent
-  tag: d73631d
+  tag: 06a949f
 imagePullSecrets: []
 nameOverride: ''
 fullnameOverride: ''
@@ -36,8 +36,16 @@ env:
   IDENTITY_API_URL: https://identity-api.dev.dimo.zone
   FINGERPRINT_BUCKET: dimo-network-fingerprint-dev
   FINGERPRINT_DATA_TYPE: FP_v0.0.1
+  AUTOPI_DATA_TYPE: Twilio_1.0
+  AUTOPI_BUCKET_NAME: dimo-network-connectivity-dev
+  HASHDOG_DATA_TYPE: Lora_1.0
+  HASHDOG_BUCKET_NAME: dimo-network-connectivity-dev
+  STATUS_DATA_TYPE: Status_1.0
+  STATUS_BUCKET_NAME: dimo-network-status-dev
   VINVC_BUCKET: dimo-network-vinvc-dev
   VINVC_DATA_TYPE: VINVCv0.0
+  POMVC_BUCKET: dimo-network-pomvc-dev
+  POMVC_DATA_TYPE: POMVCv0.1
   S3_AWS_REGION: us-east-2
   DIMO_REGISTRY_CHAIN_ID: 80002
 service:

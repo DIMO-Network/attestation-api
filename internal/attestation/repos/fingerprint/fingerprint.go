@@ -13,7 +13,7 @@ import (
 	"github.com/ClickHouse/clickhouse-go/v2"
 	"github.com/DIMO-Network/attestation-api/internal/models"
 	"github.com/DIMO-Network/nameindexer"
-	"github.com/DIMO-Network/nameindexer/pkg/clickhouse/service"
+	"github.com/DIMO-Network/nameindexer/pkg/clickhouse/indexrepo"
 	"github.com/ethereum/go-ethereum/common"
 )
 
@@ -27,24 +27,29 @@ func (d decodeError) Error() string {
 
 // Service manages and retrieves fingerprint messages.
 type Service struct {
-	indexService *service.Service
+	indexService *indexrepo.Service
 	dataType     string
+	bucketName   string
 }
 
 // New creates a new instance of Service.
-func New(chConn clickhouse.Conn, objGetter service.ObjectGetter, bucketName, fingerprintDataType string) *Service {
+func New(chConn clickhouse.Conn, objGetter indexrepo.ObjectGetter, bucketName, fingerprintDataType string) *Service {
 	return &Service{
-		indexService: service.New(chConn, objGetter, bucketName),
+		indexService: indexrepo.New(chConn, objGetter),
 		dataType:     fingerprintDataType,
+		bucketName:   bucketName,
 	}
 }
 
 // GetLatestFingerprintMessages fetches the latest fingerprint message from S3.
 func (s *Service) GetLatestFingerprintMessages(ctx context.Context, deviceAddr common.Address) (*models.DecodedFingerprintData, error) {
-	subject := nameindexer.Subject{
-		Address: &deviceAddr,
+	opts := indexrepo.SearchOptions{
+		Subject: &nameindexer.Subject{
+			Identifier: nameindexer.Address(deviceAddr),
+		},
+		DataType: &s.dataType,
 	}
-	data, err := s.indexService.GetLatestData(ctx, s.dataType, subject)
+	data, err := s.indexService.GetLatestData(ctx, s.bucketName, opts)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get vc: %w", err)
 	}
