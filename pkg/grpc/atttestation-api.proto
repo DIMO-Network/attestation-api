@@ -15,4 +15,5 @@ message CreateVinVcRequest {
 }
 
 message CreateVinVcResponse {
+  string raw_vc = 1;
 }
