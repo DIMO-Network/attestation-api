@@ -9,10 +9,10 @@ import (
 )
 
 type Server struct {
-	ctrl VINVCService
+	ctrl vinCtrl
 }
 
-type VINVCService interface {
+type vinCtrl interface {
 	GetOrCreateVCReturning(ctx context.Context, tokenID uint32, force bool) (*verifiable.Credential, error)
 }
 
