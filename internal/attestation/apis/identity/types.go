@@ -31,7 +31,7 @@ type graphQLResponse struct {
 
 // dataField represents the top-level data field in the GraphQL response.
 type dataField struct {
-	Vehicle *vehicleField `json:"vehicle"`
+	Vehicle vehicleField `json:"vehicle"`
 }
 
 // vehicleField represents the vehicle field in the GraphQL response.
