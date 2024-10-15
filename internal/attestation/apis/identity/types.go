@@ -57,12 +57,7 @@ type definitionResponse struct {
 
 // graphQLError represents an error returned from the GraphQL API.
 type graphQLError struct {
-	Message    string                 `json:"message"`
-	Extensions graphQLErrorExtensions `json:"extensions"`
-}
-
-type graphQLErrorExtensions struct {
-	Code string `json:"code"`
+	Message string `json:"message"`
 }
 
 // nullableString is a string that can interpret "null" as nil.

@@ -7,7 +7,6 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -23,8 +22,6 @@ type Service struct {
 	httpClient  *http.Client
 	apiQueryURL string
 }
-
-var ErrNotFound = errors.New("vehicle not found")
 
 // NewService creates a new instance of Service with optional TLS certificate pool.
 func NewService(apiBaseURL string, certPool *x509.CertPool) (*Service, error) {
@@ -90,9 +87,6 @@ func (s *Service) GetVehicleInfo(ctx context.Context, tokenID uint32) (*models.V
 	}
 
 	if len(respBody.Errors) > 0 {
-		if respBody.Errors[0].Extensions.Code == "NOT_FOUND" {
-			return nil, ErrNotFound
-		}
 		return nil, fmt.Errorf("GraphQL API error: %s", respBody.Errors[0].Message)
 	}
 
