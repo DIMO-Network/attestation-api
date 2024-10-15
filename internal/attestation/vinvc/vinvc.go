@@ -67,27 +67,6 @@ func (v *Service) GetOrCreateVC(ctx context.Context, tokenID uint32, force bool)
 	return v.GenerateVINVC(ctx, tokenID, &logger)
 }
 
-// GetOrCreateVCReturning retrieves or generates a VC for the given vehicle token ID and
-// returns it. If force is true, then a new VC is generated even if there is an existing,
-// unexpired VC.
-func (v *Service) GetOrCreateVCReturning(ctx context.Context, tokenID uint32, force bool) (*verifiable.Credential, error) {
-	logger := v.logger.With().Uint32("vehicleTokenId", tokenID).Logger()
-
-	if prevVC, err := v.vcRepo.GetLatestVINVC(ctx, tokenID); err == nil {
-		if expireDate, err := time.Parse(time.RFC3339, prevVC.ValidFrom); err == nil && time.Now().Before(expireDate) && !force {
-			return prevVC, nil
-		}
-	}
-	// TODO(elffjs): Would like to distinguish between DB errors and
-	// "we didn't find anything".
-
-	if err := v.GenerateVINVC(ctx, tokenID, &logger); err != nil {
-		return nil, err
-	}
-
-	return v.vcRepo.GetLatestVINVC(ctx, tokenID)
-}
-
 // hasValidVC checks if a valid VC exists for the given token ID.
 func (v *Service) hasValidVC(ctx context.Context, tokenID uint32) bool {
 	prevVC, err := v.vcRepo.GetLatestVINVC(ctx, tokenID)

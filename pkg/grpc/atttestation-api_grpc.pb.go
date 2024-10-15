@@ -19,14 +19,16 @@ import (
 const _ = grpc.SupportPackageIsVersion7
 
 const (
-	AttestationService_CreateVinVc_FullMethodName = "/grpc.AttestationService/CreateVinVc"
+	AttestationService_EnsureVinVc_FullMethodName    = "/grpc.AttestationService/EnsureVinVc"
+	AttestationService_GetVinVcLatest_FullMethodName = "/grpc.AttestationService/GetVinVcLatest"
 )
 
 // AttestationServiceClient is the client API for AttestationService service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type AttestationServiceClient interface {
-	CreateVinVc(ctx context.Context, in *CreateVinVcRequest, opts ...grpc.CallOption) (*CreateVinVcResponse, error)
+	EnsureVinVc(ctx context.Context, in *EnsureVinVcRequest, opts ...grpc.CallOption) (*EnsureVinVcResponse, error)
+	GetVinVcLatest(ctx context.Context, in *GetLatestVinVcRequest, opts ...grpc.CallOption) (*GetLatestVinVcResponse, error)
 }
 
 type attestationServiceClient struct {
@@ -37,9 +39,18 @@ func NewAttestationServiceClient(cc grpc.ClientConnInterface) AttestationService
 	return &attestationServiceClient{cc}
 }
 
-func (c *attestationServiceClient) CreateVinVc(ctx context.Context, in *CreateVinVcRequest, opts ...grpc.CallOption) (*CreateVinVcResponse, error) {
-	out := new(CreateVinVcResponse)
-	err := c.cc.Invoke(ctx, AttestationService_CreateVinVc_FullMethodName, in, out, opts...)
+func (c *attestationServiceClient) EnsureVinVc(ctx context.Context, in *EnsureVinVcRequest, opts ...grpc.CallOption) (*EnsureVinVcResponse, error) {
+	out := new(EnsureVinVcResponse)
+	err := c.cc.Invoke(ctx, AttestationService_EnsureVinVc_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *attestationServiceClient) GetVinVcLatest(ctx context.Context, in *GetLatestVinVcRequest, opts ...grpc.CallOption) (*GetLatestVinVcResponse, error) {
+	out := new(GetLatestVinVcResponse)
+	err := c.cc.Invoke(ctx, AttestationService_GetVinVcLatest_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -50,7 +61,8 @@ func (c *attestationServiceClient) CreateVinVc(ctx context.Context, in *CreateVi
 // All implementations must embed UnimplementedAttestationServiceServer
 // for forward compatibility
 type AttestationServiceServer interface {
-	CreateVinVc(context.Context, *CreateVinVcRequest) (*CreateVinVcResponse, error)
+	EnsureVinVc(context.Context, *EnsureVinVcRequest) (*EnsureVinVcResponse, error)
+	GetVinVcLatest(context.Context, *GetLatestVinVcRequest) (*GetLatestVinVcResponse, error)
 	mustEmbedUnimplementedAttestationServiceServer()
 }
 
@@ -58,8 +70,11 @@ type AttestationServiceServer interface {
 type UnimplementedAttestationServiceServer struct {
 }
 
-func (UnimplementedAttestationServiceServer) CreateVinVc(context.Context, *CreateVinVcRequest) (*CreateVinVcResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method CreateVinVc not implemented")
+func (UnimplementedAttestationServiceServer) EnsureVinVc(context.Context, *EnsureVinVcRequest) (*EnsureVinVcResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method EnsureVinVc not implemented")
+}
+func (UnimplementedAttestationServiceServer) GetVinVcLatest(context.Context, *GetLatestVinVcRequest) (*GetLatestVinVcResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetVinVcLatest not implemented")
 }
 func (UnimplementedAttestationServiceServer) mustEmbedUnimplementedAttestationServiceServer() {}
 
@@ -74,20 +89,38 @@ func RegisterAttestationServiceServer(s grpc.ServiceRegistrar, srv AttestationSe
 	s.RegisterService(&AttestationService_ServiceDesc, srv)
 }
 
-func _AttestationService_CreateVinVc_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(CreateVinVcRequest)
+func _AttestationService_EnsureVinVc_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(EnsureVinVcRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(AttestationServiceServer).CreateVinVc(ctx, in)
+		return srv.(AttestationServiceServer).EnsureVinVc(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: AttestationService_CreateVinVc_FullMethodName,
+		FullMethod: AttestationService_EnsureVinVc_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(AttestationServiceServer).CreateVinVc(ctx, req.(*CreateVinVcRequest))
+		return srv.(AttestationServiceServer).EnsureVinVc(ctx, req.(*EnsureVinVcRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _AttestationService_GetVinVcLatest_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetLatestVinVcRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AttestationServiceServer).GetVinVcLatest(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AttestationService_GetVinVcLatest_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AttestationServiceServer).GetVinVcLatest(ctx, req.(*GetLatestVinVcRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -100,8 +133,12 @@ var AttestationService_ServiceDesc = grpc.ServiceDesc{
 	HandlerType: (*AttestationServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
-			MethodName: "CreateVinVc",
-			Handler:    _AttestationService_CreateVinVc_Handler,
+			MethodName: "EnsureVinVc",
+			Handler:    _AttestationService_EnsureVinVc_Handler,
+		},
+		{
+			MethodName: "GetVinVcLatest",
+			Handler:    _AttestationService_GetVinVcLatest_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
