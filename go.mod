@@ -27,7 +27,6 @@ require (
 	github.com/swaggo/swag v1.16.3
 	github.com/uber/h3-go/v4 v4.1.1
 	go.uber.org/mock v0.4.0
-	golang.org/x/sync v0.8.0
 	google.golang.org/grpc v1.65.0
 	google.golang.org/protobuf v1.34.2
 )
