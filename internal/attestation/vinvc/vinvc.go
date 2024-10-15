@@ -67,9 +67,9 @@ func (v *Service) GetOrCreateVC(ctx context.Context, tokenID uint32, force bool)
 	return v.GenerateVINVC(ctx, tokenID, &logger)
 }
 
-// GetOrCreateVCReturning retrieves or generates a VC for the given token ID and
+// GetOrCreateVCReturning retrieves or generates a VC for the given vehicle token ID and
 // returns it. If force is true, a new VC is generated even if there is an existing,
-// valid VC.
+// unexpired VC.
 func (v *Service) GetOrCreateVCReturning(ctx context.Context, tokenID uint32, force bool) (*verifiable.Credential, error) {
 	logger := v.logger.With().Uint32("vehicleTokenId", tokenID).Logger()
 
