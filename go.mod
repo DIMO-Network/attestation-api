@@ -1,6 +1,6 @@
 module github.com/DIMO-Network/attestation-api
 
-go 1.22.0
+go 1.23
 
 require (
 	github.com/ClickHouse/clickhouse-go/v2 v2.26.0
