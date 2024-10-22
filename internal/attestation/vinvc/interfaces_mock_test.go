@@ -25,6 +25,7 @@ import (
 type MockVCRepo struct {
 	ctrl     *gomock.Controller
 	recorder *MockVCRepoMockRecorder
+	isgomock struct{}
 }
 
 // MockVCRepoMockRecorder is the mock recorder for MockVCRepo.
@@ -77,6 +78,7 @@ func (mr *MockVCRepoMockRecorder) StoreVINVC(ctx, tokenID, vinvc any) *gomock.Ca
 type MockIdentityAPI struct {
 	ctrl     *gomock.Controller
 	recorder *MockIdentityAPIMockRecorder
+	isgomock struct{}
 }
 
 // MockIdentityAPIMockRecorder is the mock recorder for MockIdentityAPI.
@@ -115,6 +117,7 @@ func (mr *MockIdentityAPIMockRecorder) GetVehicleInfo(ctx, tokenID any) *gomock.
 type MockFingerprintRepo struct {
 	ctrl     *gomock.Controller
 	recorder *MockFingerprintRepoMockRecorder
+	isgomock struct{}
 }
 
 // MockFingerprintRepoMockRecorder is the mock recorder for MockFingerprintRepo.
@@ -153,6 +156,7 @@ func (mr *MockFingerprintRepoMockRecorder) GetLatestFingerprintMessages(ctx, pai
 type MockVINAPI struct {
 	ctrl     *gomock.Controller
 	recorder *MockVINAPIMockRecorder
+	isgomock struct{}
 }
 
 // MockVINAPIMockRecorder is the mock recorder for MockVINAPI.
@@ -191,6 +195,7 @@ func (mr *MockVINAPIMockRecorder) DecodeVIN(ctx, vin, countryCode any) *gomock.C
 type MockIssuer struct {
 	ctrl     *gomock.Controller
 	recorder *MockIssuerMockRecorder
+	isgomock struct{}
 }
 
 // MockIssuerMockRecorder is the mock recorder for MockIssuer.
