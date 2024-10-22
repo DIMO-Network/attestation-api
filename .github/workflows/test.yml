@@ -18,8 +18,8 @@ jobs:
         with:
           go-version-file: 'go.mod'
 
-      - name: modVerify
+      - name: Run go mod verify
         run: go mod verify
 
-      - name: Run Tests with go testsum
+      - name: Run Tests
         run: make test
