@@ -5,9 +5,7 @@ on:
   push:
     branches:
       - main
-env:
-  GOPRIVATE: github.com/DIMO-Network
-  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      
 jobs:
   golangci:
     # Condition to skip merge commits
