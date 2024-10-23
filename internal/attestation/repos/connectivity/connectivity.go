@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/ClickHouse/clickhouse-go/v2"
-	"github.com/DIMO-Network/nameindexer"
+	"github.com/DIMO-Network/attestation-api/internal/attestation/repos"
 	"github.com/DIMO-Network/nameindexer/pkg/clickhouse/indexrepo"
 	"github.com/ethereum/go-ethereum/common"
 )
@@ -37,29 +37,23 @@ func NewConnectivityRepo(chConn clickhouse.Conn, objGetter indexrepo.ObjectGette
 
 // GetAutoPiEvents returns the twilio events for a autopi device.
 func (r *ConnectivityRepo) GetAutoPiEvents(ctx context.Context, IMEI string, after, before time.Time, limit int) ([][]byte, error) {
-	subject := nameindexer.Subject{
-		Identifier: nameindexer.IMEI(IMEI),
-	}
+	subject := repos.IMEIToString(IMEI)
 	return r.getEvents(ctx, r.autoPiBucketName, r.autoPiDataType, subject, after, before, limit)
 }
 
 // GetHashDogEvents returns the lorawan events for a hashdog device.
 func (r *ConnectivityRepo) GetHashDogEvents(ctx context.Context, pairedDeviceAddr common.Address, after, before time.Time, limit int) ([][]byte, error) {
-	subject := nameindexer.Subject{
-		Identifier: nameindexer.Address(pairedDeviceAddr),
-	}
+	subject := repos.AddressToString(pairedDeviceAddr)
 	return r.getEvents(ctx, r.hashDogBucketName, r.hashDogDataType, subject, after, before, limit)
 }
 
 // GetStatusEvents returns the status events for a vehicle.
 func (r *ConnectivityRepo) GetStatusEvents(ctx context.Context, vehicleTokenID uint32, after, before time.Time, limit int) ([][]byte, error) {
-	subject := nameindexer.Subject{
-		Identifier: nameindexer.TokenID(vehicleTokenID),
-	}
+	subject := repos.TokenIDToString(vehicleTokenID)
 	return r.getEvents(ctx, r.statusBucketName, r.statusDataType, subject, after, before, limit)
 }
 
-func (r *ConnectivityRepo) getEvents(ctx context.Context, bucketName string, dataType string, subject nameindexer.Subject, after, before time.Time, limit int) ([][]byte, error) {
+func (r *ConnectivityRepo) getEvents(ctx context.Context, bucketName string, dataType string, subject string, after, before time.Time, limit int) ([][]byte, error) {
 	opts := indexrepo.SearchOptions{
 		Subject:  &subject,
 		DataType: &dataType,

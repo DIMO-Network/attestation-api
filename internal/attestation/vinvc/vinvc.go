@@ -10,11 +10,16 @@ import (
 
 	"github.com/DIMO-Network/attestation-api/internal/models"
 	"github.com/DIMO-Network/attestation-api/pkg/verifiable"
+	"github.com/DIMO-Network/model-garage/pkg/cloudevent"
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/gofiber/fiber/v2"
 	"github.com/rs/zerolog"
 )
 
-const daysInWeek = 7
+const (
+	daysInWeek     = 7
+	PolygonChainID = 137
+)
 
 // Service handles VIN VC-related operations.
 type Service struct {
@@ -69,7 +74,12 @@ func (v *Service) GetOrCreateVC(ctx context.Context, tokenID uint32, force bool)
 
 // hasValidVC checks if a valid VC exists for the given token ID.
 func (v *Service) hasValidVC(ctx context.Context, tokenID uint32) bool {
-	prevVC, err := v.vcRepo.GetLatestVINVC(ctx, tokenID)
+	vehicleDID := cloudevent.NFTDID{
+		ChainID:         PolygonChainID,
+		ContractAddress: common.HexToAddress(v.vehicleNFTAddress),
+		TokenID:         tokenID,
+	}
+	prevVC, err := v.vcRepo.GetLatestVINVC(ctx, vehicleDID)
 	if err == nil {
 		expireDate, err := time.Parse(time.RFC3339, prevVC.ValidFrom)
 		if err == nil && time.Now().Before(expireDate) {
@@ -81,13 +91,18 @@ func (v *Service) hasValidVC(ctx context.Context, tokenID uint32) bool {
 
 func (v *Service) GenerateVINVC(ctx context.Context, tokenID uint32, logger *zerolog.Logger) error {
 	// get meta data about the vehilce
-	vehicleInfo, err := v.identityAPI.GetVehicleInfo(ctx, tokenID)
+	vehicleDID := cloudevent.NFTDID{
+		ChainID:         PolygonChainID,
+		ContractAddress: common.HexToAddress(v.vehicleNFTAddress),
+		TokenID:         tokenID,
+	}
+	vehicleInfo, err := v.identityAPI.GetVehicleInfo(ctx, vehicleDID)
 	if err != nil {
 		return handleError(err, logger, "Failed to get vehicle info")
 	}
 
 	// get a valid VIN for the vehilce
-	validFP, err := v.getValidVIN(ctx, vehicleInfo, "")
+	validFP, err := v.getValidFingerPrint(ctx, vehicleInfo, "")
 	if err != nil {
 		return err
 	}
@@ -97,8 +112,8 @@ func (v *Service) GenerateVINVC(ctx context.Context, tokenID uint32, logger *zer
 		VehicleIdentificationNumber: validFP.VIN,
 		VehicleTokenID:              tokenID,
 		CountryCode:                 "",
-		RecordedBy:                  validFP.Source,
-		RecordedAt:                  validFP.Timestamp,
+		RecordedBy:                  validFP.Producer,
+		RecordedAt:                  validFP.Time,
 		VehicleContractAddress:      "eth:" + v.vehicleNFTAddress,
 	}
 
@@ -108,9 +123,12 @@ func (v *Service) GenerateVINVC(ctx context.Context, tokenID uint32, logger *zer
 	if err != nil {
 		return handleError(err, logger, "Failed to create VC")
 	}
-
+	producerDID, err := cloudevent.DecodeNFTDID(validFP.Producer)
+	if err != nil {
+		return handleError(err, logger, "Failed to decode producer DID")
+	}
 	// store the VC
-	err = v.vcRepo.StoreVINVC(ctx, tokenID, rawVC)
+	err = v.vcRepo.StoreVINVC(ctx, vehicleDID, producerDID, rawVC)
 	if err != nil {
 		return handleError(err, logger, "Failed to store VC")
 	}
@@ -118,26 +136,26 @@ func (v *Service) GenerateVINVC(ctx context.Context, tokenID uint32, logger *zer
 	return nil
 }
 
-// getValidVIN validates and reconciles VINs from the paired devices.
-func (v *Service) getValidVIN(ctx context.Context, vehicleInfo *models.VehicleInfo, countryCode string) (*models.DecodedFingerprintData, error) {
+// getValidFingerPrint validates and reconciles VINs from the paired devices.
+func (v *Service) getValidFingerPrint(ctx context.Context, vehicleInfo *models.VehicleInfo, countryCode string) (*models.DecodedFingerprintData, error) {
 	if len(vehicleInfo.PairedDevices) == 0 {
 		return nil, fiber.NewError(fiber.StatusBadRequest, "No paired devices")
 	}
-	logger := v.logger.With().Uint32("vehicleTokenId", vehicleInfo.TokenID).Logger()
+	logger := v.logger.With().Uint32("vehicleTokenId", vehicleInfo.DID.TokenID).Logger()
 	var latestFP *models.DecodedFingerprintData
 
 	var fingerprintErr error
 	for _, device := range vehicleInfo.PairedDevices {
-		fingerprint, err := v.fingerprintRepo.GetLatestFingerprintMessages(ctx, device.Address)
+		fingerprint, err := v.fingerprintRepo.GetLatestFingerprintMessages(ctx, vehicleInfo.DID, device)
 		if err != nil {
 			// log the error and continue to the next device if possible
-			localLogger := logger.With().Str("device", device.Address.Hex()).Logger()
+			localLogger := logger.With().Str("device", device.DID.String()).Logger()
 			err := handleError(err, &localLogger, "Failed to get latest fingerprint message")
 			fingerprintErr = errors.Join(fingerprintErr, err)
 			continue
 		}
 
-		if latestFP == nil || latestFP.VIN == "" || fingerprint.Timestamp.After(latestFP.Timestamp) {
+		if latestFP == nil || latestFP.VIN == "" || fingerprint.Time.After(latestFP.Time) {
 			latestFP = fingerprint
 		}
 	}

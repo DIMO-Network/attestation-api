@@ -66,13 +66,13 @@ func createHttpController(logger *zerolog.Logger, settings *config.Settings, sta
 	vinValidateSerivce := vinvalidator.New(deviceDefGRPCClient)
 
 	// Initialize fingerprint repository
-	fingerprintRepo := fingerprint.New(chConn, s3Client, settings.FingerprintBucket, settings.FingerprintDataType)
+	fingerprintRepo := fingerprint.New(chConn, s3Client, settings.CloudEventBucket, settings.FingerprintBucket, settings.FingerprintDataType)
 
 	// Initialize VC repository
 	vcRepo := vcrepo.New(chConn, s3Client, settings.VINVCBucket, settings.VINVCDataType, settings.POMVCBucket, settings.POMVCDataType)
 
 	// Initialize identity API client
-	identityAPI, err := identity.NewService(settings.IdentityAPIURL, nil)
+	identityAPI, err := identity.NewService(settings.IdentityAPIURL, settings.AfterMarketNFTAddress, settings.SyntheticNFTAddress, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create identity service: %w", err)
 	}

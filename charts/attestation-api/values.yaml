@@ -32,6 +32,8 @@ env:
   TOKEN_EXCHANGE_JWK_KEY_SET_URL: http://dex-roles-rights.dev.svc.cluster.local:5556/keys
   TOKEN_EXCHANGE_ISSUER_URL: https://auth-roles-rights.dev.dimo.zone
   VEHICLE_NFT_ADDRESS: '0x45fbCD3ef7361d156e8b16F5538AE36DEdf61Da8'
+  AFTERMARKET_NFT_ADDRESS: '0x325b45949C833986bC98e98a49F3CA5C5c4643B5'
+  SYNTHETIC_NFT_ADDRESS: '0x78513c8CB4D6B6079f813850376bc9c7fc8aE67f'
   TELEMETRY_URL: http://telemetry-api.dev.dimo.zone
   IDENTITY_API_URL: https://identity-api.dev.dimo.zone
   FINGERPRINT_BUCKET: dimo-network-fingerprint-dev
@@ -46,6 +48,7 @@ env:
   VINVC_DATA_TYPE: VINVCv0.0
   POMVC_BUCKET: dimo-network-pomvc-dev
   POMVC_DATA_TYPE: POMVCv0.1
+  CLOUDEVENT_BUCKET: dimo-ingest-cloudevent-dev
   S3_AWS_REGION: us-east-2
   DIMO_REGISTRY_CHAIN_ID: 80002
 service:

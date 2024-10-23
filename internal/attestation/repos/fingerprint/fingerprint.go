@@ -3,18 +3,20 @@ package fingerprint
 import (
 	"bytes"
 	"context"
+	"database/sql"
 	"encoding/base64"
 	"encoding/binary"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"regexp"
 	"strings"
 
 	"github.com/ClickHouse/clickhouse-go/v2"
 	"github.com/DIMO-Network/attestation-api/internal/models"
+	"github.com/DIMO-Network/model-garage/pkg/cloudevent"
 	"github.com/DIMO-Network/nameindexer"
 	"github.com/DIMO-Network/nameindexer/pkg/clickhouse/indexrepo"
-	"github.com/ethereum/go-ethereum/common"
 )
 
 type decodeError string
@@ -27,26 +29,52 @@ func (d decodeError) Error() string {
 
 // Service manages and retrieves fingerprint messages.
 type Service struct {
-	indexService *indexrepo.Service
-	dataType     string
-	bucketName   string
+	indexService     *indexrepo.Service
+	dataType         string
+	cloudEventBucket string
+
+	// TODO (kevin): Remove this when ingest is updated
+	bucketName string
 }
 
 // New creates a new instance of Service.
-func New(chConn clickhouse.Conn, objGetter indexrepo.ObjectGetter, bucketName, fingerprintDataType string) *Service {
+func New(chConn clickhouse.Conn, objGetter indexrepo.ObjectGetter, legacyBucketName, cloudeventBucket, fingerprintDataType string) *Service {
 	return &Service{
-		indexService: indexrepo.New(chConn, objGetter),
-		dataType:     fingerprintDataType,
-		bucketName:   bucketName,
+		indexService:     indexrepo.New(chConn, objGetter),
+		dataType:         fingerprintDataType,
+		bucketName:       legacyBucketName,
+		cloudEventBucket: cloudeventBucket,
 	}
 }
 
 // GetLatestFingerprintMessages fetches the latest fingerprint message from S3.
-func (s *Service) GetLatestFingerprintMessages(ctx context.Context, deviceAddr common.Address) (*models.DecodedFingerprintData, error) {
+func (s *Service) GetLatestFingerprintMessages(ctx context.Context, vehicleDID cloudevent.NFTDID, device models.PairedDevice) (*models.DecodedFingerprintData, error) {
+	filler := nameindexer.CloudTypeToFiller(cloudevent.TypeFingerprint)
+	opts := indexrepo.CloudEventSearchOptions{
+		Subject:       &vehicleDID,
+		DataType:      &s.dataType,
+		Producer:      &device.DID,
+		PrimaryFiller: &filler,
+	}
+	data, err := s.indexService.GetLatestCloudEventData(ctx, s.bucketName, opts)
+	if err != nil {
+		// if we can't find a fingerprint message in the new bucket, try the old bucket
+		if errors.Is(err, sql.ErrNoRows) {
+			return s.legacyGetLatestFingerprintMessages(ctx, device)
+		}
+		return nil, fmt.Errorf("failed to get vc: %w", err)
+	}
+	msg, err := decodeFingerprintMessage(data)
+	if err != nil {
+		return nil, err
+	}
+	return msg, nil
+}
+
+// TODO (kevin): Remove this when ingest is updated
+func (s *Service) legacyGetLatestFingerprintMessages(ctx context.Context, device models.PairedDevice) (*models.DecodedFingerprintData, error) {
 	opts := indexrepo.SearchOptions{
-		Subject: &nameindexer.Subject{
-			Identifier: nameindexer.Address(deviceAddr),
-		},
+		Subject:  &device.Address,
 		DataType: &s.dataType,
 	}
 	data, err := s.indexService.GetLatestData(ctx, s.bucketName, opts)
@@ -90,9 +118,8 @@ func decodeFingerprintMessage(data []byte) (*models.DecodedFingerprintData, erro
 		return nil, decodeError("invalid vin")
 	}
 	return &models.DecodedFingerprintData{
-		VIN:       vin,
-		Timestamp: msg.Timestamp,
-		Source:    msg.Subject,
+		CloudEventHeader: msg.CloudEventHeader,
+		VIN:              vin,
 	}, nil
 }
 

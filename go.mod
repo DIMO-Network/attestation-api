@@ -6,8 +6,8 @@ require (
 	github.com/ClickHouse/clickhouse-go/v2 v2.30.0
 	github.com/DIMO-Network/clickhouse-infra v0.0.3
 	github.com/DIMO-Network/device-definitions-api v1.2.48
-	github.com/DIMO-Network/model-garage v0.3.1
-	github.com/DIMO-Network/nameindexer v0.0.7
+	github.com/DIMO-Network/model-garage v0.3.2
+	github.com/DIMO-Network/nameindexer v0.0.8
 	github.com/DIMO-Network/shared v0.12.1
 	github.com/aws/aws-sdk-go-v2 v1.32.2
 	github.com/aws/aws-sdk-go-v2/credentials v1.17.41
@@ -23,6 +23,7 @@ require (
 	github.com/piprate/json-gold v0.5.0
 	github.com/prometheus/client_golang v1.20.5
 	github.com/rs/zerolog v1.33.0
+	github.com/segmentio/ksuid v1.0.4
 	github.com/stretchr/testify v1.9.0
 	github.com/swaggo/swag v1.16.4
 	github.com/uber/h3-go/v4 v4.1.2

@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/DIMO-Network/attestation-api/internal/models"
+	"github.com/DIMO-Network/model-garage/pkg/cloudevent"
 	"github.com/stretchr/testify/require"
 )
 
@@ -39,9 +40,16 @@ func TestDecodeFingerprintMessage(t *testing.T) {
 				"signature":"0x9f4a67281978a93fafc9231e10c6a3489b5c732239ffc72b02e3603608c7375516f876e9ac33aa3b5a2b475521dbca4e1e68d85a797ea7b07f7d9b6369b805751c"
 				}`),
 			expectedData: models.DecodedFingerprintData{
-				VIN:       "1HGCM82633A123456",
-				Timestamp: time.Date(2024, 5, 30, 15, 4, 5, 0, time.UTC),
-				Source:    "0x24A8a66388e549BB6E5C743A6C033D611f017b2D",
+				CloudEventHeader: cloudevent.CloudEventHeader{
+					SpecVersion: "1.0",
+					ID:          "2jhCq04sdOL4fzgXccW8cJSG3vn",
+					Subject:     "0x24A8a66388e549BB6E5C743A6C033D611f017b2D",
+					Type:        "zone.dimo.aftermarket.device.fingerprint",
+					DataSchema:  "dimo.zone.status/v2.0",
+					Time:        time.Date(2024, 5, 30, 15, 4, 5, 0, time.UTC),
+					Source:      "aftermarket/device/fingerprint",
+				},
+				VIN: "1HGCM82633A123456",
 			},
 			expectError: false,
 		},
@@ -49,8 +57,10 @@ func TestDecodeFingerprintMessage(t *testing.T) {
 			name: "Valid VIN in Data64",
 			data: []byte(fmt.Sprintf(`{"time":"2024-05-30T15:04:05Z","data_base64":"%s"}`, mockMacronFingerprint("ABCD1234567890XYZ"))),
 			expectedData: models.DecodedFingerprintData{
-				VIN:       "ABCD1234567890XYZ",
-				Timestamp: time.Date(2024, 5, 30, 15, 4, 5, 0, time.UTC),
+				CloudEventHeader: cloudevent.CloudEventHeader{
+					Time: time.Date(2024, 5, 30, 15, 4, 5, 0, time.UTC),
+				},
+				VIN: "ABCD1234567890XYZ",
 			},
 			expectError: false,
 		},

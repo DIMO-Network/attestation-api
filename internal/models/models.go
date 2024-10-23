@@ -1,9 +1,7 @@
 package models
 
 import (
-	"time"
-
-	"github.com/ethereum/go-ethereum/common"
+	"github.com/DIMO-Network/model-garage/pkg/cloudevent"
 )
 
 // DeviceType represents the type of device.
@@ -18,30 +16,31 @@ const (
 
 // PairedDevice represents a device paired with a token.
 type PairedDevice struct {
-	Address          common.Address `json:"address"`
-	IMEI             string         `json:"imei"`
-	Type             DeviceType     `json:"type"`
-	ManufacturerName string         `json:"manufacturerName"`
+	DID              cloudevent.NFTDID `json:"nftDid"`
+	Type             DeviceType        `json:"type"`
+	ManufacturerName string            `json:"manufacturerName"`
+
+	// TODO remove legacy lookup fields once ingest is updated
+	Address string `json:"address"`
+	IMEI    string `json:"imei"`
 }
 
 // FingerprintMessage represents the fingerprint message containing VIN and timestamp.
 type FingerprintMessage struct {
-	Timestamp time.Time      `json:"time"`
-	Subject   string         `json:"subject"`
-	Data      map[string]any `json:"data"`
-	Data64    *string        `json:"data_base64"`
+	cloudevent.CloudEventHeader
+	Data   map[string]any `json:"data"`
+	Data64 *string        `json:"data_base64"`
 }
 
 // DecodedFingerprintData represents the decoded fingerprint data.
 type DecodedFingerprintData struct {
-	VIN       string    `json:"vin"`
-	Timestamp time.Time `json:"timestamp"`
-	Source    string    `json:"source"`
+	cloudevent.CloudEventHeader
+	VIN string `json:"vin"`
 }
 
-// VehicleInfo contains information about a vehicle NFT
+// VehicleInfo contains information about a vehicle NFT.
 type VehicleInfo struct {
-	TokenID       uint32
+	DID           cloudevent.NFTDID
 	PairedDevices []PairedDevice
 	NameSlug      string
 }

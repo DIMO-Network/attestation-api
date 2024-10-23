@@ -11,6 +11,7 @@ import (
 
 	"github.com/DIMO-Network/attestation-api/internal/attestation/apis/identity"
 	"github.com/DIMO-Network/attestation-api/internal/models"
+	"github.com/DIMO-Network/model-garage/pkg/cloudevent"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/stretchr/testify/require"
@@ -19,8 +20,19 @@ import (
 const testSlug = "toyota_tacoma-4wd_2023"
 
 func TestService_GetPairedDevices(t *testing.T) {
-	deviceAddr1 := randAddress()
-	deviceAddr2 := randAddress()
+	vehicleAddr := randAddress()
+	aftermarketAddr := randAddress()
+	syntheticAddr := randAddress()
+	deviceDID1 := cloudevent.NFTDID{
+		ChainID:         137,
+		TokenID:         123,
+		ContractAddress: aftermarketAddr,
+	}
+	deviceDID2 := cloudevent.NFTDID{
+		ChainID:         137,
+		TokenID:         789,
+		ContractAddress: syntheticAddr,
+	}
 	ctx := context.Background()
 	tests := []struct {
 		name             string
@@ -41,21 +53,21 @@ func TestService_GetPairedDevices(t *testing.T) {
 							"id": "toyota_tacoma-4wd_2023"
 						},
 						"aftermarketDevice": {
-							"Address": "%s"
+							"tokenId": "%d"
 						},
 						"syntheticDevice": {
-							"Address": "%s"
+							"tokenId": "%d"
 						}
 					}
 				}
-			}`, deviceAddr1, deviceAddr2),
+			}`, deviceDID1.TokenID, deviceDID2.TokenID),
 			mockStatusCode: http.StatusOK,
 			expectedInfo: &models.VehicleInfo{
-				TokenID:  123,
+				DID:      cloudevent.NFTDID{TokenID: 123, ChainID: 137, ContractAddress: vehicleAddr},
 				NameSlug: testSlug,
 				PairedDevices: []models.PairedDevice{
-					{Address: deviceAddr1, Type: models.DeviceTypeAftermarket},
-					{Address: deviceAddr2, Type: models.DeviceTypeSynthetic},
+					{DID: deviceDID1, Type: models.DeviceTypeAftermarket},
+					{DID: deviceDID2, Type: models.DeviceTypeSynthetic},
 				},
 			},
 			expectedError: false,
@@ -75,7 +87,7 @@ func TestService_GetPairedDevices(t *testing.T) {
 			}`,
 			mockStatusCode: http.StatusOK,
 			expectedInfo: &models.VehicleInfo{
-				TokenID:  125,
+				DID:      cloudevent.NFTDID{TokenID: 125, ChainID: 137, ContractAddress: vehicleAddr},
 				NameSlug: testSlug,
 			},
 			expectedError: false,
@@ -112,17 +124,17 @@ func TestService_GetPairedDevices(t *testing.T) {
 							"id": "toyota_tacoma-4wd_2023"
 						},
 						"aftermarketDevice": {
-							"Address": "%s"
+							"tokenId": "%d"
 						}
 					}
 				}
-			}`, deviceAddr1),
+			}`, deviceDID1.TokenID),
 			mockStatusCode: http.StatusOK,
 			expectedInfo: &models.VehicleInfo{
-				TokenID:  128,
+				DID:      cloudevent.NFTDID{TokenID: 128, ChainID: 137, ContractAddress: vehicleAddr},
 				NameSlug: testSlug,
 				PairedDevices: []models.PairedDevice{
-					{Address: deviceAddr1, Type: models.DeviceTypeAftermarket},
+					{DID: deviceDID1, Type: models.DeviceTypeAftermarket},
 				},
 			},
 			expectedError: false,
@@ -138,17 +150,17 @@ func TestService_GetPairedDevices(t *testing.T) {
 							"id": "toyota_tacoma-4wd_2023"
 						},
 						"syntheticDevice": {
-							"Address": "%s"
+							"tokenId": "%d"
 						}
 					}
 				}
-			}`, deviceAddr2),
+			}`, deviceDID2.TokenID),
 			mockStatusCode: http.StatusOK,
 			expectedInfo: &models.VehicleInfo{
-				TokenID:  129,
+				DID:      cloudevent.NFTDID{TokenID: 129, ChainID: 137, ContractAddress: vehicleAddr},
 				NameSlug: testSlug,
 				PairedDevices: []models.PairedDevice{
-					{Address: deviceAddr2, Type: models.DeviceTypeSynthetic},
+					{DID: deviceDID2, Type: models.DeviceTypeSynthetic},
 				},
 			},
 			expectedError: false,
@@ -164,11 +176,11 @@ func TestService_GetPairedDevices(t *testing.T) {
 							"id": null
 						},
 						"syntheticDevice": {
-							"Address": "%s"
+							"tokenId": "%d"
 						}
 					}
 				}
-			}`, deviceAddr2),
+			}`, deviceDID2.TokenID),
 			mockStatusCode: http.StatusOK,
 			expectedInfo:   nil,
 			expectedError:  true,
@@ -194,11 +206,12 @@ func TestService_GetPairedDevices(t *testing.T) {
 			certPool := x509.NewCertPool()
 			certPool.AddCert(server.Certificate())
 
-			service, err := identity.NewService(server.URL, certPool)
+			service, err := identity.NewService(server.URL, aftermarketAddr.Hex(), syntheticAddr.Hex(), certPool)
 			require.NoError(t, err)
 
 			// Run the test.
-			devices, err := service.GetVehicleInfo(ctx, tt.vehicleTokenID)
+			vehicleDID := cloudevent.NFTDID{TokenID: tt.vehicleTokenID, ChainID: 137, ContractAddress: vehicleAddr}
+			devices, err := service.GetVehicleInfo(ctx, vehicleDID)
 			if tt.expectedError {
 				require.Error(t, err)
 				require.Nil(t, devices)
