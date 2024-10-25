@@ -11,7 +11,6 @@ import (
 	"io"
 	"net/http"
 	"net/url"
-	"strconv"
 	"time"
 
 	"github.com/DIMO-Network/attestation-api/internal/models"
@@ -103,10 +102,7 @@ func (s *Service) GetVehicleInfo(ctx context.Context, vehicleDID cloudevent.NFTD
 
 	var pairedDevices []models.PairedDevice
 	if respBody.Data.Vehicle.AftermarketDevice != nil {
-		tokenId, err := strconv.ParseUint(respBody.Data.Vehicle.AftermarketDevice.TokenID, 10, 32)
-		if err != nil {
-			return nil, fmt.Errorf("failed to parse token ID: %w", err)
-		}
+		tokenId := respBody.Data.Vehicle.AftermarketDevice.TokenID
 		did := cloudevent.NFTDID{
 			ChainID:         vehicleDID.ChainID,
 			TokenID:         uint32(tokenId),
@@ -121,10 +117,7 @@ func (s *Service) GetVehicleInfo(ctx context.Context, vehicleDID cloudevent.NFTD
 		})
 	}
 	if respBody.Data.Vehicle.SyntheticDevice != nil {
-		tokenID, err := strconv.ParseUint(respBody.Data.Vehicle.SyntheticDevice.TokenID, 10, 32)
-		if err != nil {
-			return nil, fmt.Errorf("failed to parse token ID: %w", err)
-		}
+		tokenID := respBody.Data.Vehicle.SyntheticDevice.TokenID
 		did := cloudevent.NFTDID{
 			ChainID:         vehicleDID.ChainID,
 			TokenID:         uint32(tokenID),

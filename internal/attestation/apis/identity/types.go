@@ -45,7 +45,7 @@ type vehicleField struct {
 
 // deviceResponse represents the structure of the device response.
 type deviceResponse struct {
-	TokenID      string       `json:"tokenId"`
+	TokenID      uint32       `json:"tokenId"`
 	Address      string       `json:"address"`
 	IMEI         string       `json:"imei"`
 	Manufacturer manufacturer `json:"manufacturer"`

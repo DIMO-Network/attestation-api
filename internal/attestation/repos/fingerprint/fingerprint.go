@@ -59,7 +59,6 @@ func (s *Service) GetLatestFingerprintMessages(ctx context.Context, vehicleDID c
 	filler := nameindexer.CloudTypeToFiller(cloudevent.TypeFingerprint)
 	opts := indexrepo.CloudEventSearchOptions{
 		Subject:       &vehicleDID,
-		DataType:      &s.dataType,
 		Producer:      &device.DID,
 		PrimaryFiller: &filler,
 	}
