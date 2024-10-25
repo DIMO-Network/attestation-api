@@ -3,7 +3,7 @@ package pom_test
 import (
 	"context"
 	"encoding/json"
-	"errors"
+	"fmt"
 	"testing"
 	"time"
 
@@ -15,6 +15,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/rs/zerolog"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 )
 
@@ -28,7 +29,8 @@ func TestService_CreatePOMVC(t *testing.T) {
 	mockIssuer := NewMockIssuer(ctrl)
 
 	logger := zerolog.New(nil)
-	service := pom.NewService(&logger, mockIdentityAPI, mockConnectivityRepo, mockVCRepo, mockIssuer, "0xVehicleContractAddress")
+	service, err := pom.NewService(&logger, mockIdentityAPI, mockConnectivityRepo, mockVCRepo, mockIssuer, "0xbA5738a18d83D41847dfFbDC6101d37C69c9B0cF")
+	require.NoError(t, err)
 
 	ctx := context.TODO()
 	tokenID := uint32(1234)
@@ -43,17 +45,22 @@ func TestService_CreatePOMVC(t *testing.T) {
 		{
 			name: "Success with AutoPi device",
 			mockSetup: func() {
+				pairedDevice := models.PairedDevice{
+					Type:             models.DeviceTypeAftermarket,
+					ManufacturerName: "AutoPi",
+					IMEI:             "123456789012345",
+				}
 				vehicleInfo := &models.VehicleInfo{
-					TokenID: tokenID,
+					DID: cloudevent.NFTDID{
+						ChainID:         137,
+						TokenID:         tokenID,
+						ContractAddress: common.HexToAddress("0xbA5738a18d83D41847dfFbDC6101d37C69c9B0cF"),
+					},
 					PairedDevices: []models.PairedDevice{
-						{
-							Type:             models.DeviceTypeAftermarket,
-							ManufacturerName: "AutoPi",
-							IMEI:             "123456789012345",
-						},
+						pairedDevice,
 					},
 				}
-				mockIdentityAPI.EXPECT().GetVehicleInfo(ctx, tokenID).Return(vehicleInfo, nil)
+				mockIdentityAPI.EXPECT().GetVehicleInfo(ctx, vehicleInfo.DID).Return(vehicleInfo, nil)
 
 				events := []twilio.ConnectionEvent{
 					{
@@ -77,9 +84,9 @@ func TestService_CreatePOMVC(t *testing.T) {
 					eventBytes[i] = b
 				}
 
-				mockConnectivityRepo.EXPECT().GetAutoPiEvents(ctx, "123456789012345", gomock.Any(), gomock.Any(), gomock.Any()).Return(eventBytes, nil)
+				mockConnectivityRepo.EXPECT().GetAutoPiEvents(ctx, &pairedDevice, gomock.Any(), gomock.Any(), gomock.Any()).Return(eventBytes, nil)
 				mockIssuer.EXPECT().CreatePOMVC(gomock.Any()).Return([]byte(`{"vc": "some-vc"}`), nil)
-				mockVCRepo.EXPECT().StorePOMVC(ctx, tokenID, json.RawMessage(`{"vc": "some-vc"}`)).Return(nil)
+				mockVCRepo.EXPECT().StorePOMVC(ctx, vehicleInfo.DID, pairedDevice.DID, json.RawMessage(`{"vc": "some-vc"}`)).Return(nil)
 			},
 			expectError:       false,
 			expectedVCStored:  true,
@@ -88,25 +95,30 @@ func TestService_CreatePOMVC(t *testing.T) {
 		{
 			name: "Success with Status device",
 			mockSetup: func() {
+				pairedDevice := models.PairedDevice{
+					Type:    models.DeviceTypeSynthetic,
+					Address: "0xf5c0337B31464D4f2232FEb2E71b4c7A175e7c52",
+				}
 				vehicleInfo := &models.VehicleInfo{
-					TokenID: tokenID,
+					DID: cloudevent.NFTDID{
+						ChainID:         137,
+						TokenID:         tokenID,
+						ContractAddress: common.HexToAddress("0xbA5738a18d83D41847dfFbDC6101d37C69c9B0cF"),
+					},
 					PairedDevices: []models.PairedDevice{
-						{
-							Type:    models.DeviceTypeSynthetic,
-							Address: common.HexToAddress("0xAddress"),
-						},
+						pairedDevice,
 					},
 				}
-				mockIdentityAPI.EXPECT().GetVehicleInfo(ctx, tokenID).Return(vehicleInfo, nil)
+				mockIdentityAPI.EXPECT().GetVehicleInfo(ctx, vehicleInfo.DID).Return(vehicleInfo, nil)
 
 				eventBytes := [][]byte{
 					[]byte(inputStatusv1),
 					[]byte(inputStatusv2),
 				}
 
-				mockConnectivityRepo.EXPECT().GetStatusEvents(ctx, tokenID, gomock.Any(), gomock.Any(), gomock.Any()).Return(eventBytes, nil)
+				mockConnectivityRepo.EXPECT().GetSyntheticstatusEvents(ctx, vehicleInfo.DID, gomock.Any(), gomock.Any(), gomock.Any()).Return(eventBytes, nil)
 				mockIssuer.EXPECT().CreatePOMVC(gomock.Any()).Return([]byte(`{"vc": "some-vc"}`), nil)
-				mockVCRepo.EXPECT().StorePOMVC(ctx, tokenID, json.RawMessage(`{"vc": "some-vc"}`)).Return(nil)
+				mockVCRepo.EXPECT().StorePOMVC(ctx, vehicleInfo.DID, pairedDevice.DID, json.RawMessage(`{"vc": "some-vc"}`)).Return(nil)
 			},
 			expectError:       false,
 			expectedVCStored:  true,
@@ -114,20 +126,24 @@ func TestService_CreatePOMVC(t *testing.T) {
 		},
 		{
 			name: "Success with Macaron device",
-
 			mockSetup: func() {
+				pairedDevice := models.PairedDevice{
+					Type:             models.DeviceTypeAftermarket,
+					ManufacturerName: "HashDog",
+					Address:          "0xf5c0337B31464D4f2232FEb2E71b4c7A175e7c52",
+				}
 				vehicleInfo := &models.VehicleInfo{
-					TokenID: tokenID,
+					DID: cloudevent.NFTDID{
+						ChainID:         137,
+						TokenID:         tokenID,
+						ContractAddress: common.HexToAddress("0xbA5738a18d83D41847dfFbDC6101d37C69c9B0cF"),
+					},
 					PairedDevices: []models.PairedDevice{
-						{
-							Type:             models.DeviceTypeAftermarket,
-							ManufacturerName: "HashDog",
-							Address:          common.HexToAddress("0xMacaronAddress"),
-						},
+						pairedDevice,
 					},
 				}
 
-				mockIdentityAPI.EXPECT().GetVehicleInfo(ctx, tokenID).Return(vehicleInfo, nil)
+				mockIdentityAPI.EXPECT().GetVehicleInfo(ctx, vehicleInfo.DID).Return(vehicleInfo, nil)
 
 				events := []lorawan.Data{
 					{
@@ -160,9 +176,9 @@ func TestService_CreatePOMVC(t *testing.T) {
 					eventBytes[i] = b
 				}
 
-				mockConnectivityRepo.EXPECT().GetHashDogEvents(ctx, common.HexToAddress("0xMacaronAddress"), gomock.Any(), gomock.Any(), gomock.Any()).Return(eventBytes, nil)
+				mockConnectivityRepo.EXPECT().GetHashDogEvents(ctx, &pairedDevice, gomock.Any(), gomock.Any(), gomock.Any()).Return(eventBytes, nil)
 				mockIssuer.EXPECT().CreatePOMVC(gomock.Any()).Return([]byte(`{"vc": "some-vc"}`), nil)
-				mockVCRepo.EXPECT().StorePOMVC(ctx, tokenID, json.RawMessage(`{"vc": "some-vc"}`)).Return(nil)
+				mockVCRepo.EXPECT().StorePOMVC(ctx, vehicleInfo.DID, pairedDevice.DID, json.RawMessage(`{"vc": "some-vc"}`)).Return(nil)
 			},
 			expectError:       false,
 			expectedVCStored:  true,
@@ -171,21 +187,27 @@ func TestService_CreatePOMVC(t *testing.T) {
 		{
 			name: "Multiple devices AutoPi priority",
 			mockSetup: func() {
+				autoPiDevice := models.PairedDevice{
+					Type:             models.DeviceTypeAftermarket,
+					ManufacturerName: "AutoPi",
+					IMEI:             "123456789012345",
+				}
+				statusDevice := models.PairedDevice{
+					Type:    models.DeviceTypeSynthetic,
+					Address: "0xf5c0337B31464D4f2232FEb2E71b4c7A175e7c52",
+				}
 				vehicleInfo := &models.VehicleInfo{
-					TokenID: tokenID,
+					DID: cloudevent.NFTDID{
+						ChainID:         137,
+						TokenID:         tokenID,
+						ContractAddress: common.HexToAddress("0xbA5738a18d83D41847dfFbDC6101d37C69c9B0cF"),
+					},
 					PairedDevices: []models.PairedDevice{
-						{
-							Type:    models.DeviceTypeSynthetic,
-							Address: common.HexToAddress("0xAddress"),
-						},
-						{
-							Type:             models.DeviceTypeAftermarket,
-							ManufacturerName: "AutoPi",
-							IMEI:             "123456789012345",
-						},
+						statusDevice,
+						autoPiDevice,
 					},
 				}
-				mockIdentityAPI.EXPECT().GetVehicleInfo(ctx, tokenID).Return(vehicleInfo, nil)
+				mockIdentityAPI.EXPECT().GetVehicleInfo(ctx, vehicleInfo.DID).Return(vehicleInfo, nil)
 
 				events := []twilio.ConnectionEvent{
 					{
@@ -209,9 +231,9 @@ func TestService_CreatePOMVC(t *testing.T) {
 					eventBytes[i] = b
 				}
 
-				mockConnectivityRepo.EXPECT().GetAutoPiEvents(ctx, "123456789012345", gomock.Any(), gomock.Any(), gomock.Any()).Return(eventBytes, nil)
+				mockConnectivityRepo.EXPECT().GetAutoPiEvents(ctx, &autoPiDevice, gomock.Any(), gomock.Any(), gomock.Any()).Return(eventBytes, nil)
 				mockIssuer.EXPECT().CreatePOMVC(gomock.Any()).Return([]byte(`{"vc": "some-vc"}`), nil)
-				mockVCRepo.EXPECT().StorePOMVC(ctx, tokenID, json.RawMessage(`{"vc": "some-vc"}`)).Return(nil)
+				mockVCRepo.EXPECT().StorePOMVC(ctx, vehicleInfo.DID, autoPiDevice.DID, json.RawMessage(`{"vc": "some-vc"}`)).Return(nil)
 			},
 			expectError:       false,
 			expectedVCStored:  true,
@@ -220,31 +242,37 @@ func TestService_CreatePOMVC(t *testing.T) {
 		{
 			name: "Multiple devices Status fallback",
 			mockSetup: func() {
+				autoPiDevice := models.PairedDevice{
+					Type:             models.DeviceTypeAftermarket,
+					ManufacturerName: "AutoPi",
+					IMEI:             "123456789012345",
+				}
+				statusDevice := models.PairedDevice{
+					Type:    models.DeviceTypeSynthetic,
+					Address: "0xf5c0337B31464D4f2232FEb2E71b4c7A175e7c52",
+				}
 				vehicleInfo := &models.VehicleInfo{
-					TokenID: tokenID,
+					DID: cloudevent.NFTDID{
+						ChainID:         137,
+						TokenID:         tokenID,
+						ContractAddress: common.HexToAddress("0xbA5738a18d83D41847dfFbDC6101d37C69c9B0cF"),
+					},
 					PairedDevices: []models.PairedDevice{
-						{
-							Type:    models.DeviceTypeSynthetic,
-							Address: common.HexToAddress("0xAddress"),
-						},
-						{
-							Type:             models.DeviceTypeAftermarket,
-							ManufacturerName: "AutoPi",
-							IMEI:             "123456789012345",
-						},
+						statusDevice,
+						autoPiDevice,
 					},
 				}
-				mockIdentityAPI.EXPECT().GetVehicleInfo(ctx, tokenID).Return(vehicleInfo, nil)
+				mockIdentityAPI.EXPECT().GetVehicleInfo(ctx, vehicleInfo.DID).Return(vehicleInfo, nil)
 
 				eventBytes := [][]byte{
 					[]byte(inputStatusv1),
 					[]byte(inputStatusv2),
 				}
 
-				mockConnectivityRepo.EXPECT().GetAutoPiEvents(ctx, "123456789012345", gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, nil)
-				mockConnectivityRepo.EXPECT().GetStatusEvents(ctx, tokenID, gomock.Any(), gomock.Any(), gomock.Any()).Return(eventBytes, nil)
+				mockConnectivityRepo.EXPECT().GetAutoPiEvents(ctx, &autoPiDevice, gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, nil)
+				mockConnectivityRepo.EXPECT().GetSyntheticstatusEvents(ctx, vehicleInfo.DID, gomock.Any(), gomock.Any(), gomock.Any()).Return(eventBytes, nil)
 				mockIssuer.EXPECT().CreatePOMVC(gomock.Any()).Return([]byte(`{"vc": "some-vc"}`), nil)
-				mockVCRepo.EXPECT().StorePOMVC(ctx, tokenID, json.RawMessage(`{"vc": "some-vc"}`)).Return(nil)
+				mockVCRepo.EXPECT().StorePOMVC(ctx, vehicleInfo.DID, statusDevice.DID, json.RawMessage(`{"vc": "some-vc"}`)).Return(nil)
 			},
 			expectError:       false,
 			expectedVCStored:  true,
@@ -253,7 +281,12 @@ func TestService_CreatePOMVC(t *testing.T) {
 		{
 			name: "Error getting vehicle info",
 			mockSetup: func() {
-				mockIdentityAPI.EXPECT().GetVehicleInfo(ctx, tokenID).Return(nil, errors.New("vehicle info error"))
+				vehicleInfo := cloudevent.NFTDID{
+					ChainID:         137,
+					TokenID:         tokenID,
+					ContractAddress: common.HexToAddress("0xbA5738a18d83D41847dfFbDC6101d37C69c9B0cF"),
+				}
+				mockIdentityAPI.EXPECT().GetVehicleInfo(ctx, vehicleInfo).Return(nil, fmt.Errorf("vehicle info error"))
 			},
 			expectError:      true,
 			expectedVCStored: false,
@@ -261,25 +294,30 @@ func TestService_CreatePOMVC(t *testing.T) {
 		{
 			name: "Error storing POM VC",
 			mockSetup: func() {
+				pairedDevice := models.PairedDevice{
+					Type:    models.DeviceTypeSynthetic,
+					Address: "0xf5c0337B31464D4f2232FEb2E71b4c7A175e7c52",
+				}
 				vehicleInfo := &models.VehicleInfo{
-					TokenID: tokenID,
+					DID: cloudevent.NFTDID{
+						ChainID:         137,
+						TokenID:         tokenID,
+						ContractAddress: common.HexToAddress("0xbA5738a18d83D41847dfFbDC6101d37C69c9B0cF"),
+					},
 					PairedDevices: []models.PairedDevice{
-						{
-							Type:    models.DeviceTypeSynthetic,
-							Address: common.HexToAddress("0xAddress"),
-						},
+						pairedDevice,
 					},
 				}
-				mockIdentityAPI.EXPECT().GetVehicleInfo(ctx, tokenID).Return(vehicleInfo, nil)
+				mockIdentityAPI.EXPECT().GetVehicleInfo(ctx, vehicleInfo.DID).Return(vehicleInfo, nil)
 
 				eventBytes := [][]byte{
 					[]byte(inputStatusv1),
 					[]byte(inputStatusv2),
 				}
 
-				mockConnectivityRepo.EXPECT().GetStatusEvents(ctx, tokenID, gomock.Any(), gomock.Any(), gomock.Any()).Return(eventBytes, nil)
+				mockConnectivityRepo.EXPECT().GetSyntheticstatusEvents(ctx, vehicleInfo.DID, gomock.Any(), gomock.Any(), gomock.Any()).Return(eventBytes, nil)
 				mockIssuer.EXPECT().CreatePOMVC(gomock.Any()).Return([]byte(`{"vc": "some-vc"}`), nil)
-				mockVCRepo.EXPECT().StorePOMVC(ctx, tokenID, json.RawMessage(`{"vc": "some-vc"}`)).Return(errors.New("store error"))
+				mockVCRepo.EXPECT().StorePOMVC(ctx, vehicleInfo.DID, pairedDevice.DID, json.RawMessage(`{"vc": "some-vc"}`)).Return(fmt.Errorf("store error"))
 			},
 			expectError:      true,
 			expectedVCStored: false,

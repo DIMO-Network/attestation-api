@@ -28,6 +28,7 @@ import (
 const (
 	autoPiManufacturer  = "AutoPi"
 	hashDogManufacturer = "HashDog"
+	ruptelaManufacturer = "Ruptela"
 	// h3Resolution resolution for h3 hex 8 ~= 0.737327598 km2
 	h3Resolution   = 8
 	PolygonChainID = 137
@@ -62,7 +63,7 @@ func NewService(logger *zerolog.Logger, identityAPI IdentityAPI, connectivityRep
 		vcRepo:                 vcRepo,
 		issuer:                 issuer,
 		vehicleContractAddress: common.HexToAddress(vehicleContractAddress),
-	}
+	}, nil
 }
 
 // CreatePOMVC generates a Proof of Movement VC.
@@ -100,7 +101,7 @@ func (s *Service) CreatePOMVC(ctx context.Context, tokenID uint32) error {
 		return handleError(err, &logger, "Failed to create POM VC")
 	}
 
-	if err = s.vcRepo.StorePOMVC(ctx, tokenID, vc); err != nil {
+	if err = s.vcRepo.StorePOMVC(ctx, vehicleDID, pairedDevice.DID, vc); err != nil {
 		return handleError(err, &logger, "Failed to store POM VC")
 	}
 
@@ -116,11 +117,13 @@ func (s *Service) getLocationForVehicle(ctx context.Context, vehicleInfo *models
 
 		switch {
 		case device.Type == models.DeviceTypeAftermarket && device.ManufacturerName == autoPiManufacturer:
-			locations, err = s.pullAutoPiEvents(ctx, device.IMEI)
+			locations, err = s.pullAutoPiEvents(ctx, &device)
 		case device.Type == models.DeviceTypeAftermarket && device.ManufacturerName == hashDogManufacturer:
-			locations, err = s.pullMacaronEvents(ctx, device.Address)
+			locations, err = s.pullMacaronEvents(ctx, &device)
+		case device.Type == models.DeviceTypeAftermarket && device.ManufacturerName == ruptelaManufacturer:
+			locations, err = s.pullRuptelaEvents(ctx, vehicleInfo.DID)
 		default:
-			locations, err = s.pullStatusEvents(ctx, vehicleInfo.DID.TokenID)
+			locations, err = s.pullStatusEvents(ctx, vehicleInfo.DID)
 		}
 		if err == nil {
 			return &device, locations, nil
@@ -135,24 +138,31 @@ func (s *Service) getLocationForVehicle(ctx context.Context, vehicleInfo *models
 }
 
 // pullAutoPiEvents retrieves AutoPi events and extracts locations.
-func (s *Service) pullAutoPiEvents(ctx context.Context, device models.PairedDevice) ([]verifiable.Location, error) {
+func (s *Service) pullAutoPiEvents(ctx context.Context, device *models.PairedDevice) ([]verifiable.Location, error) {
 	return s.pullEvents(ctx, func(after, before time.Time, limit int) ([][]byte, error) {
 		return s.connectivityRepo.GetAutoPiEvents(ctx, device, after, before, limit)
 	}, parseAutoPiEvent)
 }
 
 // pullMacaronEvents retrieves Macaron events and extracts locations.
-func (s *Service) pullMacaronEvents(ctx context.Context, device models.PairedDevice) ([]verifiable.Location, error) {
+func (s *Service) pullMacaronEvents(ctx context.Context, device *models.PairedDevice) ([]verifiable.Location, error) {
 	return s.pullEvents(ctx, func(after, before time.Time, limit int) ([][]byte, error) {
 		return s.connectivityRepo.GetHashDogEvents(ctx, device, after, before, limit)
 	}, parseMacaronEvent)
 }
 
-// pullStatusEvents retrieves Status events and extracts locations.
+// pullStatusEvents retrieves synthetic events and extracts locations.
 func (s *Service) pullStatusEvents(ctx context.Context, vehicleDID cloudevent.NFTDID) ([]verifiable.Location, error) {
 	return s.pullEvents(ctx, func(after, before time.Time, limit int) ([][]byte, error) {
-		return s.connectivityRepo.GetStatusEvents(ctx, vehicleDID, after, before, limit)
-	}, parseStatusEvent)
+		return s.connectivityRepo.GetSyntheticstatusEvents(ctx, vehicleDID, after, before, limit)
+	}, parseSyntheticEvent)
+}
+
+// pullRuptelaEvents retrieves Ruptela Status events and extracts locations.
+func (s *Service) pullRuptelaEvents(ctx context.Context, vehicleDID cloudevent.NFTDID) ([]verifiable.Location, error) {
+	return s.pullEvents(ctx, func(after, before time.Time, limit int) ([][]byte, error) {
+		return s.connectivityRepo.GetSyntheticstatusEvents(ctx, vehicleDID, after, before, limit)
+	}, parseSyntheticEvent)
 }
 
 // pullEvents is a generic function for fetching events and extracting locations.
@@ -203,7 +213,7 @@ func (s *Service) pullEvents(ctx context.Context, fetchEvents func(time.Time, ti
 func pairedDeviceSorter(a, b models.PairedDevice) int {
 	if a.Type == b.Type {
 		if a.ManufacturerName == b.ManufacturerName {
-			return a.Address.Cmp(b.Address)
+			return cmp.Compare(a.Address, b.Address)
 		}
 		return cmp.Compare(a.ManufacturerName, b.ManufacturerName)
 	}
@@ -319,8 +329,8 @@ func parseMacaronEvent(data []byte) (cloudevent.CloudEvent[any], error) {
 	return cloudevent.CloudEvent[any]{CloudEventHeader: event.CloudEventHeader, Data: event.Data}, nil
 }
 
-// parseStatusEvent parses status events and returns data for events with lat and long data.
-func parseStatusEvent(data []byte) (cloudevent.CloudEvent[any], error) {
+// parseSyntheticEvent parses status events and returns data for events with lat and long data.
+func parseSyntheticEvent(data []byte) (cloudevent.CloudEvent[any], error) {
 	var event cloudevent.CloudEvent[any]
 	err := json.Unmarshal(data, &event)
 	if err != nil {
@@ -338,6 +348,10 @@ func parseStatusEvent(data []byte) (cloudevent.CloudEvent[any], error) {
 		return cloudevent.CloudEvent[any]{CloudEventHeader: event.CloudEventHeader}, nil
 	}
 	return cloudevent.CloudEvent[any]{CloudEventHeader: event.CloudEventHeader, Data: latLong}, nil
+}
+
+func parseRuptelaEvent(data []byte) (cloudevent.CloudEvent[any], error) {
+	return cloudevent.CloudEvent[any]{}, nil
 }
 
 // handleError logs an error and returns a Fiber error with the given message.

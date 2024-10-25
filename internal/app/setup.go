@@ -80,9 +80,12 @@ func createHttpController(logger *zerolog.Logger, settings *config.Settings, sta
 	// Initialize VC service using the initialized services
 	vinvcService := vinvc.NewService(logger, vcRepo, identityAPI, fingerprintRepo, vinValidateSerivce, issuer, revokedList, settings.VehicleNFTAddress)
 
-	conRepo := connectivity.NewConnectivityRepo(chConn, s3Client, settings.AutoPiDataType, settings.AutoPiBucketName, settings.HashDogDataType, settings.HashDogBucketName, settings.StatusDataType, settings.StatusBucketName)
+	conRepo := connectivity.NewConnectivityRepo(chConn, s3Client, settings.AutoPiDataType, settings.AutoPiBucketName, settings.HashDogDataType, settings.HashDogBucketName, settings.StatusDataType, settings.StatusBucketName, settings.CloudEventBucket)
 
-	pomService := pom.NewService(logger, identityAPI, conRepo, vcRepo, issuer, settings.VehicleNFTAddress)
+	pomService, err := pom.NewService(logger, identityAPI, conRepo, vcRepo, issuer, settings.VehicleNFTAddress)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create POM service: %w", err)
+	}
 
 	ctrl, err := httphandlers.NewVCController(vinvcService, pomService, settings.TelemetryURL)
 	if err != nil {

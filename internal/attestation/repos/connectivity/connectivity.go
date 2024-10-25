@@ -22,9 +22,9 @@ var (
 	ruptelaSource = common.HexToAddress("0x3A6603E1065C9b3142403b1b7e349a6Ae936E819")
 
 	// TODO: Replace with actual addresses of each connection or DIMO connection
-	smartCarSource = common.HexToAddress("0x0000000000000000000000000000000000000000")
-	twilioSource   = common.HexToAddress("0x0000000000000000000000000000000000000000")
-	hashDogSource  = common.HexToAddress("0x0000000000000000000000000000000000000000")
+	syntheticSource = common.HexToAddress("0x0000000000000000000000000000000000000000")
+	twilioSource    = common.HexToAddress("0x0000000000000000000000000000000000000000")
+	hashDogSource   = common.HexToAddress("0x0000000000000000000000000000000000000000")
 )
 
 // ConnectivityRepo is a repository for retrieving connectivity events.
@@ -81,9 +81,9 @@ func (r *ConnectivityRepo) GetHashDogEvents(ctx context.Context, device *models.
 	return records, nil
 }
 
-// GetSmartCarStatusEvents returns the status events for a vehicle.
-func (r *ConnectivityRepo) GetSmartCarStatusEvents(ctx context.Context, vehicleDID cloudevent.NFTDID, after, before time.Time, limit int) ([][]byte, error) {
-	records, err := r.getEvents(ctx, smartCarSource, vehicleDID, after, before, limit)
+// GetSyntheticstatusEvents returns the status events for a vehicle.
+func (r *ConnectivityRepo) GetSyntheticstatusEvents(ctx context.Context, vehicleDID cloudevent.NFTDID, after, before time.Time, limit int) ([][]byte, error) {
+	records, err := r.getEvents(ctx, syntheticSource, vehicleDID, after, before, limit)
 	if errors.Is(err, sql.ErrNoRows) {
 		subject := repos.TokenIDToString(vehicleDID.TokenID)
 		return r.getLegacyEvents(ctx, r.statusBucketName, r.statusDataType, subject, after, before, limit)
