@@ -29,7 +29,8 @@ const (
 	autoPiManufacturer  = "AutoPi"
 	hashDogManufacturer = "HashDog"
 	// h3Resolution resolution for h3 hex 8 ~= 0.737327598 km2
-	h3Resolution = 8
+	h3Resolution   = 8
+	PolygonChainID = 137
 )
 
 var errNoLocation = fmt.Errorf("no location data found")
@@ -47,25 +48,33 @@ type Service struct {
 	connectivityRepo       ConnectivityRepo
 	vcRepo                 VCRepo
 	issuer                 Issuer
-	vehicleContractAddress string
+	vehicleContractAddress common.Address
 }
 
-func NewService(logger *zerolog.Logger, identityAPI IdentityAPI, connectivityRepo ConnectivityRepo, vcRepo VCRepo, issuer Issuer, vehicleContractAddress string) *Service {
+func NewService(logger *zerolog.Logger, identityAPI IdentityAPI, connectivityRepo ConnectivityRepo, vcRepo VCRepo, issuer Issuer, vehicleContractAddress string) (*Service, error) {
+	if !common.IsHexAddress(vehicleContractAddress) {
+		return nil, fmt.Errorf("invalid vehicle contract address: %s", vehicleContractAddress)
+	}
 	return &Service{
 		logger:                 *logger,
 		identityAPI:            identityAPI,
 		connectivityRepo:       connectivityRepo,
 		vcRepo:                 vcRepo,
 		issuer:                 issuer,
-		vehicleContractAddress: vehicleContractAddress,
+		vehicleContractAddress: common.HexToAddress(vehicleContractAddress),
 	}
 }
 
 // CreatePOMVC generates a Proof of Movement VC.
 func (s *Service) CreatePOMVC(ctx context.Context, tokenID uint32) error {
+	vehicleDID := cloudevent.NFTDID{
+		ChainID:         PolygonChainID,
+		TokenID:         tokenID,
+		ContractAddress: s.vehicleContractAddress,
+	}
 	logger := s.logger.With().Uint32("vehicleTokenId", tokenID).Logger()
 
-	vehicleInfo, err := s.identityAPI.GetVehicleInfo(ctx, tokenID)
+	vehicleInfo, err := s.identityAPI.GetVehicleInfo(ctx, vehicleDID)
 	if err != nil {
 		return handleError(err, &logger, "Failed to get vehicle info")
 	}
@@ -81,8 +90,8 @@ func (s *Service) CreatePOMVC(ctx context.Context, tokenID uint32) error {
 
 	pomSubject := verifiable.POMSubject{
 		VehicleTokenID:         tokenID,
-		VehicleContractAddress: s.vehicleContractAddress,
-		RecordedBy:             pairedDevice.Address.Hex(),
+		VehicleContractAddress: s.vehicleContractAddress.Hex(),
+		RecordedBy:             pairedDevice.DID.String(),
 		Locations:              locations,
 	}
 
@@ -111,7 +120,7 @@ func (s *Service) getLocationForVehicle(ctx context.Context, vehicleInfo *models
 		case device.Type == models.DeviceTypeAftermarket && device.ManufacturerName == hashDogManufacturer:
 			locations, err = s.pullMacaronEvents(ctx, device.Address)
 		default:
-			locations, err = s.pullStatusEvents(ctx, vehicleInfo.TokenID)
+			locations, err = s.pullStatusEvents(ctx, vehicleInfo.DID.TokenID)
 		}
 		if err == nil {
 			return &device, locations, nil
@@ -126,23 +135,23 @@ func (s *Service) getLocationForVehicle(ctx context.Context, vehicleInfo *models
 }
 
 // pullAutoPiEvents retrieves AutoPi events and extracts locations.
-func (s *Service) pullAutoPiEvents(ctx context.Context, deviceIMEI string) ([]verifiable.Location, error) {
+func (s *Service) pullAutoPiEvents(ctx context.Context, device models.PairedDevice) ([]verifiable.Location, error) {
 	return s.pullEvents(ctx, func(after, before time.Time, limit int) ([][]byte, error) {
-		return s.connectivityRepo.GetAutoPiEvents(ctx, deviceIMEI, after, before, limit)
+		return s.connectivityRepo.GetAutoPiEvents(ctx, device, after, before, limit)
 	}, parseAutoPiEvent)
 }
 
 // pullMacaronEvents retrieves Macaron events and extracts locations.
-func (s *Service) pullMacaronEvents(ctx context.Context, deviceAddr common.Address) ([]verifiable.Location, error) {
+func (s *Service) pullMacaronEvents(ctx context.Context, device models.PairedDevice) ([]verifiable.Location, error) {
 	return s.pullEvents(ctx, func(after, before time.Time, limit int) ([][]byte, error) {
-		return s.connectivityRepo.GetHashDogEvents(ctx, deviceAddr, after, before, limit)
+		return s.connectivityRepo.GetHashDogEvents(ctx, device, after, before, limit)
 	}, parseMacaronEvent)
 }
 
 // pullStatusEvents retrieves Status events and extracts locations.
-func (s *Service) pullStatusEvents(ctx context.Context, vehicleTokenID uint32) ([]verifiable.Location, error) {
+func (s *Service) pullStatusEvents(ctx context.Context, vehicleDID cloudevent.NFTDID) ([]verifiable.Location, error) {
 	return s.pullEvents(ctx, func(after, before time.Time, limit int) ([][]byte, error) {
-		return s.connectivityRepo.GetStatusEvents(ctx, vehicleTokenID, after, before, limit)
+		return s.connectivityRepo.GetStatusEvents(ctx, vehicleDID, after, before, limit)
 	}, parseStatusEvent)
 }
 
