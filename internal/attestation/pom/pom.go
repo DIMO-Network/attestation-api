@@ -14,8 +14,10 @@ import (
 	"github.com/DIMO-Network/attestation-api/internal/models"
 	"github.com/DIMO-Network/attestation-api/pkg/verifiable"
 	"github.com/DIMO-Network/model-garage/pkg/cloudevent"
+	"github.com/DIMO-Network/model-garage/pkg/convert"
 	"github.com/DIMO-Network/model-garage/pkg/lorawan"
 	"github.com/DIMO-Network/model-garage/pkg/nativestatus"
+	"github.com/DIMO-Network/model-garage/pkg/ruptela/status"
 	"github.com/DIMO-Network/model-garage/pkg/twilio"
 	"github.com/DIMO-Network/model-garage/pkg/vss"
 	"github.com/DIMO-Network/shared/set"
@@ -161,8 +163,8 @@ func (s *Service) pullStatusEvents(ctx context.Context, vehicleDID cloudevent.NF
 // pullRuptelaEvents retrieves Ruptela Status events and extracts locations.
 func (s *Service) pullRuptelaEvents(ctx context.Context, vehicleDID cloudevent.NFTDID) ([]verifiable.Location, error) {
 	return s.pullEvents(ctx, func(after, before time.Time, limit int) ([][]byte, error) {
-		return s.connectivityRepo.GetSyntheticstatusEvents(ctx, vehicleDID, after, before, limit)
-	}, parseSyntheticEvent)
+		return s.connectivityRepo.GetRuptelaStatusEvents(ctx, vehicleDID, after, before, limit)
+	}, parseRuptelaEvent)
 }
 
 // pullEvents is a generic function for fetching events and extracting locations.
@@ -251,7 +253,7 @@ func compareLocations(firstEvent, curEvent cloudevent.CloudEvent[any]) []verifia
 			}
 		}
 	case lorawan.Data:
-		if firstEvent.CloudEventHeader == curEvent.CloudEventHeader {
+		if firstEvent.CloudEventHeader.Equals(curEvent.CloudEventHeader) {
 			// gatway differences must be from different events
 			return nil
 		}
@@ -351,7 +353,27 @@ func parseSyntheticEvent(data []byte) (cloudevent.CloudEvent[any], error) {
 }
 
 func parseRuptelaEvent(data []byte) (cloudevent.CloudEvent[any], error) {
-	return cloudevent.CloudEvent[any]{}, nil
+	event := cloudevent.CloudEvent[any]{}
+	err := json.Unmarshal(data, &event)
+	if err != nil {
+		return event, fmt.Errorf("failed to unmarshal event: %w", err)
+	}
+	signals, err := status.DecodeStatusSignals(data)
+	if err != nil {
+		convErr := convert.ConversionError{}
+		if !errors.As(err, &convErr) || len(convErr.DecodedSignals) == 0 {
+			return event, fmt.Errorf("failed to decode signals: %w", err)
+		}
+		signals = convErr.DecodedSignals
+	}
+	latLong, ok := getH3Cells(signals)
+	if !ok {
+		return event, nil
+	}
+	if !ok {
+		return cloudevent.CloudEvent[any]{CloudEventHeader: event.CloudEventHeader}, nil
+	}
+	return cloudevent.CloudEvent[any]{CloudEventHeader: event.CloudEventHeader, Data: latLong}, nil
 }
 
 // handleError logs an error and returns a Fiber error with the given message.

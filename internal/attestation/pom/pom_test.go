@@ -170,6 +170,7 @@ func TestService_CreatePOMVC(t *testing.T) {
 						Data: event,
 						CloudEventHeader: cloudevent.CloudEventHeader{
 							Time: time.UnixMilli(event.Timestamp),
+							ID:   fmt.Sprintf("event-%d", i),
 						},
 					}
 					b, _ := json.Marshal(cloudEvent)
@@ -183,6 +184,37 @@ func TestService_CreatePOMVC(t *testing.T) {
 			expectError:       false,
 			expectedVCStored:  true,
 			expectedVCContent: []byte(`{"vc": "some-vc"}`),
+		},
+		{
+			name: "Success with Ruptela device",
+			mockSetup: func() {
+				pairedDevice := models.PairedDevice{
+					Type:             models.DeviceTypeAftermarket,
+					ManufacturerName: "Ruptela",
+					Address:          "0xf5c0337B31464D4f2232FEb2E71b4c7A175e7c52",
+				}
+				vehicleInfo := &models.VehicleInfo{
+					DID: cloudevent.NFTDID{
+						ChainID:         137,
+						TokenID:         tokenID,
+						ContractAddress: common.HexToAddress("0xbA5738a18d83D41847dfFbDC6101d37C69c9B0cF"),
+					},
+					PairedDevices: []models.PairedDevice{
+						pairedDevice,
+					},
+				}
+
+				mockIdentityAPI.EXPECT().GetVehicleInfo(ctx, vehicleInfo.DID).Return(vehicleInfo, nil)
+
+				events := [][]byte{
+					[]byte(inputRuptela),
+				}
+
+				mockConnectivityRepo.EXPECT().GetRuptelaStatusEvents(ctx, vehicleInfo.DID, gomock.Any(), gomock.Any(), gomock.Any()).Return(events, nil)
+				mockIssuer.EXPECT().CreatePOMVC(gomock.Any()).Return([]byte(`{"vc": "some-vc"}`), nil)
+				mockVCRepo.EXPECT().StorePOMVC(ctx, vehicleInfo.DID, pairedDevice.DID, json.RawMessage(`{"vc": "some-vc"}`)).Return(nil)
+			},
+			expectError: false,
 		},
 		{
 			name: "Multiple devices AutoPi priority",
@@ -393,5 +425,142 @@ var (
             ]
         }
     }
+}`
+	inputRuptela = `
+	{
+    "id": "2ntM3FpVxTqkjJNeixHzyOyB3mz",
+    "source": "0x4Dc84a226102c08e911A5159e165e616e3A877A8",
+    "producer": "did:nft:137:0x325b45949C833986bC98e98a49F3CA5C5c4643B5_14",
+    "specversion": "1.0",
+    "subject": "did:nft:137:0x45fbCD3ef7361d156e8b16F5538AE36DEdf61Da8_431",
+    "time": "2024-10-24T16:35:14Z",
+    "type": "dimo.status",
+    "datacontenttype": "application/json",
+    "dataversion": "r/v0/loc",
+    "data": {
+        "location": [
+            {
+                "ts": 1729787700,
+                "lat": 422700833,
+                "lon": -715014150,
+                "alt": 896,
+                "dir": 0,
+                "hdop": 0
+            },
+            {
+                "ts": 1729787701,
+                "lat": 422700833,
+                "lon": -715014150,
+                "alt": 896,
+                "dir": 0,
+                "hdop": 0
+            },
+            {
+                "ts": 1729787702,
+                "lat": 422700833,
+                "lon": -715014150,
+                "alt": 896,
+                "dir": 0,
+                "hdop": 0
+            },
+            {
+                "ts": 1729787703,
+                "lat": 422700833,
+                "lon": -715014150,
+                "alt": 896,
+                "dir": 0,
+                "hdop": 0
+            },
+            {
+                "ts": 1729787704,
+                "lat": 422700833,
+                "lon": -715014150,
+                "alt": 896,
+                "dir": 0,
+                "hdop": 0
+            },
+            {
+                "ts": 1729787705,
+                "lat": 422700833,
+                "lon": -715014150,
+                "alt": 896,
+                "dir": 0,
+                "hdop": 0
+            },
+            {
+                "ts": 1729787706,
+                "lat": 422700833,
+                "lon": -715014150,
+                "alt": 896,
+                "dir": 0,
+                "hdop": 0
+            },
+            {
+                "ts": 1729787707,
+                "lat": 422700833,
+                "lon": -715014150,
+                "alt": 896,
+                "dir": 0,
+                "hdop": 0
+            },
+            {
+                "ts": 1729787708,
+                "lat": 452700833,
+                "lon": -715014150,
+                "alt": 896,
+                "dir": 0,
+                "hdop": 0
+            },
+            {
+                "ts": 1729787709,
+                "lat": 422700833,
+                "lon": -715014150,
+                "alt": 896,
+                "dir": 0,
+                "hdop": 0
+            },
+            {
+                "ts": 1729787710,
+                "lat": 422700833,
+                "lon": -715014150,
+                "alt": 896,
+                "dir": 0,
+                "hdop": 0
+            },
+            {
+                "ts": 1729787711,
+                "lat": 422700833,
+                "lon": -715014150,
+                "alt": 896,
+                "dir": 0,
+                "hdop": 0
+            },
+            {
+                "ts": 1729787712,
+                "lat": 422700833,
+                "lon": -715014150,
+                "alt": 896,
+                "dir": 0,
+                "hdop": 0
+            },
+            {
+                "ts": 1729787713,
+                "lat": 422700833,
+                "lon": -715014150,
+                "alt": 896,
+                "dir": 0,
+                "hdop": 0
+            },
+            {
+                "ts": 1729787714,
+                "lat": 422700833,
+                "lon": -715014150,
+                "alt": 896,
+                "dir": 0,
+                "hdop": 0
+            }
+        ]
+    },
+    "signature": "0xbb0cca928355df6454db8244846d9b58fcec0ba465651d609e7dc9564b94461a10f7c0fe82060eaeb4d7e8f01a1edea8fe8635310860ea1be1abbc14a1f944e81c"
 }`
 )
