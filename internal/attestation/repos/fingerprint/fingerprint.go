@@ -89,19 +89,23 @@ func (s *Service) legacyGetLatestFingerprintMessages(ctx context.Context, device
 }
 
 func decodeFingerprintMessage(data []byte) (*models.DecodedFingerprintData, error) {
-	msg := models.FingerprintMessage{}
+	msg := cloudevent.CloudEvent[map[string]any]{}
 	if err := json.Unmarshal(data, &msg); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal fingerprint message: %w", err)
 	}
 	var vin string
 	var err error
-	if msg.Data != nil {
+	switch {
+	case msg.Data != nil:
 		vin, err = decodeVINFromData(msg.Data)
 		if err != nil {
 			return nil, err
 		}
-	} else if msg.Data64 != nil {
-		vin, err = decodeVINFromBase64(*msg.Data64)
+	case msg.Extras != nil && msg.Extras["data_base64"] != nil:
+		if _, ok := msg.Extras["data_base64"].(string); !ok {
+			return nil, decodeError("invalid data_base64 type")
+		}
+		vin, err = decodeVINFromBase64(msg.Extras["data_base64"].(string))
 		if err != nil {
 			return nil, err
 		}

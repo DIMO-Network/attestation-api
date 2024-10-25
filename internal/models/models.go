@@ -25,13 +25,6 @@ type PairedDevice struct {
 	IMEI    string `json:"imei"`
 }
 
-// FingerprintMessage represents the fingerprint message containing VIN and timestamp.
-type FingerprintMessage struct {
-	cloudevent.CloudEventHeader
-	Data   map[string]any `json:"data"`
-	Data64 *string        `json:"data_base64"`
-}
-
 // DecodedFingerprintData represents the decoded fingerprint data.
 type DecodedFingerprintData struct {
 	cloudevent.CloudEventHeader

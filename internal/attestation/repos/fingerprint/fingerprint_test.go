@@ -37,7 +37,7 @@ func TestDecodeFingerprintMessage(t *testing.T) {
 					"protocol":"6",
 					"softwareVersion":"1.25.5"
 				},
-				"signature":"0x9f4a67281978a93fafc9231e10c6a3489b5c732239ffc72b02e3603608c7375516f876e9ac33aa3b5a2b475521dbca4e1e68d85a797ea7b07f7d9b6369b805751c"
+				"signature":"0x8f4a67281978a93fafc9231e10c6a3489b5c732239ffc72b02e3603608c7375516f876e9ac33aa3b5a2b475521dbca4e1e68d85a797ea7b07f7d9b6369b805751c"
 				}`),
 			expectedData: models.DecodedFingerprintData{
 				CloudEventHeader: cloudevent.CloudEventHeader{
@@ -48,6 +48,9 @@ func TestDecodeFingerprintMessage(t *testing.T) {
 					DataSchema:  "dimo.zone.status/v2.0",
 					Time:        time.Date(2024, 5, 30, 15, 4, 5, 0, time.UTC),
 					Source:      "aftermarket/device/fingerprint",
+					Extras: map[string]any{
+						"signature": "0x8f4a67281978a93fafc9231e10c6a3489b5c732239ffc72b02e3603608c7375516f876e9ac33aa3b5a2b475521dbca4e1e68d85a797ea7b07f7d9b6369b805751c",
+					},
 				},
 				VIN: "1HGCM82633A123456",
 			},
@@ -58,7 +61,11 @@ func TestDecodeFingerprintMessage(t *testing.T) {
 			data: []byte(fmt.Sprintf(`{"time":"2024-05-30T15:04:05Z","data_base64":"%s"}`, mockMacronFingerprint("ABCD1234567890XYZ"))),
 			expectedData: models.DecodedFingerprintData{
 				CloudEventHeader: cloudevent.CloudEventHeader{
-					Time: time.Date(2024, 5, 30, 15, 4, 5, 0, time.UTC),
+					SpecVersion: "1.0",
+					Time:        time.Date(2024, 5, 30, 15, 4, 5, 0, time.UTC),
+					Extras: map[string]any{
+						"data_base64": mockMacronFingerprint("ABCD1234567890XYZ"),
+					},
 				},
 				VIN: "ABCD1234567890XYZ",
 			},
