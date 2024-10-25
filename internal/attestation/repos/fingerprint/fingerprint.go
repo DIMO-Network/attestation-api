@@ -15,13 +15,20 @@ import (
 	"github.com/ClickHouse/clickhouse-go/v2"
 	"github.com/DIMO-Network/attestation-api/internal/models"
 	"github.com/DIMO-Network/model-garage/pkg/cloudevent"
+	"github.com/DIMO-Network/model-garage/pkg/ruptela/fingerprint"
 	"github.com/DIMO-Network/nameindexer"
 	"github.com/DIMO-Network/nameindexer/pkg/clickhouse/indexrepo"
+	"github.com/ethereum/go-ethereum/common"
 )
 
 type decodeError string
 
-var basicVINExp = regexp.MustCompile(`^[A-Z0-9]{17}$`)
+var (
+	basicVINExp   = regexp.MustCompile(`^[A-Z0-9]{17}$`)
+	ruptelaSource = common.HexToAddress("0x3A6603E1065C9b3142403b1b7e349a6Ae936E819")
+	macaronSource = "macaron/fingerprint"
+	autopiSource  = "aftermarket/device/fingerprint"
+)
 
 func (d decodeError) Error() string {
 	return fmt.Sprintf("failed to decode fingerprint message: %s", string(d))
@@ -96,19 +103,29 @@ func decodeFingerprintMessage(data []byte) (*models.DecodedFingerprintData, erro
 	var vin string
 	var err error
 	switch {
-	case msg.Data != nil:
+	case msg.Source == autopiSource:
 		vin, err = decodeVINFromData(msg.Data)
 		if err != nil {
 			return nil, err
 		}
-	case msg.Extras != nil && msg.Extras["data_base64"] != nil:
-		if _, ok := msg.Extras["data_base64"].(string); !ok {
-			return nil, decodeError("invalid data_base64 type")
+	case msg.Source == macaronSource:
+		if msg.Extras == nil {
+			return nil, decodeError("missing data for macaron fingerprint")
 		}
-		vin, err = decodeVINFromBase64(msg.Extras["data_base64"].(string))
+		base64Data, ok := msg.Extras["data_base64"].(string)
+		if !ok {
+			return nil, decodeError("missing data for macaron fingerprint")
+		}
+		vin, err = decodeVINFromBase64(base64Data)
 		if err != nil {
 			return nil, err
 		}
+	case ruptelaSource.Cmp(common.HexToAddress(msg.Source)) == 0:
+		fpEvent, err := fingerprint.DecodeFingerprint(data)
+		if err != nil {
+			return nil, err
+		}
+		vin = fpEvent.Data.VIN
 	}
 
 	if vin == "" {

@@ -58,11 +58,12 @@ func TestDecodeFingerprintMessage(t *testing.T) {
 		},
 		{
 			name: "Valid VIN in Data64",
-			data: []byte(fmt.Sprintf(`{"time":"2024-05-30T15:04:05Z","data_base64":"%s"}`, mockMacronFingerprint("ABCD1234567890XYZ"))),
+			data: []byte(fmt.Sprintf(`{"time":"2024-05-30T15:04:05Z","data_base64":"%s","source":"macaron/fingerprint"}`, mockMacronFingerprint("ABCD1234567890XYZ"))),
 			expectedData: models.DecodedFingerprintData{
 				CloudEventHeader: cloudevent.CloudEventHeader{
 					SpecVersion: "1.0",
 					Time:        time.Date(2024, 5, 30, 15, 4, 5, 0, time.UTC),
+					Source:      "macaron/fingerprint",
 					Extras: map[string]any{
 						"data_base64": mockMacronFingerprint("ABCD1234567890XYZ"),
 					},
@@ -71,7 +72,22 @@ func TestDecodeFingerprintMessage(t *testing.T) {
 			},
 			expectError: false,
 		},
-
+		{
+			name: "Valid VIN from Ruptela",
+			data: []byte(ruptelaStatusPayload),
+			expectedData: models.DecodedFingerprintData{
+				CloudEventHeader: cloudevent.CloudEventHeader{
+					SpecVersion: "1.0",
+					Subject:     "did:nft:1:0xbA5738a18d83D41847dfFbDC6101d37C69c9B0cF_33",
+					Time:        time.Date(2024, 9, 27, 8, 33, 26, 0, time.UTC),
+					Source:      "0x3A6603E1065C9b3142403b1b7e349a6Ae936E819",
+					Extras: map[string]interface{}{
+						"ds": "r/v0/s",
+					},
+				},
+				VIN: "ABCD1234567890XYZ",
+			},
+		},
 		{
 			name:        "Invalid JSON",
 			data:        []byte(`{"time":"2024-05-30T15:04:05Z","data":{"vin":"1HGCM82633A123456"`),
@@ -149,3 +165,34 @@ func mockMacronFingerprint(vin string) string {
 
 	return base64.StdEncoding.EncodeToString(buf)
 }
+
+var ruptelaStatusPayload = `
+{
+	"source": "0x3A6603E1065C9b3142403b1b7e349a6Ae936E819",
+	"data": {
+		"pos": {
+			"alt": 1048,
+			"dir": 19730,
+			"hdop": 6,
+			"lat": 822721466,
+			"lon": 4014316,
+			"sat": 20,
+			"spd": 0
+		},
+		"prt": 0,
+		"signals": {
+			"102": "0",
+			"103": "0",
+			"104": "4142434431323334",
+			"105": "3536373839305859",
+			"106": "5a00000000000000",
+			"107": "0",
+			"108": "0",
+			"114": "0"
+		},
+		"trigger": 7
+	},
+	"ds": "r/v0/s",
+	"subject": "did:nft:1:0xbA5738a18d83D41847dfFbDC6101d37C69c9B0cF_33",
+	"time": "2024-09-27T08:33:26Z"
+}`

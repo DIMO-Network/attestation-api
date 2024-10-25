@@ -36,5 +36,3 @@ type Settings struct {
 	RevokedTokenIDs           string          `yaml:"REVOKED_TOKEN_IDS"`
 	Clickhouse                config.Settings `yaml:",inline"`
 }
-
-//settings.AutoPiDataType, settings.AutoPiBucketName, settings.HashDogDataType, settings.HashDogBucketName, settings.StatusDataType, settings.StatusBucketName)
