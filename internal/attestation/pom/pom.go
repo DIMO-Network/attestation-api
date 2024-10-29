@@ -333,47 +333,44 @@ func parseMacaronEvent(data []byte) (cloudevent.CloudEvent[any], error) {
 
 // parseSyntheticEvent parses status events and returns data for events with lat and long data.
 func parseSyntheticEvent(data []byte) (cloudevent.CloudEvent[any], error) {
-	var event cloudevent.CloudEvent[any]
-	err := json.Unmarshal(data, &event)
+	eventHdr := cloudevent.CloudEventHeader{}
+	err := json.Unmarshal(data, &eventHdr)
 	if err != nil {
-		return event, fmt.Errorf("failed to unmarshal event: %w", err)
+		return cloudevent.CloudEvent[any]{}, fmt.Errorf("failed to unmarshal event: %w", err)
 	}
-	if !acceptableStatusSources.Contains(event.Source) {
-		return cloudevent.CloudEvent[any]{CloudEventHeader: event.CloudEventHeader}, nil
+	if !acceptableStatusSources.Contains(eventHdr.Source) {
+		return cloudevent.CloudEvent[any]{CloudEventHeader: eventHdr}, nil
 	}
 	signals, err := nativestatus.SignalsFromPayload(context.TODO(), nil, data)
 	if err != nil {
-		return event, fmt.Errorf("failed to convert signals: %w", err)
+		return cloudevent.CloudEvent[any]{}, fmt.Errorf("failed to convert signals: %w", err)
 	}
 	latLong, ok := getH3Cells(signals)
 	if !ok {
-		return cloudevent.CloudEvent[any]{CloudEventHeader: event.CloudEventHeader}, nil
+		return cloudevent.CloudEvent[any]{CloudEventHeader: eventHdr}, nil
 	}
-	return cloudevent.CloudEvent[any]{CloudEventHeader: event.CloudEventHeader, Data: latLong}, nil
+	return cloudevent.CloudEvent[any]{CloudEventHeader: eventHdr, Data: latLong}, nil
 }
 
 func parseRuptelaEvent(data []byte) (cloudevent.CloudEvent[any], error) {
-	event := cloudevent.CloudEvent[any]{}
-	err := json.Unmarshal(data, &event)
+	eventHdr := cloudevent.CloudEventHeader{}
+	err := json.Unmarshal(data, &eventHdr)
 	if err != nil {
-		return event, fmt.Errorf("failed to unmarshal event: %w", err)
+		return cloudevent.CloudEvent[any]{}, fmt.Errorf("failed to unmarshal event: %w", err)
 	}
 	signals, err := status.DecodeStatusSignals(data)
 	if err != nil {
 		convErr := convert.ConversionError{}
 		if !errors.As(err, &convErr) || len(convErr.DecodedSignals) == 0 {
-			return event, fmt.Errorf("failed to decode signals: %w", err)
+			return cloudevent.CloudEvent[any]{}, fmt.Errorf("failed to decode signals: %w", err)
 		}
 		signals = convErr.DecodedSignals
 	}
 	latLong, ok := getH3Cells(signals)
 	if !ok {
-		return event, nil
+		return cloudevent.CloudEvent[any]{CloudEventHeader: eventHdr}, nil
 	}
-	if !ok {
-		return cloudevent.CloudEvent[any]{CloudEventHeader: event.CloudEventHeader}, nil
-	}
-	return cloudevent.CloudEvent[any]{CloudEventHeader: event.CloudEventHeader, Data: latLong}, nil
+	return cloudevent.CloudEvent[any]{CloudEventHeader: eventHdr, Data: latLong}, nil
 }
 
 // handleError logs an error and returns a Fiber error with the given message.
