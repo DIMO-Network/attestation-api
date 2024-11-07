@@ -45,7 +45,7 @@ type Service struct {
 }
 
 // New creates a new instance of Service.
-func New(chConn clickhouse.Conn, objGetter indexrepo.ObjectGetter, legacyBucketName, cloudeventBucket, fingerprintDataType string) *Service {
+func New(chConn clickhouse.Conn, objGetter indexrepo.ObjectGetter, cloudeventBucket, legacyBucketName, fingerprintDataType string) *Service {
 	return &Service{
 		indexService:     indexrepo.New(chConn, objGetter),
 		dataType:         fingerprintDataType,
@@ -62,7 +62,7 @@ func (s *Service) GetLatestFingerprintMessages(ctx context.Context, vehicleDID c
 		Producer:      &device.DID,
 		PrimaryFiller: &filler,
 	}
-	data, err := s.indexService.GetLatestCloudEventData(ctx, s.bucketName, opts)
+	dataObj, err := s.indexService.GetLatestCloudEventData(ctx, s.bucketName, opts)
 	if err != nil {
 		// if we can't find a fingerprint message in the new bucket, try the old bucket
 		if errors.Is(err, sql.ErrNoRows) {
@@ -70,7 +70,7 @@ func (s *Service) GetLatestFingerprintMessages(ctx context.Context, vehicleDID c
 		}
 		return nil, fmt.Errorf("failed to get vc: %w", err)
 	}
-	msg, err := decodeFingerprintMessage(data)
+	msg, err := decodeFingerprintMessage(dataObj.Data)
 	if err != nil {
 		return nil, err
 	}
@@ -79,15 +79,16 @@ func (s *Service) GetLatestFingerprintMessages(ctx context.Context, vehicleDID c
 
 // TODO (kevin): Remove this when ingest is updated
 func (s *Service) legacyGetLatestFingerprintMessages(ctx context.Context, device models.PairedDevice) (*models.DecodedFingerprintData, error) {
+	encdoedAddress := device.Address[2:]
 	opts := indexrepo.SearchOptions{
-		Subject:  &device.Address,
+		Subject:  &encdoedAddress,
 		DataType: &s.dataType,
 	}
-	data, err := s.indexService.GetLatestData(ctx, s.bucketName, opts)
+	dataObj, err := s.indexService.GetLatestObject(ctx, s.bucketName, opts)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get vc: %w", err)
 	}
-	msg, err := decodeFingerprintMessage(data)
+	msg, err := decodeFingerprintMessage(dataObj.Data)
 	if err != nil {
 		return nil, err
 	}
@@ -102,7 +103,7 @@ func decodeFingerprintMessage(data []byte) (*models.DecodedFingerprintData, erro
 	var vin string
 	var err error
 	switch {
-	case msg.Source == autopiSource:
+	case msg.Source == autopiSource || msg.Source == syntheticSource:
 		vin, err = decodeVINFromData(msg.Data)
 		if err != nil {
 			return nil, err

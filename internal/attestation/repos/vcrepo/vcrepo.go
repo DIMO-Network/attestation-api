@@ -41,12 +41,12 @@ func (r *Repo) GetLatestVINVC(ctx context.Context, vehicleDID cloudevent.NFTDID)
 		Subject:  &vehicleDID,
 		DataType: &r.vinDataType,
 	}
-	data, err := r.indexService.GetLatestCloudEventData(ctx, r.vinBucketName, opts)
+	dataObj, err := r.indexService.GetLatestCloudEventData(ctx, r.vinBucketName, opts)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get vc: %w", err)
 	}
 	msg := cloudevent.CloudEvent[verifiable.Credential]{}
-	if err := json.Unmarshal(data, &msg); err != nil {
+	if err := json.Unmarshal(dataObj.Data, &msg); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal fingerprint message: %w", err)
 	}
 	return &msg.Data, nil
@@ -88,7 +88,7 @@ func (r *Repo) storeVC(ctx context.Context, vehicleDID, producerDID cloudevent.N
 		return fmt.Errorf("failed to marshal VC as cloud event: %w", err)
 	}
 
-	err = r.indexService.StoreCloudEventFile(ctx, cloudIdx, r.pomBucketName, eventData)
+	err = r.indexService.StoreCloudEventObject(ctx, cloudIdx, r.pomBucketName, eventData)
 	if err != nil {
 		return fmt.Errorf("failed to store VC: %w", err)
 	}

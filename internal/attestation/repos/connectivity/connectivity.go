@@ -115,11 +115,16 @@ func (r *ConnectivityRepo) getEvents(ctx context.Context, source common.Address,
 		After:         after,
 		Before:        before,
 	}
-	fileData, err := r.indexService.GetCloudEventData(ctx, r.cloudEventBucket, limit, opts)
+	dataObj, err := r.indexService.GetCloudEventObject(ctx, r.cloudEventBucket, limit, opts)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get filenames: %w", err)
 	}
-	return fileData, nil
+	events := make([][]byte, len(dataObj))
+	for i, obj := range dataObj {
+		events[i] = obj.Data
+	}
+
+	return events, nil
 }
 
 func (r *ConnectivityRepo) getLegacyEvents(ctx context.Context, bucketName string, dataType string, subject string, after, before time.Time, limit int) ([][]byte, error) {
@@ -129,9 +134,13 @@ func (r *ConnectivityRepo) getLegacyEvents(ctx context.Context, bucketName strin
 		After:    after,
 		Before:   before,
 	}
-	fileData, err := r.indexService.GetData(ctx, bucketName, limit, opts)
+	dataObjs, err := r.indexService.GetObject(ctx, bucketName, limit, opts)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get filenames: %w", err)
 	}
-	return fileData, nil
+	events := make([][]byte, len(dataObjs))
+	for i, obj := range dataObjs {
+		events[i] = obj.Data
+	}
+	return events, nil
 }
