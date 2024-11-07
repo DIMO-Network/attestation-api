@@ -2,13 +2,11 @@ module github.com/DIMO-Network/attestation-api
 
 go 1.23
 
-replace github.com/DIMO-Network/model-garage => ../model-garage
-
 require (
 	github.com/ClickHouse/clickhouse-go/v2 v2.30.0
 	github.com/DIMO-Network/clickhouse-infra v0.0.3
 	github.com/DIMO-Network/device-definitions-api v1.2.48
-	github.com/DIMO-Network/model-garage v0.3.2
+	github.com/DIMO-Network/model-garage v0.3.4-0.20241105133604-ee59bebdd374
 	github.com/DIMO-Network/nameindexer v0.0.8
 	github.com/DIMO-Network/shared v0.12.1
 	github.com/aws/aws-sdk-go-v2 v1.32.2
