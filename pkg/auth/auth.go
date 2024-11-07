@@ -11,11 +11,6 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
-const (
-	// TokenClaimsKey is the key used to store the token claims in the fiber context
-	TokenClaimsKey = "tokenClaims"
-)
-
 // AllOf creates a middleware that checks if the token contains all the required privileges
 // this middleware also checks if the token is for the correct contract and token ID
 func AllOf(contract common.Address, tokenIDParam string, privilegeIDs []privileges.Privilege) fiber.Handler {
