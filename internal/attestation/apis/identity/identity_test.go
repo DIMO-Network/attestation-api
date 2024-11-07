@@ -53,10 +53,10 @@ func TestService_GetPairedDevices(t *testing.T) {
 							"id": "toyota_tacoma-4wd_2023"
 						},
 						"aftermarketDevice": {
-							"tokenId": "%d"
+							"tokenId": %d
 						},
 						"syntheticDevice": {
-							"tokenId": "%d"
+							"tokenId": %d
 						}
 					}
 				}
@@ -124,7 +124,7 @@ func TestService_GetPairedDevices(t *testing.T) {
 							"id": "toyota_tacoma-4wd_2023"
 						},
 						"aftermarketDevice": {
-							"tokenId": "%d"
+							"tokenId": %d
 						}
 					}
 				}
@@ -150,7 +150,7 @@ func TestService_GetPairedDevices(t *testing.T) {
 							"id": "toyota_tacoma-4wd_2023"
 						},
 						"syntheticDevice": {
-							"tokenId": "%d"
+							"tokenId": %d
 						}
 					}
 				}
@@ -176,7 +176,7 @@ func TestService_GetPairedDevices(t *testing.T) {
 							"id": null
 						},
 						"syntheticDevice": {
-							"tokenId": "%d"
+							"tokenId": %d
 						}
 					}
 				}
