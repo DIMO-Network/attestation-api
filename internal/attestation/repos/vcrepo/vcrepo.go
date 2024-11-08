@@ -17,21 +17,19 @@ import (
 
 // Repo manages storing and retrieving VCs.
 type Repo struct {
-	indexService  *indexrepo.Service
-	vinDataType   string
-	vinBucketName string
-	pomDataType   string
-	pomBucketName string
+	indexService *indexrepo.Service
+	vinDataType  string
+	pomDataType  string
+	vcBucketName string
 }
 
 // New creates a new instance of VCRepo.
-func New(chConn clickhouse.Conn, objGetter indexrepo.ObjectGetter, vinbucketName, vinvcDataType, pombucketName, pomvcDataType string) *Repo {
+func New(chConn clickhouse.Conn, objGetter indexrepo.ObjectGetter, vcBucketName, vinvcDataType, pomvcDataType string) *Repo {
 	return &Repo{
-		indexService:  indexrepo.New(chConn, objGetter),
-		vinDataType:   vinvcDataType,
-		vinBucketName: vinbucketName,
-		pomDataType:   pomvcDataType,
-		pomBucketName: pombucketName,
+		indexService: indexrepo.New(chConn, objGetter),
+		vinDataType:  vinvcDataType,
+		pomDataType:  pomvcDataType,
+		vcBucketName: vcBucketName,
 	}
 }
 
@@ -41,7 +39,7 @@ func (r *Repo) GetLatestVINVC(ctx context.Context, vehicleDID cloudevent.NFTDID)
 		Subject:  &vehicleDID,
 		DataType: &r.vinDataType,
 	}
-	dataObj, err := r.indexService.GetLatestCloudEventData(ctx, r.vinBucketName, opts)
+	dataObj, err := r.indexService.GetLatestCloudEventData(ctx, r.vcBucketName, opts)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get vc: %w", err)
 	}
@@ -72,7 +70,7 @@ func (r *Repo) storeVC(ctx context.Context, vehicleDID, producerDID cloudevent.N
 			Source:          common.HexToAddress("0x0").String(),
 			Subject:         vehicleDID.String(),
 			Producer:        producerDID.String(),
-			Type:            "dimo.verifiableCredential",
+			Type:            cloudevent.TypeVerifableCredential,
 			DataContentType: "application/json",
 
 			DataVersion: dataType,
@@ -88,7 +86,7 @@ func (r *Repo) storeVC(ctx context.Context, vehicleDID, producerDID cloudevent.N
 		return fmt.Errorf("failed to marshal VC as cloud event: %w", err)
 	}
 
-	err = r.indexService.StoreCloudEventObject(ctx, cloudIdx, r.pomBucketName, eventData)
+	err = r.indexService.StoreCloudEventObject(ctx, cloudIdx, r.vcBucketName, eventData)
 	if err != nil {
 		return fmt.Errorf("failed to store VC: %w", err)
 	}

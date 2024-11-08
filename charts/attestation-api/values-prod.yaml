@@ -22,8 +22,7 @@ env:
   AUTOPI_BUCKET_NAME: dimo-network-connectivity-prod
   HASHDOG_BUCKET_NAME: dimo-network-connectivity-prod
   STATUS_BUCKET_NAME: dimo-network-status-prod
-  VINVC_BUCKET: dimo-network-vinvc-prod
-  POMVC_BUCKET: dimo-network-pomvc-prod
+  VC_BUCKET: dimo-network-vc-prod
   CLOUDEVENT_BUCKET: dimo-ingest-cloudevent-prod
   DIMO_REGISTRY_CHAIN_ID: 137
 ingress:

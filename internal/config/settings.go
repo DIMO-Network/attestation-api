@@ -18,9 +18,8 @@ type Settings struct {
 	TelemetryURL              string          `yaml:"TELEMETRY_URL"`
 	FingerprintBucket         string          `yaml:"FINGERPRINT_BUCKET"`
 	FingerprintDataType       string          `yaml:"FINGERPRINT_DATA_TYPE"`
-	VINVCBucket               string          `yaml:"VINVC_BUCKET"`
+	VCBucket                  string          `yaml:"VC_BUCKET"`
 	VINVCDataType             string          `yaml:"VINVC_DATA_TYPE"`
-	POMVCBucket               string          `yaml:"POMVC_BUCKET"`
 	POMVCDataType             string          `yaml:"POMVC_DATA_TYPE"`
 	CloudEventBucket          string          `yaml:"CLOUDEVENT_BUCKET"`
 	AutoPiDataType            string          `yaml:"AUTOPI_DATA_TYPE"`
