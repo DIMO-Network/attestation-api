@@ -14,8 +14,10 @@ import (
 	"github.com/DIMO-Network/attestation-api/internal/models"
 	"github.com/DIMO-Network/attestation-api/pkg/verifiable"
 	"github.com/DIMO-Network/model-garage/pkg/cloudevent"
+	"github.com/DIMO-Network/model-garage/pkg/convert"
 	"github.com/DIMO-Network/model-garage/pkg/lorawan"
 	"github.com/DIMO-Network/model-garage/pkg/nativestatus"
+	"github.com/DIMO-Network/model-garage/pkg/ruptela/status"
 	"github.com/DIMO-Network/model-garage/pkg/twilio"
 	"github.com/DIMO-Network/model-garage/pkg/vss"
 	"github.com/DIMO-Network/shared/set"
@@ -28,8 +30,10 @@ import (
 const (
 	autoPiManufacturer  = "AutoPi"
 	hashDogManufacturer = "HashDog"
+	ruptelaManufacturer = "Ruptela"
 	// h3Resolution resolution for h3 hex 8 ~= 0.737327598 km2
-	h3Resolution = 8
+	h3Resolution   = 8
+	PolygonChainID = 137
 )
 
 var errNoLocation = fmt.Errorf("no location data found")
@@ -47,25 +51,33 @@ type Service struct {
 	connectivityRepo       ConnectivityRepo
 	vcRepo                 VCRepo
 	issuer                 Issuer
-	vehicleContractAddress string
+	vehicleContractAddress common.Address
 }
 
-func NewService(logger *zerolog.Logger, identityAPI IdentityAPI, connectivityRepo ConnectivityRepo, vcRepo VCRepo, issuer Issuer, vehicleContractAddress string) *Service {
+func NewService(logger *zerolog.Logger, identityAPI IdentityAPI, connectivityRepo ConnectivityRepo, vcRepo VCRepo, issuer Issuer, vehicleContractAddress string) (*Service, error) {
+	if !common.IsHexAddress(vehicleContractAddress) {
+		return nil, fmt.Errorf("invalid vehicle contract address: %s", vehicleContractAddress)
+	}
 	return &Service{
 		logger:                 *logger,
 		identityAPI:            identityAPI,
 		connectivityRepo:       connectivityRepo,
 		vcRepo:                 vcRepo,
 		issuer:                 issuer,
-		vehicleContractAddress: vehicleContractAddress,
-	}
+		vehicleContractAddress: common.HexToAddress(vehicleContractAddress),
+	}, nil
 }
 
 // CreatePOMVC generates a Proof of Movement VC.
 func (s *Service) CreatePOMVC(ctx context.Context, tokenID uint32) error {
+	vehicleDID := cloudevent.NFTDID{
+		ChainID:         PolygonChainID,
+		TokenID:         tokenID,
+		ContractAddress: s.vehicleContractAddress,
+	}
 	logger := s.logger.With().Uint32("vehicleTokenId", tokenID).Logger()
 
-	vehicleInfo, err := s.identityAPI.GetVehicleInfo(ctx, tokenID)
+	vehicleInfo, err := s.identityAPI.GetVehicleInfo(ctx, vehicleDID)
 	if err != nil {
 		return handleError(err, &logger, "Failed to get vehicle info")
 	}
@@ -81,8 +93,8 @@ func (s *Service) CreatePOMVC(ctx context.Context, tokenID uint32) error {
 
 	pomSubject := verifiable.POMSubject{
 		VehicleTokenID:         tokenID,
-		VehicleContractAddress: s.vehicleContractAddress,
-		RecordedBy:             pairedDevice.Address.Hex(),
+		VehicleContractAddress: s.vehicleContractAddress.Hex(),
+		RecordedBy:             pairedDevice.DID.String(),
 		Locations:              locations,
 	}
 
@@ -91,7 +103,7 @@ func (s *Service) CreatePOMVC(ctx context.Context, tokenID uint32) error {
 		return handleError(err, &logger, "Failed to create POM VC")
 	}
 
-	if err = s.vcRepo.StorePOMVC(ctx, tokenID, vc); err != nil {
+	if err = s.vcRepo.StorePOMVC(ctx, vehicleDID, pairedDevice.DID, vc); err != nil {
 		return handleError(err, &logger, "Failed to store POM VC")
 	}
 
@@ -107,11 +119,13 @@ func (s *Service) getLocationForVehicle(ctx context.Context, vehicleInfo *models
 
 		switch {
 		case device.Type == models.DeviceTypeAftermarket && device.ManufacturerName == autoPiManufacturer:
-			locations, err = s.pullAutoPiEvents(ctx, device.IMEI)
+			locations, err = s.pullAutoPiEvents(ctx, &device)
 		case device.Type == models.DeviceTypeAftermarket && device.ManufacturerName == hashDogManufacturer:
-			locations, err = s.pullMacaronEvents(ctx, device.Address)
+			locations, err = s.pullMacaronEvents(ctx, &device)
+		case device.Type == models.DeviceTypeAftermarket && device.ManufacturerName == ruptelaManufacturer:
+			locations, err = s.pullRuptelaEvents(ctx, vehicleInfo.DID)
 		default:
-			locations, err = s.pullStatusEvents(ctx, vehicleInfo.TokenID)
+			locations, err = s.pullStatusEvents(ctx, vehicleInfo.DID)
 		}
 		if err == nil {
 			return &device, locations, nil
@@ -126,24 +140,31 @@ func (s *Service) getLocationForVehicle(ctx context.Context, vehicleInfo *models
 }
 
 // pullAutoPiEvents retrieves AutoPi events and extracts locations.
-func (s *Service) pullAutoPiEvents(ctx context.Context, deviceIMEI string) ([]verifiable.Location, error) {
+func (s *Service) pullAutoPiEvents(ctx context.Context, device *models.PairedDevice) ([]verifiable.Location, error) {
 	return s.pullEvents(ctx, func(after, before time.Time, limit int) ([][]byte, error) {
-		return s.connectivityRepo.GetAutoPiEvents(ctx, deviceIMEI, after, before, limit)
+		return s.connectivityRepo.GetAutoPiEvents(ctx, device, after, before, limit)
 	}, parseAutoPiEvent)
 }
 
 // pullMacaronEvents retrieves Macaron events and extracts locations.
-func (s *Service) pullMacaronEvents(ctx context.Context, deviceAddr common.Address) ([]verifiable.Location, error) {
+func (s *Service) pullMacaronEvents(ctx context.Context, device *models.PairedDevice) ([]verifiable.Location, error) {
 	return s.pullEvents(ctx, func(after, before time.Time, limit int) ([][]byte, error) {
-		return s.connectivityRepo.GetHashDogEvents(ctx, deviceAddr, after, before, limit)
+		return s.connectivityRepo.GetHashDogEvents(ctx, device, after, before, limit)
 	}, parseMacaronEvent)
 }
 
-// pullStatusEvents retrieves Status events and extracts locations.
-func (s *Service) pullStatusEvents(ctx context.Context, vehicleTokenID uint32) ([]verifiable.Location, error) {
+// pullStatusEvents retrieves synthetic events and extracts locations.
+func (s *Service) pullStatusEvents(ctx context.Context, vehicleDID cloudevent.NFTDID) ([]verifiable.Location, error) {
 	return s.pullEvents(ctx, func(after, before time.Time, limit int) ([][]byte, error) {
-		return s.connectivityRepo.GetStatusEvents(ctx, vehicleTokenID, after, before, limit)
-	}, parseStatusEvent)
+		return s.connectivityRepo.GetSyntheticstatusEvents(ctx, vehicleDID, after, before, limit)
+	}, parseSyntheticEvent)
+}
+
+// pullRuptelaEvents retrieves Ruptela Status events and extracts locations.
+func (s *Service) pullRuptelaEvents(ctx context.Context, vehicleDID cloudevent.NFTDID) ([]verifiable.Location, error) {
+	return s.pullEvents(ctx, func(after, before time.Time, limit int) ([][]byte, error) {
+		return s.connectivityRepo.GetRuptelaStatusEvents(ctx, vehicleDID, after, before, limit)
+	}, parseRuptelaEvent)
 }
 
 // pullEvents is a generic function for fetching events and extracting locations.
@@ -194,7 +215,7 @@ func (s *Service) pullEvents(ctx context.Context, fetchEvents func(time.Time, ti
 func pairedDeviceSorter(a, b models.PairedDevice) int {
 	if a.Type == b.Type {
 		if a.ManufacturerName == b.ManufacturerName {
-			return a.Address.Cmp(b.Address)
+			return cmp.Compare(a.Address, b.Address)
 		}
 		return cmp.Compare(a.ManufacturerName, b.ManufacturerName)
 	}
@@ -232,7 +253,7 @@ func compareLocations(firstEvent, curEvent cloudevent.CloudEvent[any]) []verifia
 			}
 		}
 	case lorawan.Data:
-		if firstEvent.CloudEventHeader == curEvent.CloudEventHeader {
+		if firstEvent.CloudEventHeader.Equals(curEvent.CloudEventHeader) {
 			// gatway differences must be from different events
 			return nil
 		}
@@ -310,25 +331,46 @@ func parseMacaronEvent(data []byte) (cloudevent.CloudEvent[any], error) {
 	return cloudevent.CloudEvent[any]{CloudEventHeader: event.CloudEventHeader, Data: event.Data}, nil
 }
 
-// parseStatusEvent parses status events and returns data for events with lat and long data.
-func parseStatusEvent(data []byte) (cloudevent.CloudEvent[any], error) {
-	var event cloudevent.CloudEvent[any]
-	err := json.Unmarshal(data, &event)
+// parseSyntheticEvent parses status events and returns data for events with lat and long data.
+func parseSyntheticEvent(data []byte) (cloudevent.CloudEvent[any], error) {
+	eventHdr := cloudevent.CloudEventHeader{}
+	err := json.Unmarshal(data, &eventHdr)
 	if err != nil {
-		return event, fmt.Errorf("failed to unmarshal event: %w", err)
+		return cloudevent.CloudEvent[any]{}, fmt.Errorf("failed to unmarshal event: %w", err)
 	}
-	if !acceptableStatusSources.Contains(event.Source) {
-		return cloudevent.CloudEvent[any]{CloudEventHeader: event.CloudEventHeader}, nil
+	if !acceptableStatusSources.Contains(eventHdr.Source) {
+		return cloudevent.CloudEvent[any]{CloudEventHeader: eventHdr}, nil
 	}
 	signals, err := nativestatus.SignalsFromPayload(context.TODO(), nil, data)
 	if err != nil {
-		return event, fmt.Errorf("failed to convert signals: %w", err)
+		return cloudevent.CloudEvent[any]{}, fmt.Errorf("failed to convert signals: %w", err)
 	}
 	latLong, ok := getH3Cells(signals)
 	if !ok {
-		return cloudevent.CloudEvent[any]{CloudEventHeader: event.CloudEventHeader}, nil
+		return cloudevent.CloudEvent[any]{CloudEventHeader: eventHdr}, nil
 	}
-	return cloudevent.CloudEvent[any]{CloudEventHeader: event.CloudEventHeader, Data: latLong}, nil
+	return cloudevent.CloudEvent[any]{CloudEventHeader: eventHdr, Data: latLong}, nil
+}
+
+func parseRuptelaEvent(data []byte) (cloudevent.CloudEvent[any], error) {
+	eventHdr := cloudevent.CloudEventHeader{}
+	err := json.Unmarshal(data, &eventHdr)
+	if err != nil {
+		return cloudevent.CloudEvent[any]{}, fmt.Errorf("failed to unmarshal event: %w", err)
+	}
+	signals, err := status.DecodeStatusSignals(data)
+	if err != nil {
+		convErr := convert.ConversionError{}
+		if !errors.As(err, &convErr) || len(convErr.DecodedSignals) == 0 {
+			return cloudevent.CloudEvent[any]{}, fmt.Errorf("failed to decode signals: %w", err)
+		}
+		signals = convErr.DecodedSignals
+	}
+	latLong, ok := getH3Cells(signals)
+	if !ok {
+		return cloudevent.CloudEvent[any]{CloudEventHeader: eventHdr}, nil
+	}
+	return cloudevent.CloudEvent[any]{CloudEventHeader: eventHdr, Data: latLong}, nil
 }
 
 // handleError logs an error and returns a Fiber error with the given message.

@@ -6,8 +6,8 @@ require (
 	github.com/ClickHouse/clickhouse-go/v2 v2.30.0
 	github.com/DIMO-Network/clickhouse-infra v0.0.3
 	github.com/DIMO-Network/device-definitions-api v1.2.48
-	github.com/DIMO-Network/model-garage v0.3.1
-	github.com/DIMO-Network/nameindexer v0.0.7
+	github.com/DIMO-Network/model-garage v0.3.4-0.20241105133604-ee59bebdd374
+	github.com/DIMO-Network/nameindexer v0.0.10
 	github.com/DIMO-Network/shared v0.12.1
 	github.com/aws/aws-sdk-go-v2 v1.32.2
 	github.com/aws/aws-sdk-go-v2/credentials v1.17.41
@@ -23,6 +23,7 @@ require (
 	github.com/piprate/json-gold v0.5.0
 	github.com/prometheus/client_golang v1.20.5
 	github.com/rs/zerolog v1.33.0
+	github.com/segmentio/ksuid v1.0.4
 	github.com/stretchr/testify v1.9.0
 	github.com/swaggo/swag v1.16.4
 	github.com/uber/h3-go/v4 v4.1.2
@@ -83,9 +84,10 @@ require (
 	github.com/shopspring/decimal v1.4.0 // indirect
 	github.com/spf13/cast v1.7.0 // indirect
 	github.com/swaggo/files/v2 v2.0.0 // indirect
-	github.com/tidwall/gjson v1.17.3 // indirect
+	github.com/tidwall/gjson v1.18.0 // indirect
 	github.com/tidwall/match v1.1.1 // indirect
 	github.com/tidwall/pretty v1.2.1 // indirect
+	github.com/tidwall/sjson v1.2.5 // indirect
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
 	github.com/valyala/fasthttp v1.55.0 // indirect
 	github.com/valyala/tcplisten v1.0.0 // indirect

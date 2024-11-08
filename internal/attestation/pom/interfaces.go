@@ -8,24 +8,25 @@ import (
 
 	"github.com/DIMO-Network/attestation-api/internal/models"
 	"github.com/DIMO-Network/attestation-api/pkg/verifiable"
-	"github.com/ethereum/go-ethereum/common"
+	"github.com/DIMO-Network/model-garage/pkg/cloudevent"
 )
 
 // VCRepo defines the interface for manging VC storage.
 type VCRepo interface {
-	StorePOMVC(ctx context.Context, tokenID uint32, vinvc json.RawMessage) error
+	StorePOMVC(ctx context.Context, vehicleDID, producerDID cloudevent.NFTDID, vinvc json.RawMessage) error
 }
 
 // IdentityAPI defines the interface for identity operations.
 type IdentityAPI interface {
-	GetVehicleInfo(ctx context.Context, tokenID uint32) (*models.VehicleInfo, error)
+	GetVehicleInfo(ctx context.Context, vehicleDID cloudevent.NFTDID) (*models.VehicleInfo, error)
 }
 
 // ConnectivityRepo defines the interface for retrieving connectivity events.
 type ConnectivityRepo interface {
-	GetAutoPiEvents(ctx context.Context, pairedDeviceIMEI string, after, before time.Time, limit int) ([][]byte, error)
-	GetHashDogEvents(ctx context.Context, pairedDeviceAddr common.Address, after, before time.Time, limit int) ([][]byte, error)
-	GetStatusEvents(ctx context.Context, vehicleTokenID uint32, after, before time.Time, limit int) ([][]byte, error)
+	GetAutoPiEvents(ctx context.Context, pairedDevice *models.PairedDevice, after, before time.Time, limit int) ([][]byte, error)
+	GetHashDogEvents(ctx context.Context, pairedDevice *models.PairedDevice, after, before time.Time, limit int) ([][]byte, error)
+	GetSyntheticstatusEvents(ctx context.Context, vehicleDID cloudevent.NFTDID, after, before time.Time, limit int) ([][]byte, error)
+	GetRuptelaStatusEvents(ctx context.Context, vehicleDID cloudevent.NFTDID, after, before time.Time, limit int) ([][]byte, error)
 }
 
 // Issuer defines the interface for creating control documents.

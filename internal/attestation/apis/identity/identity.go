@@ -14,17 +14,20 @@ import (
 	"time"
 
 	"github.com/DIMO-Network/attestation-api/internal/models"
+	"github.com/DIMO-Network/model-garage/pkg/cloudevent"
 	"github.com/ethereum/go-ethereum/common"
 )
 
 // Service interacts with the identity GraphQL API.
 type Service struct {
-	httpClient  *http.Client
-	apiQueryURL string
+	httpClient      *http.Client
+	apiQueryURL     string
+	aftermarketAddr common.Address
+	SyntheticAddr   common.Address
 }
 
 // NewService creates a new instance of Service with optional TLS certificate pool.
-func NewService(apiBaseURL string, certPool *x509.CertPool) (*Service, error) {
+func NewService(apiBaseURL string, aftermarketAddr, SyntheticAddr string, certPool *x509.CertPool) (*Service, error) {
 	// Configure HTTP client with optional TLS certificate pool.
 	httpClient := &http.Client{
 		Timeout: 10 * time.Second,
@@ -39,19 +42,26 @@ func NewService(apiBaseURL string, certPool *x509.CertPool) (*Service, error) {
 	if err != nil {
 		return nil, fmt.Errorf("create idenitiy URL: %w", err)
 	}
-
+	if !common.IsHexAddress(aftermarketAddr) {
+		return nil, fmt.Errorf("invalid aftermarket address: %s", aftermarketAddr)
+	}
+	if !common.IsHexAddress(SyntheticAddr) {
+		return nil, fmt.Errorf("invalid Synthetic address: %s", SyntheticAddr)
+	}
 	return &Service{
-		apiQueryURL: path,
-		httpClient:  httpClient,
+		apiQueryURL:     path,
+		httpClient:      httpClient,
+		aftermarketAddr: common.HexToAddress(aftermarketAddr),
+		SyntheticAddr:   common.HexToAddress(SyntheticAddr),
 	}, nil
 }
 
 // GetVehicleInfo fetches vehicle information from the identity API.
-func (s *Service) GetVehicleInfo(ctx context.Context, tokenID uint32) (*models.VehicleInfo, error) {
+func (s *Service) GetVehicleInfo(ctx context.Context, vehicleDID cloudevent.NFTDID) (*models.VehicleInfo, error) {
 	requestBody := map[string]any{
 		"query": query,
 		"variables": map[string]any{
-			"tokenId": tokenID,
+			"tokenId": vehicleDID.TokenID,
 		},
 	}
 
@@ -92,16 +102,30 @@ func (s *Service) GetVehicleInfo(ctx context.Context, tokenID uint32) (*models.V
 
 	var pairedDevices []models.PairedDevice
 	if respBody.Data.Vehicle.AftermarketDevice != nil {
+		tokenId := respBody.Data.Vehicle.AftermarketDevice.TokenID
+		did := cloudevent.NFTDID{
+			ChainID:         vehicleDID.ChainID,
+			TokenID:         uint32(tokenId),
+			ContractAddress: s.aftermarketAddr,
+		}
 		pairedDevices = append(pairedDevices, models.PairedDevice{
-			Address:          common.HexToAddress(respBody.Data.Vehicle.AftermarketDevice.Address),
+			DID:              did,
+			Address:          respBody.Data.Vehicle.AftermarketDevice.Address,
 			Type:             models.DeviceTypeAftermarket,
 			ManufacturerName: respBody.Data.Vehicle.AftermarketDevice.Manufacturer.Name,
 			IMEI:             respBody.Data.Vehicle.AftermarketDevice.IMEI,
 		})
 	}
 	if respBody.Data.Vehicle.SyntheticDevice != nil {
+		tokenID := respBody.Data.Vehicle.SyntheticDevice.TokenID
+		did := cloudevent.NFTDID{
+			ChainID:         vehicleDID.ChainID,
+			TokenID:         uint32(tokenID),
+			ContractAddress: s.SyntheticAddr,
+		}
 		pairedDevices = append(pairedDevices, models.PairedDevice{
-			Address: common.HexToAddress(respBody.Data.Vehicle.SyntheticDevice.Address),
+			DID:     did,
+			Address: respBody.Data.Vehicle.SyntheticDevice.Address,
 			Type:    models.DeviceTypeSynthetic,
 		})
 	}
@@ -109,7 +133,7 @@ func (s *Service) GetVehicleInfo(ctx context.Context, tokenID uint32) (*models.V
 		return nil, fmt.Errorf("vehicle is missing definition ID")
 	}
 	vehicleInfo := &models.VehicleInfo{
-		TokenID:       tokenID,
+		DID:           vehicleDID,
 		PairedDevices: pairedDevices,
 		NameSlug:      *respBody.Data.Vehicle.Definition.ID.value,
 	}

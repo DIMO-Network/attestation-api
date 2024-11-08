@@ -66,13 +66,13 @@ func createHttpController(logger *zerolog.Logger, settings *config.Settings, sta
 	vinValidateSerivce := vinvalidator.New(deviceDefGRPCClient)
 
 	// Initialize fingerprint repository
-	fingerprintRepo := fingerprint.New(chConn, s3Client, settings.FingerprintBucket, settings.FingerprintDataType)
+	fingerprintRepo := fingerprint.New(chConn, s3Client, settings.CloudEventBucket, settings.FingerprintBucket, settings.FingerprintDataType, settings.RuptelaSource)
 
 	// Initialize VC repository
 	vcRepo := vcrepo.New(chConn, s3Client, settings.VINVCBucket, settings.VINVCDataType, settings.POMVCBucket, settings.POMVCDataType)
 
 	// Initialize identity API client
-	identityAPI, err := identity.NewService(settings.IdentityAPIURL, nil)
+	identityAPI, err := identity.NewService(settings.IdentityAPIURL, settings.AfterMarketNFTAddress, settings.SyntheticNFTAddress, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create identity service: %w", err)
 	}
@@ -80,9 +80,12 @@ func createHttpController(logger *zerolog.Logger, settings *config.Settings, sta
 	// Initialize VC service using the initialized services
 	vinvcService := vinvc.NewService(logger, vcRepo, identityAPI, fingerprintRepo, vinValidateSerivce, issuer, revokedList, settings.VehicleNFTAddress)
 
-	conRepo := connectivity.NewConnectivityRepo(chConn, s3Client, settings.AutoPiDataType, settings.AutoPiBucketName, settings.HashDogDataType, settings.HashDogBucketName, settings.StatusDataType, settings.StatusBucketName)
+	conRepo := connectivity.NewConnectivityRepo(chConn, s3Client, settings.AutoPiDataType, settings.AutoPiBucketName, settings.HashDogDataType, settings.HashDogBucketName, settings.StatusDataType, settings.StatusBucketName, settings.CloudEventBucket, settings.RuptelaSource)
 
-	pomService := pom.NewService(logger, identityAPI, conRepo, vcRepo, issuer, settings.VehicleNFTAddress)
+	pomService, err := pom.NewService(logger, identityAPI, conRepo, vcRepo, issuer, settings.VehicleNFTAddress)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create POM service: %w", err)
+	}
 
 	ctrl, err := httphandlers.NewVCController(vinvcService, pomService, settings.TelemetryURL)
 	if err != nil {

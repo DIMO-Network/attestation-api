@@ -1,6 +1,9 @@
 package config
 
-import "github.com/DIMO-Network/clickhouse-infra/pkg/connect/config"
+import (
+	"github.com/DIMO-Network/clickhouse-infra/pkg/connect/config"
+	"github.com/ethereum/go-ethereum/common"
+)
 
 // Settings contains the application config.
 type Settings struct {
@@ -10,6 +13,8 @@ type Settings struct {
 	TokenExchangeJWTKeySetURL string          `yaml:"TOKEN_EXCHANGE_JWK_KEY_SET_URL"`
 	TokenExchangeIssuer       string          `yaml:"TOKEN_EXCHANGE_ISSUER_URL"`
 	VehicleNFTAddress         string          `yaml:"VEHICLE_NFT_ADDRESS"`
+	AfterMarketNFTAddress     string          `yaml:"AFTERMARKET_NFT_ADDRESS"`
+	SyntheticNFTAddress       string          `yaml:"SYNTHETIC_NFT_ADDRESS"`
 	TelemetryURL              string          `yaml:"TELEMETRY_URL"`
 	FingerprintBucket         string          `yaml:"FINGERPRINT_BUCKET"`
 	FingerprintDataType       string          `yaml:"FINGERPRINT_DATA_TYPE"`
@@ -17,6 +22,7 @@ type Settings struct {
 	VINVCDataType             string          `yaml:"VINVC_DATA_TYPE"`
 	POMVCBucket               string          `yaml:"POMVC_BUCKET"`
 	POMVCDataType             string          `yaml:"POMVC_DATA_TYPE"`
+	CloudEventBucket          string          `yaml:"CLOUDEVENT_BUCKET"`
 	AutoPiDataType            string          `yaml:"AUTOPI_DATA_TYPE"`
 	AutoPiBucketName          string          `yaml:"AUTOPI_BUCKET_NAME"`
 	HashDogDataType           string          `yaml:"HASHDOG_DATA_TYPE"`
@@ -31,7 +37,6 @@ type Settings struct {
 	DIMORegistryChainID       int64           `yaml:"DIMO_REGISTRY_CHAIN_ID"`
 	ExternalHostname          string          `yaml:"EXTERNAL_HOSTNAME"`
 	RevokedTokenIDs           string          `yaml:"REVOKED_TOKEN_IDS"`
+	RuptelaSource             common.Address  `yaml:"RUPTELA_SOURCE_ADDRESS"`
 	Clickhouse                config.Settings `yaml:",inline"`
 }
-
-//settings.AutoPiDataType, settings.AutoPiBucketName, settings.HashDogDataType, settings.HashDogBucketName, settings.StatusDataType, settings.StatusBucketName)

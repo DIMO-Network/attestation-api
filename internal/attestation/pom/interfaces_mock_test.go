@@ -17,7 +17,7 @@ import (
 
 	models "github.com/DIMO-Network/attestation-api/internal/models"
 	verifiable "github.com/DIMO-Network/attestation-api/pkg/verifiable"
-	common "github.com/ethereum/go-ethereum/common"
+	cloudevent "github.com/DIMO-Network/model-garage/pkg/cloudevent"
 	gomock "go.uber.org/mock/gomock"
 )
 
@@ -46,17 +46,17 @@ func (m *MockVCRepo) EXPECT() *MockVCRepoMockRecorder {
 }
 
 // StorePOMVC mocks base method.
-func (m *MockVCRepo) StorePOMVC(ctx context.Context, tokenID uint32, vinvc json.RawMessage) error {
+func (m *MockVCRepo) StorePOMVC(ctx context.Context, vehicleDID, producerDID cloudevent.NFTDID, vinvc json.RawMessage) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "StorePOMVC", ctx, tokenID, vinvc)
+	ret := m.ctrl.Call(m, "StorePOMVC", ctx, vehicleDID, producerDID, vinvc)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // StorePOMVC indicates an expected call of StorePOMVC.
-func (mr *MockVCRepoMockRecorder) StorePOMVC(ctx, tokenID, vinvc any) *gomock.Call {
+func (mr *MockVCRepoMockRecorder) StorePOMVC(ctx, vehicleDID, producerDID, vinvc any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StorePOMVC", reflect.TypeOf((*MockVCRepo)(nil).StorePOMVC), ctx, tokenID, vinvc)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StorePOMVC", reflect.TypeOf((*MockVCRepo)(nil).StorePOMVC), ctx, vehicleDID, producerDID, vinvc)
 }
 
 // MockIdentityAPI is a mock of IdentityAPI interface.
@@ -84,18 +84,18 @@ func (m *MockIdentityAPI) EXPECT() *MockIdentityAPIMockRecorder {
 }
 
 // GetVehicleInfo mocks base method.
-func (m *MockIdentityAPI) GetVehicleInfo(ctx context.Context, tokenID uint32) (*models.VehicleInfo, error) {
+func (m *MockIdentityAPI) GetVehicleInfo(ctx context.Context, vehicleDID cloudevent.NFTDID) (*models.VehicleInfo, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetVehicleInfo", ctx, tokenID)
+	ret := m.ctrl.Call(m, "GetVehicleInfo", ctx, vehicleDID)
 	ret0, _ := ret[0].(*models.VehicleInfo)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetVehicleInfo indicates an expected call of GetVehicleInfo.
-func (mr *MockIdentityAPIMockRecorder) GetVehicleInfo(ctx, tokenID any) *gomock.Call {
+func (mr *MockIdentityAPIMockRecorder) GetVehicleInfo(ctx, vehicleDID any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetVehicleInfo", reflect.TypeOf((*MockIdentityAPI)(nil).GetVehicleInfo), ctx, tokenID)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetVehicleInfo", reflect.TypeOf((*MockIdentityAPI)(nil).GetVehicleInfo), ctx, vehicleDID)
 }
 
 // MockConnectivityRepo is a mock of ConnectivityRepo interface.
@@ -123,48 +123,63 @@ func (m *MockConnectivityRepo) EXPECT() *MockConnectivityRepoMockRecorder {
 }
 
 // GetAutoPiEvents mocks base method.
-func (m *MockConnectivityRepo) GetAutoPiEvents(ctx context.Context, pairedDeviceIMEI string, after, before time.Time, limit int) ([][]byte, error) {
+func (m *MockConnectivityRepo) GetAutoPiEvents(ctx context.Context, pairedDevice *models.PairedDevice, after, before time.Time, limit int) ([][]byte, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetAutoPiEvents", ctx, pairedDeviceIMEI, after, before, limit)
+	ret := m.ctrl.Call(m, "GetAutoPiEvents", ctx, pairedDevice, after, before, limit)
 	ret0, _ := ret[0].([][]byte)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetAutoPiEvents indicates an expected call of GetAutoPiEvents.
-func (mr *MockConnectivityRepoMockRecorder) GetAutoPiEvents(ctx, pairedDeviceIMEI, after, before, limit any) *gomock.Call {
+func (mr *MockConnectivityRepoMockRecorder) GetAutoPiEvents(ctx, pairedDevice, after, before, limit any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAutoPiEvents", reflect.TypeOf((*MockConnectivityRepo)(nil).GetAutoPiEvents), ctx, pairedDeviceIMEI, after, before, limit)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAutoPiEvents", reflect.TypeOf((*MockConnectivityRepo)(nil).GetAutoPiEvents), ctx, pairedDevice, after, before, limit)
 }
 
 // GetHashDogEvents mocks base method.
-func (m *MockConnectivityRepo) GetHashDogEvents(ctx context.Context, pairedDeviceAddr common.Address, after, before time.Time, limit int) ([][]byte, error) {
+func (m *MockConnectivityRepo) GetHashDogEvents(ctx context.Context, pairedDevice *models.PairedDevice, after, before time.Time, limit int) ([][]byte, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetHashDogEvents", ctx, pairedDeviceAddr, after, before, limit)
+	ret := m.ctrl.Call(m, "GetHashDogEvents", ctx, pairedDevice, after, before, limit)
 	ret0, _ := ret[0].([][]byte)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetHashDogEvents indicates an expected call of GetHashDogEvents.
-func (mr *MockConnectivityRepoMockRecorder) GetHashDogEvents(ctx, pairedDeviceAddr, after, before, limit any) *gomock.Call {
+func (mr *MockConnectivityRepoMockRecorder) GetHashDogEvents(ctx, pairedDevice, after, before, limit any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetHashDogEvents", reflect.TypeOf((*MockConnectivityRepo)(nil).GetHashDogEvents), ctx, pairedDeviceAddr, after, before, limit)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetHashDogEvents", reflect.TypeOf((*MockConnectivityRepo)(nil).GetHashDogEvents), ctx, pairedDevice, after, before, limit)
 }
 
-// GetStatusEvents mocks base method.
-func (m *MockConnectivityRepo) GetStatusEvents(ctx context.Context, vehicleTokenID uint32, after, before time.Time, limit int) ([][]byte, error) {
+// GetRuptelaStatusEvents mocks base method.
+func (m *MockConnectivityRepo) GetRuptelaStatusEvents(ctx context.Context, vehicleDID cloudevent.NFTDID, after, before time.Time, limit int) ([][]byte, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetStatusEvents", ctx, vehicleTokenID, after, before, limit)
+	ret := m.ctrl.Call(m, "GetRuptelaStatusEvents", ctx, vehicleDID, after, before, limit)
 	ret0, _ := ret[0].([][]byte)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// GetStatusEvents indicates an expected call of GetStatusEvents.
-func (mr *MockConnectivityRepoMockRecorder) GetStatusEvents(ctx, vehicleTokenID, after, before, limit any) *gomock.Call {
+// GetRuptelaStatusEvents indicates an expected call of GetRuptelaStatusEvents.
+func (mr *MockConnectivityRepoMockRecorder) GetRuptelaStatusEvents(ctx, vehicleDID, after, before, limit any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetStatusEvents", reflect.TypeOf((*MockConnectivityRepo)(nil).GetStatusEvents), ctx, vehicleTokenID, after, before, limit)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetRuptelaStatusEvents", reflect.TypeOf((*MockConnectivityRepo)(nil).GetRuptelaStatusEvents), ctx, vehicleDID, after, before, limit)
+}
+
+// GetSyntheticstatusEvents mocks base method.
+func (m *MockConnectivityRepo) GetSyntheticstatusEvents(ctx context.Context, vehicleDID cloudevent.NFTDID, after, before time.Time, limit int) ([][]byte, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetSyntheticstatusEvents", ctx, vehicleDID, after, before, limit)
+	ret0, _ := ret[0].([][]byte)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetSyntheticstatusEvents indicates an expected call of GetSyntheticstatusEvents.
+func (mr *MockConnectivityRepoMockRecorder) GetSyntheticstatusEvents(ctx, vehicleDID, after, before, limit any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetSyntheticstatusEvents", reflect.TypeOf((*MockConnectivityRepo)(nil).GetSyntheticstatusEvents), ctx, vehicleDID, after, before, limit)
 }
 
 // MockIssuer is a mock of Issuer interface.

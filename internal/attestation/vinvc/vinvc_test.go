@@ -15,6 +15,7 @@ import (
 	"github.com/DIMO-Network/attestation-api/internal/attestation/vinvc"
 	"github.com/DIMO-Network/attestation-api/internal/models"
 	"github.com/DIMO-Network/attestation-api/pkg/verifiable"
+	"github.com/DIMO-Network/model-garage/pkg/cloudevent"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/rs/zerolog"
@@ -56,8 +57,15 @@ func TestVCController_GetVINVC(t *testing.T) {
 			tokenID: 123,
 			setupMocks: func(mocks Mocks) {
 				tokenID := uint32(123)
-				mocks.vcRepo.EXPECT().GetLatestVINVC(ctxType, tokenID).Return(nil, sql.ErrNoRows)
-				mocks.identityAPI.EXPECT().GetVehicleInfo(ctxType, tokenID).Return(&models.VehicleInfo{}, nil)
+				vehicleInfo := &models.VehicleInfo{
+					DID: cloudevent.NFTDID{
+						ChainID:         vinvc.PolygonChainID,
+						TokenID:         tokenID,
+						ContractAddress: common.HexToAddress(defaultNFTAddress),
+					},
+				}
+				mocks.vcRepo.EXPECT().GetLatestVINVC(ctxType, vehicleInfo.DID).Return(nil, sql.ErrNoRows)
+				mocks.identityAPI.EXPECT().GetVehicleInfo(ctxType, vehicleInfo.DID).Return(vehicleInfo, nil)
 			},
 			expectedErrror: true,
 		},
@@ -67,31 +75,47 @@ func TestVCController_GetVINVC(t *testing.T) {
 			setupMocks: func(mocks Mocks) {
 				pairedAddr := randAddress()
 				tokenID := uint32(124)
-				vehicleInfo := &models.VehicleInfo{
-					PairedDevices: []models.PairedDevice{
-						{Address: pairedAddr, Type: models.DeviceTypeAftermarket},
+				pariedDevice := models.PairedDevice{
+					Address: pairedAddr.String(),
+					Type:    models.DeviceTypeAftermarket,
+					DID: cloudevent.NFTDID{
+						ChainID:         vinvc.PolygonChainID,
+						TokenID:         10,
+						ContractAddress: common.HexToAddress(defaultNFTAddress),
 					},
-					NameSlug: defaultNameSlug,
 				}
-				mocks.vcRepo.EXPECT().GetLatestVINVC(ctxType, tokenID).Return(nil, sql.ErrNoRows)
-				mocks.identityAPI.EXPECT().GetVehicleInfo(ctxType, tokenID).Return(vehicleInfo, nil)
+
+				vehicleInfo := &models.VehicleInfo{
+					PairedDevices: []models.PairedDevice{pariedDevice},
+					NameSlug:      defaultNameSlug,
+					DID: cloudevent.NFTDID{
+						ChainID:         vinvc.PolygonChainID,
+						TokenID:         tokenID,
+						ContractAddress: common.HexToAddress(defaultNFTAddress),
+					},
+				}
+				mocks.vcRepo.EXPECT().GetLatestVINVC(ctxType, vehicleInfo.DID).Return(nil, sql.ErrNoRows)
+				mocks.identityAPI.EXPECT().GetVehicleInfo(ctxType, vehicleInfo.DID).Return(vehicleInfo, nil)
 				validFP := models.DecodedFingerprintData{
-					VIN:       "1HGCM82633A123456",
-					Timestamp: time.Now(),
-					Source:    "0x123",
+					CloudEventHeader: cloudevent.CloudEventHeader{
+						Source:   "0x123",
+						Time:     time.Now(),
+						Producer: pariedDevice.DID.String(),
+					},
+					VIN: "1HGCM82633A123456",
 				}
-				mocks.fingerprintRepo.EXPECT().GetLatestFingerprintMessages(ctxType, pairedAddr).Return(&validFP, nil)
+				mocks.fingerprintRepo.EXPECT().GetLatestFingerprintMessages(ctxType, vehicleInfo.DID, pariedDevice).Return(&validFP, nil)
 				mocks.vinAPI.EXPECT().DecodeVIN(ctxType, validFP.VIN, "").Return(vehicleInfo.NameSlug, nil)
 				vinSubject := verifiable.VINSubject{
 					VehicleIdentificationNumber: validFP.VIN,
 					VehicleTokenID:              tokenID,
 					CountryCode:                 "",
-					RecordedBy:                  validFP.Source,
-					RecordedAt:                  validFP.Timestamp,
+					RecordedBy:                  validFP.Producer,
+					RecordedAt:                  validFP.Time,
 					VehicleContractAddress:      "eth:" + defaultNFTAddress,
 				}
 				mocks.issuer.EXPECT().CreateVINVC(vinSubject, gomock.Any()).Return(testVCPayload, nil)
-				mocks.vcRepo.EXPECT().StoreVINVC(ctxType, tokenID, testVCPayload).Return(nil)
+				mocks.vcRepo.EXPECT().StoreVINVC(ctxType, vehicleInfo.DID, pariedDevice.DID, testVCPayload).Return(nil)
 			},
 		},
 		{
@@ -99,8 +123,15 @@ func TestVCController_GetVINVC(t *testing.T) {
 			tokenID: 125,
 			setupMocks: func(mocks Mocks) {
 				tokenID := uint32(125)
-				mocks.vcRepo.EXPECT().GetLatestVINVC(ctxType, tokenID).Return(nil, sql.ErrNoRows)
-				mocks.identityAPI.EXPECT().GetVehicleInfo(ctxType, tokenID).Return(nil, errors.New("error"))
+				vehicleInfo := &models.VehicleInfo{
+					DID: cloudevent.NFTDID{
+						ChainID:         vinvc.PolygonChainID,
+						TokenID:         tokenID,
+						ContractAddress: common.HexToAddress(defaultNFTAddress),
+					},
+				}
+				mocks.vcRepo.EXPECT().GetLatestVINVC(ctxType, vehicleInfo.DID).Return(nil, sql.ErrNoRows)
+				mocks.identityAPI.EXPECT().GetVehicleInfo(ctxType, vehicleInfo.DID).Return(nil, errors.New("error"))
 			},
 			expectedErrror: true,
 		},
@@ -110,15 +141,27 @@ func TestVCController_GetVINVC(t *testing.T) {
 			setupMocks: func(mocks Mocks) {
 				tokenID := uint32(127)
 				pairedAddr := randAddress()
-				vehicleInfo := &models.VehicleInfo{
-					PairedDevices: []models.PairedDevice{
-						{Address: pairedAddr, Type: models.DeviceTypeAftermarket},
+				pariedDevice := models.PairedDevice{
+					Address: pairedAddr.String(),
+					Type:    models.DeviceTypeAftermarket,
+					DID: cloudevent.NFTDID{
+						ChainID:         vinvc.PolygonChainID,
+						TokenID:         10,
+						ContractAddress: common.HexToAddress(defaultNFTAddress),
 					},
-					NameSlug: defaultNameSlug,
 				}
-				mocks.vcRepo.EXPECT().GetLatestVINVC(ctxType, tokenID).Return(nil, sql.ErrNoRows)
-				mocks.identityAPI.EXPECT().GetVehicleInfo(ctxType, tokenID).Return(vehicleInfo, nil)
-				mocks.fingerprintRepo.EXPECT().GetLatestFingerprintMessages(ctxType, pairedAddr).Return(&models.DecodedFingerprintData{}, fmt.Errorf("no fingerprint messages"))
+				vehicleInfo := &models.VehicleInfo{
+					PairedDevices: []models.PairedDevice{pariedDevice},
+					NameSlug:      defaultNameSlug,
+					DID: cloudevent.NFTDID{
+						ChainID:         vinvc.PolygonChainID,
+						TokenID:         tokenID,
+						ContractAddress: common.HexToAddress(defaultNFTAddress),
+					},
+				}
+				mocks.vcRepo.EXPECT().GetLatestVINVC(ctxType, vehicleInfo.DID).Return(nil, sql.ErrNoRows)
+				mocks.identityAPI.EXPECT().GetVehicleInfo(ctxType, vehicleInfo.DID).Return(vehicleInfo, nil)
+				mocks.fingerprintRepo.EXPECT().GetLatestFingerprintMessages(ctxType, vehicleInfo.DID, pariedDevice).Return(nil, fmt.Errorf("no fingerprint messages"))
 			},
 			expectedErrror: true,
 		},
@@ -129,39 +172,67 @@ func TestVCController_GetVINVC(t *testing.T) {
 				pairedAddr := randAddress()
 				pairedAddr2 := randAddress()
 				tokenID := uint32(128)
-				vehicleInfo := &models.VehicleInfo{
-					PairedDevices: []models.PairedDevice{
-						{Address: pairedAddr, Type: models.DeviceTypeAftermarket},
-						{Address: pairedAddr2, Type: models.DeviceTypeSynthetic},
+				device1 := models.PairedDevice{
+					Address: pairedAddr.String(),
+					Type:    models.DeviceTypeAftermarket,
+					DID: cloudevent.NFTDID{
+						ChainID:         vinvc.PolygonChainID,
+						TokenID:         10,
+						ContractAddress: common.HexToAddress(defaultNFTAddress),
 					},
-					NameSlug: defaultNameSlug,
 				}
-				mocks.vcRepo.EXPECT().GetLatestVINVC(ctxType, tokenID).Return(nil, sql.ErrNoRows)
-				mocks.identityAPI.EXPECT().GetVehicleInfo(ctxType, tokenID).Return(vehicleInfo, nil)
+				device2 := models.PairedDevice{
+					Address: pairedAddr2.String(),
+					Type:    models.DeviceTypeSynthetic,
+					DID: cloudevent.NFTDID{
+						ChainID:         vinvc.PolygonChainID,
+						TokenID:         11,
+						ContractAddress: common.HexToAddress(defaultNFTAddress),
+					},
+				}
+				vehicleInfo := &models.VehicleInfo{
+					PairedDevices: []models.PairedDevice{device1, device2},
+					NameSlug:      defaultNameSlug,
+					DID: cloudevent.NFTDID{
+						ChainID:         vinvc.PolygonChainID,
+						TokenID:         tokenID,
+						ContractAddress: common.HexToAddress(defaultNFTAddress),
+					},
+				}
+				mocks.vcRepo.EXPECT().GetLatestVINVC(ctxType, vehicleInfo.DID).Return(nil, sql.ErrNoRows)
+				mocks.identityAPI.EXPECT().GetVehicleInfo(ctxType, vehicleInfo.DID).Return(vehicleInfo, nil)
+
 				validFPEarliest := models.DecodedFingerprintData{
-					VIN:       "1HGCM82633A123456",
-					Timestamp: time.Now().Add(-1 * time.Hour),
-					Source:    "0x123",
+					CloudEventHeader: cloudevent.CloudEventHeader{
+						Source:   "0x123",
+						Time:     time.Now().Add(-1 * time.Hour),
+						Producer: device1.DID.String(),
+					},
+					VIN: "1HGCM82633A123456",
 				}
 				validFPLatest := models.DecodedFingerprintData{
-					VIN:       "1HGCM82633A654321",
-					Timestamp: time.Now(),
-					Source:    "0x456",
+					CloudEventHeader: cloudevent.CloudEventHeader{
+						Source:   "0x456",
+						Time:     time.Now(),
+						Producer: device2.DID.String(),
+					},
+					VIN: "1HGCM82633A654321",
 				}
 
-				mocks.fingerprintRepo.EXPECT().GetLatestFingerprintMessages(ctxType, pairedAddr).Return(&validFPEarliest, nil)
-				mocks.fingerprintRepo.EXPECT().GetLatestFingerprintMessages(ctxType, pairedAddr2).Return(&validFPLatest, nil)
+				mocks.fingerprintRepo.EXPECT().GetLatestFingerprintMessages(ctxType, vehicleInfo.DID, device1).Return(&validFPEarliest, nil)
+				mocks.fingerprintRepo.EXPECT().GetLatestFingerprintMessages(ctxType, vehicleInfo.DID, device2).Return(&validFPLatest, nil)
 				mocks.vinAPI.EXPECT().DecodeVIN(ctxType, validFPLatest.VIN, "").Return(vehicleInfo.NameSlug, nil)
+
 				vinSubject := verifiable.VINSubject{
 					VehicleIdentificationNumber: validFPLatest.VIN,
 					VehicleTokenID:              tokenID,
 					CountryCode:                 "",
-					RecordedBy:                  validFPLatest.Source,
-					RecordedAt:                  validFPLatest.Timestamp,
+					RecordedBy:                  validFPLatest.Producer,
+					RecordedAt:                  validFPLatest.Time,
 					VehicleContractAddress:      "eth:" + defaultNFTAddress,
 				}
 				mocks.issuer.EXPECT().CreateVINVC(vinSubject, gomock.Any()).Return(testVCPayload, nil)
-				mocks.vcRepo.EXPECT().StoreVINVC(ctxType, tokenID, testVCPayload).Return(nil)
+				mocks.vcRepo.EXPECT().StoreVINVC(ctxType, vehicleInfo.DID, device2.DID, testVCPayload).Return(nil)
 			},
 		},
 		{
@@ -170,70 +241,120 @@ func TestVCController_GetVINVC(t *testing.T) {
 			setupMocks: func(mocks Mocks) {
 				pairedAddr := randAddress()
 				tokenID := uint32(129)
-				vehicleInfo := &models.VehicleInfo{
-					PairedDevices: []models.PairedDevice{
-						{Address: pairedAddr, Type: models.DeviceTypeAftermarket},
+				pariedDevice := models.PairedDevice{
+					Address: pairedAddr.String(),
+					Type:    models.DeviceTypeAftermarket,
+					DID: cloudevent.NFTDID{
+						ChainID:         vinvc.PolygonChainID,
+						TokenID:         10,
+						ContractAddress: common.HexToAddress(defaultNFTAddress),
 					},
-					NameSlug: defaultNameSlug,
 				}
-				mocks.vcRepo.EXPECT().GetLatestVINVC(ctxType, tokenID).Return(nil, sql.ErrNoRows)
-				mocks.identityAPI.EXPECT().GetVehicleInfo(ctxType, tokenID).Return(vehicleInfo, nil)
-				mocks.fingerprintRepo.EXPECT().GetLatestFingerprintMessages(ctxType, pairedAddr).Return(&models.DecodedFingerprintData{
-					VIN: "INVALIDVIN", Timestamp: time.Now(),
-				}, nil)
+				vehicleInfo := &models.VehicleInfo{
+					PairedDevices: []models.PairedDevice{pariedDevice},
+					NameSlug:      defaultNameSlug,
+					DID: cloudevent.NFTDID{
+						ChainID:         vinvc.PolygonChainID,
+						TokenID:         tokenID,
+						ContractAddress: common.HexToAddress(defaultNFTAddress),
+					},
+				}
+				mocks.vcRepo.EXPECT().GetLatestVINVC(ctxType, vehicleInfo.DID).Return(nil, sql.ErrNoRows)
+				mocks.identityAPI.EXPECT().GetVehicleInfo(ctxType, vehicleInfo.DID).Return(vehicleInfo, nil)
+				invalidFP := models.DecodedFingerprintData{
+					CloudEventHeader: cloudevent.CloudEventHeader{
+						Source:   "0x123",
+						Time:     time.Now(),
+						Producer: pariedDevice.DID.String(),
+					},
+					VIN: "INVALIDVIN",
+				}
+				mocks.fingerprintRepo.EXPECT().GetLatestFingerprintMessages(ctxType, vehicleInfo.DID, pariedDevice).Return(&invalidFP, nil)
 				mocks.vinAPI.EXPECT().DecodeVIN(ctxType, "INVALIDVIN", "").Return("", errors.New("invalid VIN"))
 			},
 			expectedErrror: true,
 		},
 		{
 			name:    "invalid VIN from fingerprint message",
-			tokenID: 129,
+			tokenID: 130,
 			setupMocks: func(mocks Mocks) {
 				pairedAddr := randAddress()
-				tokenID := uint32(129)
-				vehicleInfo := &models.VehicleInfo{
-					PairedDevices: []models.PairedDevice{
-						{Address: pairedAddr, Type: models.DeviceTypeAftermarket},
+				tokenID := uint32(130)
+				pariedDevice := models.PairedDevice{
+					Address: pairedAddr.String(),
+					Type:    models.DeviceTypeAftermarket,
+					DID: cloudevent.NFTDID{
+						ChainID:         vinvc.PolygonChainID,
+						TokenID:         10,
+						ContractAddress: common.HexToAddress(defaultNFTAddress),
 					},
-					NameSlug: defaultNameSlug,
 				}
-				mocks.vcRepo.EXPECT().GetLatestVINVC(ctxType, tokenID).Return(nil, sql.ErrNoRows)
-				mocks.identityAPI.EXPECT().GetVehicleInfo(ctxType, tokenID).Return(vehicleInfo, nil)
-				mocks.fingerprintRepo.EXPECT().GetLatestFingerprintMessages(ctxType, pairedAddr).Return(&models.DecodedFingerprintData{
-					VIN: "1HGCM82633A123456", Timestamp: time.Now(),
-				}, nil)
+				vehicleInfo := &models.VehicleInfo{
+					PairedDevices: []models.PairedDevice{pariedDevice},
+					NameSlug:      defaultNameSlug,
+					DID: cloudevent.NFTDID{
+						ChainID:         vinvc.PolygonChainID,
+						TokenID:         tokenID,
+						ContractAddress: common.HexToAddress(defaultNFTAddress),
+					},
+				}
+				mocks.vcRepo.EXPECT().GetLatestVINVC(ctxType, vehicleInfo.DID).Return(nil, sql.ErrNoRows)
+				mocks.identityAPI.EXPECT().GetVehicleInfo(ctxType, vehicleInfo.DID).Return(vehicleInfo, nil)
+				validFP := models.DecodedFingerprintData{
+					CloudEventHeader: cloudevent.CloudEventHeader{
+						Source:   "0x123",
+						Time:     time.Now(),
+						Producer: pariedDevice.DID.String(),
+					},
+					VIN: "1HGCM82633A123456",
+				}
+				mocks.fingerprintRepo.EXPECT().GetLatestFingerprintMessages(ctxType, vehicleInfo.DID, pariedDevice).Return(&validFP, nil)
 				mocks.vinAPI.EXPECT().DecodeVIN(ctxType, "1HGCM82633A123456", "").Return("bad_name", nil)
 			},
 			expectedErrror: true,
 		},
-
 		{
 			name:    "error on generate and store VC",
 			tokenID: 131,
 			setupMocks: func(mocks Mocks) {
 				pairedAddr := randAddress()
 				tokenID := uint32(131)
-				vehicleInfo := &models.VehicleInfo{
-					PairedDevices: []models.PairedDevice{
-						{Address: pairedAddr, Type: models.DeviceTypeAftermarket},
+				pariedDevice := models.PairedDevice{
+					Address: pairedAddr.String(),
+					Type:    models.DeviceTypeAftermarket,
+					DID: cloudevent.NFTDID{
+						ChainID:         vinvc.PolygonChainID,
+						TokenID:         10,
+						ContractAddress: common.HexToAddress(defaultNFTAddress),
 					},
-					NameSlug: defaultNameSlug,
 				}
-				mocks.vcRepo.EXPECT().GetLatestVINVC(ctxType, tokenID).Return(nil, sql.ErrNoRows)
-				mocks.identityAPI.EXPECT().GetVehicleInfo(ctxType, tokenID).Return(vehicleInfo, nil)
+				vehicleInfo := &models.VehicleInfo{
+					PairedDevices: []models.PairedDevice{pariedDevice},
+					NameSlug:      defaultNameSlug,
+					DID: cloudevent.NFTDID{
+						ChainID:         vinvc.PolygonChainID,
+						TokenID:         tokenID,
+						ContractAddress: common.HexToAddress(defaultNFTAddress),
+					},
+				}
+				mocks.vcRepo.EXPECT().GetLatestVINVC(ctxType, vehicleInfo.DID).Return(nil, sql.ErrNoRows)
+				mocks.identityAPI.EXPECT().GetVehicleInfo(ctxType, vehicleInfo.DID).Return(vehicleInfo, nil)
 				validFP := models.DecodedFingerprintData{
-					VIN:       "1HGCM82633A123456",
-					Timestamp: time.Now(),
-					Source:    "0x123",
+					CloudEventHeader: cloudevent.CloudEventHeader{
+						Source:   "0x123",
+						Time:     time.Now(),
+						Producer: pariedDevice.DID.String(),
+					},
+					VIN: "1HGCM82633A123456",
 				}
-				mocks.fingerprintRepo.EXPECT().GetLatestFingerprintMessages(ctxType, pairedAddr).Return(&validFP, nil)
+				mocks.fingerprintRepo.EXPECT().GetLatestFingerprintMessages(ctxType, vehicleInfo.DID, pariedDevice).Return(&validFP, nil)
 				mocks.vinAPI.EXPECT().DecodeVIN(ctxType, validFP.VIN, "").Return(vehicleInfo.NameSlug, nil)
 				vinSubject := verifiable.VINSubject{
 					VehicleIdentificationNumber: validFP.VIN,
 					VehicleTokenID:              tokenID,
 					CountryCode:                 "",
-					RecordedBy:                  validFP.Source,
-					RecordedAt:                  validFP.Timestamp,
+					RecordedBy:                  validFP.Producer,
+					RecordedAt:                  validFP.Time,
 					VehicleContractAddress:      "eth:" + defaultNFTAddress,
 				}
 				mocks.issuer.EXPECT().CreateVINVC(vinSubject, gomock.Any()).Return(nil, errors.New("store error"))
@@ -245,7 +366,14 @@ func TestVCController_GetVINVC(t *testing.T) {
 			tokenID: 132,
 			setupMocks: func(mocks Mocks) {
 				tokenID := uint32(132)
-				mocks.vcRepo.EXPECT().GetLatestVINVC(ctxType, tokenID).Return(&verifiable.Credential{
+				vehicleInfo := &models.VehicleInfo{
+					DID: cloudevent.NFTDID{
+						ChainID:         vinvc.PolygonChainID,
+						TokenID:         tokenID,
+						ContractAddress: common.HexToAddress(defaultNFTAddress),
+					},
+				}
+				mocks.vcRepo.EXPECT().GetLatestVINVC(ctxType, vehicleInfo.DID).Return(&verifiable.Credential{
 					ValidFrom: time.Now().Add(time.Hour).Format(time.RFC3339),
 				}, nil)
 			},
@@ -256,33 +384,48 @@ func TestVCController_GetVINVC(t *testing.T) {
 			setupMocks: func(mocks Mocks) {
 				tokenID := uint32(133)
 				pairedAddr := randAddress()
-				vehicleInfo := &models.VehicleInfo{
-					PairedDevices: []models.PairedDevice{
-						{Address: pairedAddr, Type: models.DeviceTypeAftermarket},
+				pariedDevice := models.PairedDevice{
+					Address: pairedAddr.String(),
+					Type:    models.DeviceTypeAftermarket,
+					DID: cloudevent.NFTDID{
+						ChainID:         vinvc.PolygonChainID,
+						TokenID:         10,
+						ContractAddress: common.HexToAddress(defaultNFTAddress),
 					},
-					NameSlug: defaultNameSlug,
 				}
-				mocks.vcRepo.EXPECT().GetLatestVINVC(ctxType, tokenID).Return(&verifiable.Credential{
+				vehicleInfo := &models.VehicleInfo{
+					PairedDevices: []models.PairedDevice{pariedDevice},
+					NameSlug:      defaultNameSlug,
+					DID: cloudevent.NFTDID{
+						ChainID:         vinvc.PolygonChainID,
+						TokenID:         tokenID,
+						ContractAddress: common.HexToAddress(defaultNFTAddress),
+					},
+				}
+				mocks.vcRepo.EXPECT().GetLatestVINVC(ctxType, vehicleInfo.DID).Return(&verifiable.Credential{
 					ValidFrom: time.Now().Add(-time.Hour).Format(time.RFC3339),
 				}, nil)
-				mocks.identityAPI.EXPECT().GetVehicleInfo(ctxType, tokenID).Return(vehicleInfo, nil)
+				mocks.identityAPI.EXPECT().GetVehicleInfo(ctxType, vehicleInfo.DID).Return(vehicleInfo, nil)
 				validFP := models.DecodedFingerprintData{
-					VIN:       "1HGCM82633A123456",
-					Timestamp: time.Now(),
-					Source:    "0x123",
+					CloudEventHeader: cloudevent.CloudEventHeader{
+						Source:   "0x123",
+						Time:     time.Now(),
+						Producer: pariedDevice.DID.String(),
+					},
+					VIN: "1HGCM82633A123456",
 				}
-				mocks.fingerprintRepo.EXPECT().GetLatestFingerprintMessages(ctxType, pairedAddr).Return(&validFP, nil)
+				mocks.fingerprintRepo.EXPECT().GetLatestFingerprintMessages(ctxType, vehicleInfo.DID, pariedDevice).Return(&validFP, nil)
 				mocks.vinAPI.EXPECT().DecodeVIN(ctxType, validFP.VIN, "").Return(vehicleInfo.NameSlug, nil)
 				vinSubject := verifiable.VINSubject{
 					VehicleIdentificationNumber: validFP.VIN,
 					VehicleTokenID:              tokenID,
 					CountryCode:                 "",
-					RecordedBy:                  validFP.Source,
-					RecordedAt:                  validFP.Timestamp,
+					RecordedBy:                  validFP.Producer,
+					RecordedAt:                  validFP.Time,
 					VehicleContractAddress:      "eth:" + defaultNFTAddress,
 				}
 				mocks.issuer.EXPECT().CreateVINVC(vinSubject, gomock.Any()).Return(testVCPayload, nil)
-				mocks.vcRepo.EXPECT().StoreVINVC(ctxType, tokenID, testVCPayload).Return(nil)
+				mocks.vcRepo.EXPECT().StoreVINVC(ctxType, vehicleInfo.DID, pariedDevice.DID, testVCPayload).Return(nil)
 			},
 		},
 	}
