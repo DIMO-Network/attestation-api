@@ -66,7 +66,7 @@ func createHttpController(logger *zerolog.Logger, settings *config.Settings, sta
 	vinValidateSerivce := vinvalidator.New(deviceDefGRPCClient)
 
 	// Initialize fingerprint repository
-	fingerprintRepo := fingerprint.New(chConn, s3Client, settings.CloudEventBucket, settings.FingerprintBucket, settings.FingerprintDataType)
+	fingerprintRepo := fingerprint.New(chConn, s3Client, settings.CloudEventBucket, settings.FingerprintBucket, settings.FingerprintDataType, settings.RuptelaSource)
 
 	// Initialize VC repository
 	vcRepo := vcrepo.New(chConn, s3Client, settings.VINVCBucket, settings.VINVCDataType, settings.POMVCBucket, settings.POMVCDataType)
@@ -80,7 +80,7 @@ func createHttpController(logger *zerolog.Logger, settings *config.Settings, sta
 	// Initialize VC service using the initialized services
 	vinvcService := vinvc.NewService(logger, vcRepo, identityAPI, fingerprintRepo, vinValidateSerivce, issuer, revokedList, settings.VehicleNFTAddress)
 
-	conRepo := connectivity.NewConnectivityRepo(chConn, s3Client, settings.AutoPiDataType, settings.AutoPiBucketName, settings.HashDogDataType, settings.HashDogBucketName, settings.StatusDataType, settings.StatusBucketName, settings.CloudEventBucket)
+	conRepo := connectivity.NewConnectivityRepo(chConn, s3Client, settings.AutoPiDataType, settings.AutoPiBucketName, settings.HashDogDataType, settings.HashDogBucketName, settings.StatusDataType, settings.StatusBucketName, settings.CloudEventBucket, settings.RuptelaSource)
 
 	pomService, err := pom.NewService(logger, identityAPI, conRepo, vcRepo, issuer, settings.VehicleNFTAddress)
 	if err != nil {

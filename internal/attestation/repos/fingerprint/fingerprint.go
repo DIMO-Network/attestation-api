@@ -24,10 +24,10 @@ import (
 type decodeError string
 
 var (
-	basicVINExp   = regexp.MustCompile(`^[A-Z0-9]{17}$`)
-	ruptelaSource = common.HexToAddress("0x3A6603E1065C9b3142403b1b7e349a6Ae936E819")
-	macaronSource = "macaron/fingerprint"
-	autopiSource  = "aftermarket/device/fingerprint"
+	basicVINExp     = regexp.MustCompile(`^[A-Z0-9]{17}$`)
+	macaronSource   = "macaron/fingerprint"
+	autopiSource    = "aftermarket/device/fingerprint"
+	syntheticSource = "synthetic/device/fingerprint"
 )
 
 func (d decodeError) Error() string {
@@ -39,18 +39,20 @@ type Service struct {
 	indexService     *indexrepo.Service
 	dataType         string
 	cloudEventBucket string
+	ruptelaSource    common.Address
 
 	// TODO (kevin): Remove this when ingest is updated
 	bucketName string
 }
 
 // New creates a new instance of Service.
-func New(chConn clickhouse.Conn, objGetter indexrepo.ObjectGetter, cloudeventBucket, legacyBucketName, fingerprintDataType string) *Service {
+func New(chConn clickhouse.Conn, objGetter indexrepo.ObjectGetter, cloudeventBucket, legacyBucketName, fingerprintDataType string, ruptelaSource common.Address) *Service {
 	return &Service{
 		indexService:     indexrepo.New(chConn, objGetter),
 		dataType:         fingerprintDataType,
 		bucketName:       legacyBucketName,
 		cloudEventBucket: cloudeventBucket,
+		ruptelaSource:    ruptelaSource,
 	}
 }
 
@@ -62,7 +64,7 @@ func (s *Service) GetLatestFingerprintMessages(ctx context.Context, vehicleDID c
 		Producer:      &device.DID,
 		PrimaryFiller: &filler,
 	}
-	dataObj, err := s.indexService.GetLatestCloudEventData(ctx, s.bucketName, opts)
+	dataObj, err := s.indexService.GetLatestCloudEventData(ctx, s.cloudEventBucket, opts)
 	if err != nil {
 		// if we can't find a fingerprint message in the new bucket, try the old bucket
 		if errors.Is(err, sql.ErrNoRows) {
@@ -70,7 +72,7 @@ func (s *Service) GetLatestFingerprintMessages(ctx context.Context, vehicleDID c
 		}
 		return nil, fmt.Errorf("failed to get vc: %w", err)
 	}
-	msg, err := decodeFingerprintMessage(dataObj.Data)
+	msg, err := s.decodeFingerprintMessage(dataObj.Data)
 	if err != nil {
 		return nil, err
 	}
@@ -88,14 +90,14 @@ func (s *Service) legacyGetLatestFingerprintMessages(ctx context.Context, device
 	if err != nil {
 		return nil, fmt.Errorf("failed to get vc: %w", err)
 	}
-	msg, err := decodeFingerprintMessage(dataObj.Data)
+	msg, err := s.decodeFingerprintMessage(dataObj.Data)
 	if err != nil {
 		return nil, err
 	}
 	return msg, nil
 }
 
-func decodeFingerprintMessage(data []byte) (*models.DecodedFingerprintData, error) {
+func (s *Service) decodeFingerprintMessage(data []byte) (*models.DecodedFingerprintData, error) {
 	msg := cloudevent.CloudEvent[map[string]any]{}
 	if err := json.Unmarshal(data, &msg); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal fingerprint message: %w", err)
@@ -120,7 +122,7 @@ func decodeFingerprintMessage(data []byte) (*models.DecodedFingerprintData, erro
 		if err != nil {
 			return nil, err
 		}
-	case ruptelaSource.Cmp(common.HexToAddress(msg.Source)) == 0:
+	case s.ruptelaSource.Cmp(common.HexToAddress(msg.Source)) == 0:
 		fpEvent, err := fingerprint.DecodeFingerprint(data)
 		if err != nil {
 			return nil, err

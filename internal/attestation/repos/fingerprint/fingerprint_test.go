@@ -10,6 +10,7 @@ import (
 
 	"github.com/DIMO-Network/attestation-api/internal/models"
 	"github.com/DIMO-Network/model-garage/pkg/cloudevent"
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/stretchr/testify/require"
 )
 
@@ -122,7 +123,8 @@ func TestDecodeFingerprintMessage(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			decodedData, err := decodeFingerprintMessage(tt.data)
+			srv := Service{ruptelaSource: common.HexToAddress("0x3A6603E1065C9b3142403b1b7e349a6Ae936E819")}
+			decodedData, err := srv.decodeFingerprintMessage(tt.data)
 
 			if tt.expectError {
 				require.Error(t, err)

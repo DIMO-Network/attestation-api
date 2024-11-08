@@ -19,8 +19,6 @@ import (
 var statusFiller = nameindexer.CloudTypeToFiller(cloudevent.TypeStatus)
 
 var (
-	ruptelaSource = common.HexToAddress("0x3A6603E1065C9b3142403b1b7e349a6Ae936E819")
-
 	// TODO: Replace with actual addresses of each connection or DIMO connection
 	syntheticSource = common.HexToAddress("0x0000000000000000000000000000000000000000")
 	twilioSource    = common.HexToAddress("0x0000000000000000000000000000000000000000")
@@ -37,13 +35,15 @@ type ConnectivityRepo struct {
 	statusDataType    string
 	statusBucketName  string
 	cloudEventBucket  string
+	ruptelaSource     common.Address
 }
 
 // NewConnectivityRepo creates a new instance of ConnectivityRepoImpl.
-func NewConnectivityRepo(chConn clickhouse.Conn, objGetter indexrepo.ObjectGetter, autoPiDataType, autoPiBucketName, hashDogDataType, hashDogBucketName, statusDataType, statusBucketName, cloudEventBucketName string) *ConnectivityRepo {
+func NewConnectivityRepo(chConn clickhouse.Conn, objGetter indexrepo.ObjectGetter, autoPiDataType, autoPiBucketName, hashDogDataType, hashDogBucketName, statusDataType, statusBucketName, cloudEventBucketName string, ruptelaSource common.Address) *ConnectivityRepo {
 	return &ConnectivityRepo{
 		indexService:     indexrepo.New(chConn, objGetter),
 		cloudEventBucket: cloudEventBucketName,
+		ruptelaSource:    ruptelaSource,
 
 		// These can go away when we switch storage
 		autoPiDataType:    autoPiDataType,
@@ -96,7 +96,7 @@ func (r *ConnectivityRepo) GetSyntheticstatusEvents(ctx context.Context, vehicle
 
 // GetRuptelaStatusEvents returns the status events for a vehicle.
 func (r *ConnectivityRepo) GetRuptelaStatusEvents(ctx context.Context, vehicleDID cloudevent.NFTDID, after, before time.Time, limit int) ([][]byte, error) {
-	records, err := r.getEvents(ctx, ruptelaSource, vehicleDID, after, before, limit)
+	records, err := r.getEvents(ctx, r.ruptelaSource, vehicleDID, after, before, limit)
 	if errors.Is(err, sql.ErrNoRows) {
 		subject := repos.TokenIDToString(vehicleDID.TokenID)
 		return r.getLegacyEvents(ctx, r.statusBucketName, r.statusDataType, subject, after, before, limit)
