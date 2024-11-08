@@ -76,10 +76,8 @@ github.com/DIMO-Network/device-definitions-api v1.2.48 h1:dWFBT4Htdy66PZzI5maq2f
 github.com/DIMO-Network/device-definitions-api v1.2.48/go.mod h1:c9oOnRXxPQvgQOBKYkaf3ZIcpb9fQkdmd/kHmNk6ZR8=
 github.com/DIMO-Network/model-garage v0.3.4-0.20241105133604-ee59bebdd374 h1:XJcwnFhivnHUUOGfQXNgUMGZemNm1kLZy/yCVd48siE=
 github.com/DIMO-Network/model-garage v0.3.4-0.20241105133604-ee59bebdd374/go.mod h1:w8TaTi9XJ33R4wh/AYfbKUJBBVYy5E+Ayc4CmDfPcYA=
-github.com/DIMO-Network/nameindexer v0.0.8 h1:UuBMcdeVaHn0FzNYiT0ysv89LWDLWNn8gt4h7QZBH7c=
-github.com/DIMO-Network/nameindexer v0.0.8/go.mod h1:+X3K7NN7/DTwkwex5G0e+cqyUaGoCqqk8otOyjDxN+s=
-github.com/DIMO-Network/nameindexer v0.0.10-0.20241031131836-425572ba4fe9 h1:EjmGhmuPDxWCYOJSFFASdNBXxfedTSwfaZIBAdA0PW8=
-github.com/DIMO-Network/nameindexer v0.0.10-0.20241031131836-425572ba4fe9/go.mod h1:+X3K7NN7/DTwkwex5G0e+cqyUaGoCqqk8otOyjDxN+s=
+github.com/DIMO-Network/nameindexer v0.0.10 h1:LunBvOCU78UwayPu6DYEwKSdfQ+2Hbe0Evf8NHUY/nY=
+github.com/DIMO-Network/nameindexer v0.0.10/go.mod h1:+X3K7NN7/DTwkwex5G0e+cqyUaGoCqqk8otOyjDxN+s=
 github.com/DIMO-Network/shared v0.12.1 h1:vYnXZSZKR3tzixXreTAuDx9OFe37m7Xzoacx9C5+UAM=
 github.com/DIMO-Network/shared v0.12.1/go.mod h1:UbxVeHgaEeTo7QrzB0t1oVDh+5y79lIPqr8gv65e6Pk=
 github.com/DIMO-Network/yaml v0.1.0 h1:KQ3oKHUZETchR6Pxbmmol3e4ewrPv/q8cEwqxfwyZbU=
