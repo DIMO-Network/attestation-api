@@ -45,10 +45,9 @@ env:
   HASHDOG_BUCKET_NAME: dimo-network-connectivity-dev
   STATUS_DATA_TYPE: Status_1.0
   STATUS_BUCKET_NAME: dimo-network-status-dev
-  VINVC_BUCKET: dimo-network-vinvc-dev
-  VINVC_DATA_TYPE: VINVCv0.0
-  POMVC_BUCKET: dimo-network-pomvc-dev
-  POMVC_DATA_TYPE: POMVCv0.1
+  VC_BUCKET: dimo-network-vc-dev
+  VINVC_DATA_TYPE: VINVCv1.0
+  POMVC_DATA_TYPE: POMVCv1.0
   CLOUDEVENT_BUCKET: dimo-ingest-cloudevent-dev
   S3_AWS_REGION: us-east-2
   DIMO_REGISTRY_CHAIN_ID: 80002
