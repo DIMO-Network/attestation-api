@@ -81,9 +81,9 @@ func (s *Service) GetLatestFingerprintMessages(ctx context.Context, vehicleDID c
 
 // TODO (kevin): Remove this when ingest is updated
 func (s *Service) legacyGetLatestFingerprintMessages(ctx context.Context, device models.PairedDevice) (*models.DecodedFingerprintData, error) {
-	encdoedAddress := device.Address[2:]
+	encodedAddress := device.Address[2:]
 	opts := indexrepo.SearchOptions{
-		Subject:  &encdoedAddress,
+		Subject:  &encodedAddress,
 		DataType: &s.dataType,
 	}
 	dataObj, err := s.indexService.GetLatestObject(ctx, s.bucketName, opts)
