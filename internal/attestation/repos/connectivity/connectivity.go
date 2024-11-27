@@ -11,12 +11,11 @@ import (
 	"github.com/DIMO-Network/attestation-api/internal/attestation/repos"
 	"github.com/DIMO-Network/attestation-api/internal/models"
 	"github.com/DIMO-Network/model-garage/pkg/cloudevent"
-	"github.com/DIMO-Network/nameindexer"
 	"github.com/DIMO-Network/nameindexer/pkg/clickhouse/indexrepo"
 	"github.com/ethereum/go-ethereum/common"
 )
 
-var statusFiller = nameindexer.CloudTypeToFiller(cloudevent.TypeStatus)
+var cloudEventStatus = cloudevent.TypeStatus
 
 var (
 	// TODO: Replace with actual addresses of each connection or DIMO connection
@@ -109,11 +108,11 @@ func (r *ConnectivityRepo) GetRuptelaStatusEvents(ctx context.Context, vehicleDI
 
 func (r *ConnectivityRepo) getEvents(ctx context.Context, source common.Address, subject cloudevent.NFTDID, after, before time.Time, limit int) ([][]byte, error) {
 	opts := indexrepo.CloudEventSearchOptions{
-		Subject:       &subject,
-		PrimaryFiller: &statusFiller,
-		Source:        &source,
-		After:         after,
-		Before:        before,
+		Subject: &subject,
+		Type:    &cloudEventStatus,
+		Source:  &source,
+		After:   after,
+		Before:  before,
 	}
 	dataObj, err := r.indexService.GetCloudEventObjects(ctx, r.cloudEventBucket, limit, opts)
 	if err != nil {

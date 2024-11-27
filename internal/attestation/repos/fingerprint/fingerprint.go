@@ -16,7 +16,6 @@ import (
 	"github.com/DIMO-Network/attestation-api/internal/models"
 	"github.com/DIMO-Network/model-garage/pkg/cloudevent"
 	"github.com/DIMO-Network/model-garage/pkg/ruptela/fingerprint"
-	"github.com/DIMO-Network/nameindexer"
 	"github.com/DIMO-Network/nameindexer/pkg/clickhouse/indexrepo"
 	"github.com/ethereum/go-ethereum/common"
 )
@@ -58,11 +57,11 @@ func New(chConn clickhouse.Conn, objGetter indexrepo.ObjectGetter, cloudeventBuc
 
 // GetLatestFingerprintMessages fetches the latest fingerprint message from S3.
 func (s *Service) GetLatestFingerprintMessages(ctx context.Context, vehicleDID cloudevent.NFTDID, device models.PairedDevice) (*models.DecodedFingerprintData, error) {
-	filler := nameindexer.CloudTypeToFiller(cloudevent.TypeFingerprint)
+	fingerprintType := cloudevent.TypeFingerprint
 	opts := indexrepo.CloudEventSearchOptions{
-		Subject:       &vehicleDID,
-		Producer:      &device.DID,
-		PrimaryFiller: &filler,
+		Subject:  &vehicleDID,
+		Producer: &device.DID,
+		Type:     &fingerprintType,
 	}
 	dataObj, err := s.indexService.GetLatestCloudEventData(ctx, s.cloudEventBucket, opts)
 	if err != nil {
