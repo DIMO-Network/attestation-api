@@ -25,6 +25,7 @@ import (
 type MockVCRepo struct {
 	ctrl     *gomock.Controller
 	recorder *MockVCRepoMockRecorder
+	isgomock struct{}
 }
 
 // MockVCRepoMockRecorder is the mock recorder for MockVCRepo.
@@ -62,6 +63,7 @@ func (mr *MockVCRepoMockRecorder) StorePOMVC(ctx, vehicleDID, producerDID, vinvc
 type MockIdentityAPI struct {
 	ctrl     *gomock.Controller
 	recorder *MockIdentityAPIMockRecorder
+	isgomock struct{}
 }
 
 // MockIdentityAPIMockRecorder is the mock recorder for MockIdentityAPI.
@@ -100,6 +102,7 @@ func (mr *MockIdentityAPIMockRecorder) GetVehicleInfo(ctx, vehicleDID any) *gomo
 type MockConnectivityRepo struct {
 	ctrl     *gomock.Controller
 	recorder *MockConnectivityRepoMockRecorder
+	isgomock struct{}
 }
 
 // MockConnectivityRepoMockRecorder is the mock recorder for MockConnectivityRepo.
@@ -183,6 +186,7 @@ func (mr *MockConnectivityRepoMockRecorder) GetSyntheticstatusEvents(ctx, vehicl
 type MockIssuer struct {
 	ctrl     *gomock.Controller
 	recorder *MockIssuerMockRecorder
+	isgomock struct{}
 }
 
 // MockIssuerMockRecorder is the mock recorder for MockIssuer.
