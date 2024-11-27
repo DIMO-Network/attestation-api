@@ -38,7 +38,7 @@ func (r *Repo) GetLatestVINVC(ctx context.Context, vehicleDID cloudevent.NFTDID)
 		Subject:     &vehicleDID,
 		DataVersion: &r.vinDataVersion,
 	}
-	dataObj, err := r.indexService.GetLatestCloudEventData(ctx, r.vcBucketName, opts)
+	dataObj, err := r.indexService.GetLatestCloudEvent(ctx, r.vcBucketName, opts)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get vc: %w", err)
 	}

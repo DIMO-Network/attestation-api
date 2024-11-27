@@ -63,7 +63,7 @@ func (s *Service) GetLatestFingerprintMessages(ctx context.Context, vehicleDID c
 		Producer: &device.DID,
 		Type:     &fingerprintType,
 	}
-	dataObj, err := s.indexService.GetLatestCloudEventData(ctx, s.cloudEventBucket, opts)
+	dataObj, err := s.indexService.GetLatestCloudEvent(ctx, s.cloudEventBucket, opts)
 	if err != nil {
 		// if we can't find a fingerprint message in the new bucket, try the old bucket
 		if errors.Is(err, sql.ErrNoRows) {
@@ -71,7 +71,7 @@ func (s *Service) GetLatestFingerprintMessages(ctx context.Context, vehicleDID c
 		}
 		return nil, fmt.Errorf("failed to get vc: %w", err)
 	}
-	msg, err := s.decodeFingerprintMessage(dataObj.Data)
+	msg, err := s.decodeFingerprintMessage(dataObj)
 	if err != nil {
 		return nil, err
 	}
@@ -85,22 +85,18 @@ func (s *Service) legacyGetLatestFingerprintMessages(ctx context.Context, device
 		Subject:     &encodedAddress,
 		DataVersion: &s.dataType,
 	}
-	dataObj, err := s.indexService.GetLatestObject(ctx, s.bucketName, opts)
+	dataObj, err := s.indexService.GetLatestCloudEventFromRaw(ctx, s.bucketName, opts)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get vc: %w", err)
 	}
-	msg, err := s.decodeFingerprintMessage(dataObj.Data)
+	msg, err := s.decodeFingerprintMessage(dataObj)
 	if err != nil {
 		return nil, err
 	}
 	return msg, nil
 }
 
-func (s *Service) decodeFingerprintMessage(data []byte) (*models.DecodedFingerprintData, error) {
-	msg := cloudevent.CloudEvent[map[string]any]{}
-	if err := json.Unmarshal(data, &msg); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal fingerprint message: %w", err)
-	}
+func (s *Service) decodeFingerprintMessage(msg cloudevent.CloudEvent[json.RawMessage]) (*models.DecodedFingerprintData, error) {
 	var vin string
 	var err error
 	switch {
@@ -122,6 +118,11 @@ func (s *Service) decodeFingerprintMessage(data []byte) (*models.DecodedFingerpr
 			return nil, err
 		}
 	case s.ruptelaSource.Cmp(common.HexToAddress(msg.Source)) == 0:
+		// TODO (kevin): I know this double marshal is ugly but works for now.
+		data, err := json.Marshal(msg)
+		if err != nil {
+			return nil, fmt.Errorf("failed to marshal fingerprint message: %w", err)
+		}
 		fpEvent, err := fingerprint.DecodeFingerprint(data)
 		if err != nil {
 			return nil, err
@@ -155,16 +156,17 @@ type macronFingerPrint struct {
 	VIN       [17]byte
 }
 
-func decodeVINFromData(data map[string]interface{}) (string, error) {
-	vinObj, ok := data["vin"]
-	if !ok {
-		return "", decodeError("missing vin")
+type basicFingerprint struct {
+	VIN string `json:"vin"`
+}
+
+func decodeVINFromData(data json.RawMessage) (string, error) {
+	fpData := basicFingerprint{}
+	err := json.Unmarshal(data, &fpData)
+	if err != nil {
+		return "", fmt.Errorf("failed to autoPi unmarshal data: %w", err)
 	}
-	vin, ok := vinObj.(string)
-	if !ok {
-		return "", decodeError(fmt.Sprintf("invalid vin type: %T", vinObj))
-	}
-	return vin, nil
+	return fpData.VIN, nil
 }
 
 func decodeVINFromBase64(data string) (string, error) {

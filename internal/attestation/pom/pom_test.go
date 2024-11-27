@@ -34,6 +34,15 @@ func TestService_CreatePOMVC(t *testing.T) {
 
 	ctx := context.TODO()
 	tokenID := uint32(1234)
+	inputStatusv1 := cloudevent.CloudEvent[json.RawMessage]{}
+	err = json.Unmarshal([]byte(inputStatusv1Bytes), &inputStatusv1)
+	require.NoError(t, err)
+	inputStatusv2 := cloudevent.CloudEvent[json.RawMessage]{}
+	err = json.Unmarshal([]byte(inputStatusv2Bytes), &inputStatusv2)
+	require.NoError(t, err)
+	inputRuptela := cloudevent.CloudEvent[json.RawMessage]{}
+	err = json.Unmarshal([]byte(inputRuptelaBytes), &inputRuptela)
+	require.NoError(t, err)
 
 	tests := []struct {
 		name              string
@@ -72,7 +81,7 @@ func TestService_CreatePOMVC(t *testing.T) {
 						Timestamp: time.Now().Add(-5 * time.Minute),
 					},
 				}
-				eventBytes := make([][]byte, len(events))
+				eventBytes := make([]cloudevent.CloudEvent[json.RawMessage], len(events))
 				for i, event := range events {
 					cloudEvent := cloudevent.CloudEvent[twilio.ConnectionEvent]{
 						Data: event,
@@ -80,8 +89,8 @@ func TestService_CreatePOMVC(t *testing.T) {
 							Time: event.Timestamp,
 						},
 					}
-					b, _ := json.Marshal(cloudEvent)
-					eventBytes[i] = b
+					b, _ := json.Marshal(cloudEvent.Data)
+					eventBytes[i] = cloudevent.CloudEvent[json.RawMessage]{Data: b}
 				}
 
 				mockConnectivityRepo.EXPECT().GetAutoPiEvents(ctx, &pairedDevice, gomock.Any(), gomock.Any(), gomock.Any()).Return(eventBytes, nil)
@@ -111,9 +120,9 @@ func TestService_CreatePOMVC(t *testing.T) {
 				}
 				mockIdentityAPI.EXPECT().GetVehicleInfo(ctx, vehicleInfo.DID).Return(vehicleInfo, nil)
 
-				eventBytes := [][]byte{
-					[]byte(inputStatusv1),
-					[]byte(inputStatusv2),
+				eventBytes := []cloudevent.CloudEvent[json.RawMessage]{
+					inputStatusv1,
+					inputStatusv2,
 				}
 
 				mockConnectivityRepo.EXPECT().GetSyntheticstatusEvents(ctx, vehicleInfo.DID, gomock.Any(), gomock.Any(), gomock.Any()).Return(eventBytes, nil)
@@ -164,17 +173,17 @@ func TestService_CreatePOMVC(t *testing.T) {
 					},
 				}
 
-				eventBytes := make([][]byte, len(events))
+				eventBytes := make([]cloudevent.CloudEvent[json.RawMessage], len(events))
 				for i, event := range events {
-					cloudEvent := cloudevent.CloudEvent[lorawan.Data]{
-						Data: event,
+					cloudEvent := cloudevent.CloudEvent[json.RawMessage]{
 						CloudEventHeader: cloudevent.CloudEventHeader{
 							Time: time.UnixMilli(event.Timestamp),
 							ID:   fmt.Sprintf("event-%d", i),
 						},
 					}
-					b, _ := json.Marshal(cloudEvent)
-					eventBytes[i] = b
+					b, _ := json.Marshal(event)
+					cloudEvent.Data = b
+					eventBytes[i] = cloudEvent
 				}
 
 				mockConnectivityRepo.EXPECT().GetHashDogEvents(ctx, &pairedDevice, gomock.Any(), gomock.Any(), gomock.Any()).Return(eventBytes, nil)
@@ -206,8 +215,8 @@ func TestService_CreatePOMVC(t *testing.T) {
 
 				mockIdentityAPI.EXPECT().GetVehicleInfo(ctx, vehicleInfo.DID).Return(vehicleInfo, nil)
 
-				events := [][]byte{
-					[]byte(inputRuptela),
+				events := []cloudevent.CloudEvent[json.RawMessage]{
+					inputRuptela,
 				}
 
 				mockConnectivityRepo.EXPECT().GetRuptelaStatusEvents(ctx, vehicleInfo.DID, gomock.Any(), gomock.Any(), gomock.Any()).Return(events, nil)
@@ -251,7 +260,7 @@ func TestService_CreatePOMVC(t *testing.T) {
 						Timestamp: time.Now().Add(-5 * time.Minute),
 					},
 				}
-				eventBytes := make([][]byte, len(events))
+				eventBytes := make([]cloudevent.CloudEvent[json.RawMessage], len(events))
 				for i, event := range events {
 					cloudEvent := cloudevent.CloudEvent[twilio.ConnectionEvent]{
 						Data: event,
@@ -259,8 +268,8 @@ func TestService_CreatePOMVC(t *testing.T) {
 							Time: event.Timestamp,
 						},
 					}
-					b, _ := json.Marshal(cloudEvent)
-					eventBytes[i] = b
+					b, _ := json.Marshal(cloudEvent.Data)
+					eventBytes[i] = cloudevent.CloudEvent[json.RawMessage]{Data: b}
 				}
 
 				mockConnectivityRepo.EXPECT().GetAutoPiEvents(ctx, &autoPiDevice, gomock.Any(), gomock.Any(), gomock.Any()).Return(eventBytes, nil)
@@ -296,9 +305,9 @@ func TestService_CreatePOMVC(t *testing.T) {
 				}
 				mockIdentityAPI.EXPECT().GetVehicleInfo(ctx, vehicleInfo.DID).Return(vehicleInfo, nil)
 
-				eventBytes := [][]byte{
-					[]byte(inputStatusv1),
-					[]byte(inputStatusv2),
+				eventBytes := []cloudevent.CloudEvent[json.RawMessage]{
+					inputStatusv1,
+					inputStatusv2,
 				}
 
 				mockConnectivityRepo.EXPECT().GetAutoPiEvents(ctx, &autoPiDevice, gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, nil)
@@ -342,9 +351,9 @@ func TestService_CreatePOMVC(t *testing.T) {
 				}
 				mockIdentityAPI.EXPECT().GetVehicleInfo(ctx, vehicleInfo.DID).Return(vehicleInfo, nil)
 
-				eventBytes := [][]byte{
-					[]byte(inputStatusv1),
-					[]byte(inputStatusv2),
+				eventBytes := []cloudevent.CloudEvent[json.RawMessage]{
+					inputStatusv1,
+					inputStatusv2,
 				}
 
 				mockConnectivityRepo.EXPECT().GetSyntheticstatusEvents(ctx, vehicleInfo.DID, gomock.Any(), gomock.Any(), gomock.Any()).Return(eventBytes, nil)
@@ -372,7 +381,7 @@ func TestService_CreatePOMVC(t *testing.T) {
 }
 
 var (
-	inputStatusv1 = `{
+	inputStatusv1Bytes = `{
 		"id": "randomIDnumber",
 		"specversion": "1.0",
 		"source": "dimo/integration/22N2xaPOq2WW2gAHBHd0Ikn4Zob",
@@ -385,7 +394,7 @@ var (
 			"longitude": -122.4194
 		}
 	}`
-	inputStatusv2 = `{
+	inputStatusv2Bytes = `{
     "id": "2fHbFXPWzrVActDb7WqWCfqeiYe",
     "source": "dimo/integration/22N2xaPOq2WW2gAHBHd0Ikn4Zob",
     "specversion": "1.0",
@@ -426,7 +435,7 @@ var (
         }
     }
 }`
-	inputRuptela = `
+	inputRuptelaBytes = `
 	{
     "id": "2ntM3FpVxTqkjJNeixHzyOyB3mz",
     "source": "0x4Dc84a226102c08e911A5159e165e616e3A877A8",
