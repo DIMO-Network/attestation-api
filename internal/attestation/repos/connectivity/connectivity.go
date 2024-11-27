@@ -107,7 +107,7 @@ func (r *ConnectivityRepo) GetRuptelaStatusEvents(ctx context.Context, vehicleDI
 }
 
 func (r *ConnectivityRepo) getEvents(ctx context.Context, source common.Address, subject cloudevent.NFTDID, after, before time.Time, limit int) ([][]byte, error) {
-	opts := indexrepo.CloudEventSearchOptions{
+	opts := indexrepo.SearchOptions{
 		Subject: &subject,
 		Type:    &cloudEventStatus,
 		Source:  &source,
@@ -127,11 +127,11 @@ func (r *ConnectivityRepo) getEvents(ctx context.Context, source common.Address,
 }
 
 func (r *ConnectivityRepo) getLegacyEvents(ctx context.Context, bucketName string, dataType string, subject string, after, before time.Time, limit int) ([][]byte, error) {
-	opts := indexrepo.SearchOptions{
-		Subject:  &subject,
-		DataType: &dataType,
-		After:    after,
-		Before:   before,
+	opts := indexrepo.RawSearchOptions{
+		Subject:     &subject,
+		DataVersion: &dataType,
+		After:       after,
+		Before:      before,
 	}
 	dataObjs, err := r.indexService.GetObjects(ctx, bucketName, limit, opts)
 	if err != nil {

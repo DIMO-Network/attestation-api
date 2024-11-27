@@ -34,7 +34,7 @@ func New(chConn clickhouse.Conn, objGetter indexrepo.ObjectGetter, vcBucketName,
 
 // GetLatestVINVC fetches the latest vinvc from S3.
 func (r *Repo) GetLatestVINVC(ctx context.Context, vehicleDID cloudevent.NFTDID) (*verifiable.Credential, error) {
-	opts := indexrepo.CloudEventSearchOptions{
+	opts := indexrepo.SearchOptions{
 		Subject:     &vehicleDID,
 		DataVersion: &r.vinDataVersion,
 	}
@@ -76,12 +76,7 @@ func (r *Repo) storeVC(ctx context.Context, vehicleDID, producerDID cloudevent.N
 		Data: rawVC,
 	}
 
-	eventData, err := json.Marshal(cloudEvent)
-	if err != nil {
-		return fmt.Errorf("failed to marshal VC as cloud event: %w", err)
-	}
-
-	err = r.indexService.StoreCloudEvent(ctx, &cloudEvent.CloudEventHeader, r.vcBucketName, "", eventData)
+	err := r.indexService.StoreCloudEvent(ctx, r.vcBucketName, cloudEvent)
 	if err != nil {
 		return fmt.Errorf("failed to store VC: %w", err)
 	}

@@ -58,7 +58,7 @@ func New(chConn clickhouse.Conn, objGetter indexrepo.ObjectGetter, cloudeventBuc
 // GetLatestFingerprintMessages fetches the latest fingerprint message from S3.
 func (s *Service) GetLatestFingerprintMessages(ctx context.Context, vehicleDID cloudevent.NFTDID, device models.PairedDevice) (*models.DecodedFingerprintData, error) {
 	fingerprintType := cloudevent.TypeFingerprint
-	opts := indexrepo.CloudEventSearchOptions{
+	opts := indexrepo.SearchOptions{
 		Subject:  &vehicleDID,
 		Producer: &device.DID,
 		Type:     &fingerprintType,
@@ -81,9 +81,9 @@ func (s *Service) GetLatestFingerprintMessages(ctx context.Context, vehicleDID c
 // TODO (kevin): Remove this when ingest is updated
 func (s *Service) legacyGetLatestFingerprintMessages(ctx context.Context, device models.PairedDevice) (*models.DecodedFingerprintData, error) {
 	encodedAddress := device.Address[2:]
-	opts := indexrepo.SearchOptions{
-		Subject:  &encodedAddress,
-		DataType: &s.dataType,
+	opts := indexrepo.RawSearchOptions{
+		Subject:     &encodedAddress,
+		DataVersion: &s.dataType,
 	}
 	dataObj, err := s.indexService.GetLatestObject(ctx, s.bucketName, opts)
 	if err != nil {
