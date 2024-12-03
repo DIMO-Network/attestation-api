@@ -25,7 +25,7 @@ type decodeError string
 var (
 	basicVINExp     = regexp.MustCompile(`^[A-Z0-9]{17}$`)
 	macaronSource   = "macaron/fingerprint"
-	autopiSource    = "aftermarket/device/fingerprint"
+	autopiSource    = "0xAff1B580F05F2ee577162B39851b79f84F82f46A"
 	syntheticSource = "synthetic/device/fingerprint"
 )
 
