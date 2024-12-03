@@ -3,6 +3,7 @@ package connectivity
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"time"
@@ -11,12 +12,11 @@ import (
 	"github.com/DIMO-Network/attestation-api/internal/attestation/repos"
 	"github.com/DIMO-Network/attestation-api/internal/models"
 	"github.com/DIMO-Network/model-garage/pkg/cloudevent"
-	"github.com/DIMO-Network/nameindexer"
 	"github.com/DIMO-Network/nameindexer/pkg/clickhouse/indexrepo"
 	"github.com/ethereum/go-ethereum/common"
 )
 
-var statusFiller = nameindexer.CloudTypeToFiller(cloudevent.TypeStatus)
+var cloudEventStatus = cloudevent.TypeStatus
 
 var (
 	// TODO: Replace with actual addresses of each connection or DIMO connection
@@ -56,7 +56,7 @@ func NewConnectivityRepo(chConn clickhouse.Conn, objGetter indexrepo.ObjectGette
 }
 
 // GetAutoPiEvents returns the twilio events for a autopi device.
-func (r *ConnectivityRepo) GetAutoPiEvents(ctx context.Context, device *models.PairedDevice, after, before time.Time, limit int) ([][]byte, error) {
+func (r *ConnectivityRepo) GetAutoPiEvents(ctx context.Context, device *models.PairedDevice, after, before time.Time, limit int) ([]cloudevent.CloudEvent[json.RawMessage], error) {
 	records, err := r.getEvents(ctx, twilioSource, device.DID, after, before, limit)
 	if errors.Is(err, sql.ErrNoRows) {
 		subject := repos.IMEIToString(device.IMEI)
@@ -69,7 +69,7 @@ func (r *ConnectivityRepo) GetAutoPiEvents(ctx context.Context, device *models.P
 }
 
 // GetHashDogEvents returns the lorawan events for a hashdog device.
-func (r *ConnectivityRepo) GetHashDogEvents(ctx context.Context, device *models.PairedDevice, after, before time.Time, limit int) ([][]byte, error) {
+func (r *ConnectivityRepo) GetHashDogEvents(ctx context.Context, device *models.PairedDevice, after, before time.Time, limit int) ([]cloudevent.CloudEvent[json.RawMessage], error) {
 	records, err := r.getEvents(ctx, hashDogSource, device.DID, after, before, limit)
 	if errors.Is(err, sql.ErrNoRows) {
 		subject := device.Address[2:]
@@ -82,7 +82,7 @@ func (r *ConnectivityRepo) GetHashDogEvents(ctx context.Context, device *models.
 }
 
 // GetSyntheticstatusEvents returns the status events for a vehicle.
-func (r *ConnectivityRepo) GetSyntheticstatusEvents(ctx context.Context, vehicleDID cloudevent.NFTDID, after, before time.Time, limit int) ([][]byte, error) {
+func (r *ConnectivityRepo) GetSyntheticstatusEvents(ctx context.Context, vehicleDID cloudevent.NFTDID, after, before time.Time, limit int) ([]cloudevent.CloudEvent[json.RawMessage], error) {
 	records, err := r.getEvents(ctx, syntheticSource, vehicleDID, after, before, limit)
 	if errors.Is(err, sql.ErrNoRows) {
 		subject := repos.TokenIDToString(vehicleDID.TokenID)
@@ -95,7 +95,7 @@ func (r *ConnectivityRepo) GetSyntheticstatusEvents(ctx context.Context, vehicle
 }
 
 // GetRuptelaStatusEvents returns the status events for a vehicle.
-func (r *ConnectivityRepo) GetRuptelaStatusEvents(ctx context.Context, vehicleDID cloudevent.NFTDID, after, before time.Time, limit int) ([][]byte, error) {
+func (r *ConnectivityRepo) GetRuptelaStatusEvents(ctx context.Context, vehicleDID cloudevent.NFTDID, after, before time.Time, limit int) ([]cloudevent.CloudEvent[json.RawMessage], error) {
 	records, err := r.getEvents(ctx, r.ruptelaSource, vehicleDID, after, before, limit)
 	if errors.Is(err, sql.ErrNoRows) {
 		subject := repos.TokenIDToString(vehicleDID.TokenID)
@@ -107,40 +107,31 @@ func (r *ConnectivityRepo) GetRuptelaStatusEvents(ctx context.Context, vehicleDI
 	return records, nil
 }
 
-func (r *ConnectivityRepo) getEvents(ctx context.Context, source common.Address, subject cloudevent.NFTDID, after, before time.Time, limit int) ([][]byte, error) {
-	opts := indexrepo.CloudEventSearchOptions{
-		Subject:       &subject,
-		PrimaryFiller: &statusFiller,
-		Source:        &source,
-		After:         after,
-		Before:        before,
+func (r *ConnectivityRepo) getEvents(ctx context.Context, source common.Address, subject cloudevent.NFTDID, after, before time.Time, limit int) ([]cloudevent.CloudEvent[json.RawMessage], error) {
+	opts := &indexrepo.SearchOptions{
+		Subject: &subject,
+		Type:    &cloudEventStatus,
+		Source:  &source,
+		After:   after,
+		Before:  before,
 	}
-	dataObj, err := r.indexService.GetCloudEventObjects(ctx, r.cloudEventBucket, limit, opts)
+	events, err := r.indexService.ListCloudEvents(ctx, r.cloudEventBucket, limit, opts)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get filenames: %w", err)
 	}
-	events := make([][]byte, len(dataObj))
-	for i, obj := range dataObj {
-		events[i] = obj.Data
-	}
-
 	return events, nil
 }
 
-func (r *ConnectivityRepo) getLegacyEvents(ctx context.Context, bucketName string, dataType string, subject string, after, before time.Time, limit int) ([][]byte, error) {
-	opts := indexrepo.SearchOptions{
-		Subject:  &subject,
-		DataType: &dataType,
-		After:    after,
-		Before:   before,
+func (r *ConnectivityRepo) getLegacyEvents(ctx context.Context, bucketName string, dataType string, subject string, after, before time.Time, limit int) ([]cloudevent.CloudEvent[json.RawMessage], error) {
+	opts := &indexrepo.RawSearchOptions{
+		Subject:     &subject,
+		DataVersion: &dataType,
+		After:       after,
+		Before:      before,
 	}
-	dataObjs, err := r.indexService.GetObjects(ctx, bucketName, limit, opts)
+	events, err := r.indexService.ListCloudEventsFromRaw(ctx, bucketName, limit, opts)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get filenames: %w", err)
-	}
-	events := make([][]byte, len(dataObjs))
-	for i, obj := range dataObjs {
-		events[i] = obj.Data
 	}
 	return events, nil
 }

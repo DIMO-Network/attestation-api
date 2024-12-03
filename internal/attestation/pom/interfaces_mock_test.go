@@ -123,10 +123,10 @@ func (m *MockConnectivityRepo) EXPECT() *MockConnectivityRepoMockRecorder {
 }
 
 // GetAutoPiEvents mocks base method.
-func (m *MockConnectivityRepo) GetAutoPiEvents(ctx context.Context, pairedDevice *models.PairedDevice, after, before time.Time, limit int) ([][]byte, error) {
+func (m *MockConnectivityRepo) GetAutoPiEvents(ctx context.Context, pairedDevice *models.PairedDevice, after, before time.Time, limit int) ([]cloudevent.CloudEvent[json.RawMessage], error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetAutoPiEvents", ctx, pairedDevice, after, before, limit)
-	ret0, _ := ret[0].([][]byte)
+	ret0, _ := ret[0].([]cloudevent.CloudEvent[json.RawMessage])
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -138,10 +138,10 @@ func (mr *MockConnectivityRepoMockRecorder) GetAutoPiEvents(ctx, pairedDevice, a
 }
 
 // GetHashDogEvents mocks base method.
-func (m *MockConnectivityRepo) GetHashDogEvents(ctx context.Context, pairedDevice *models.PairedDevice, after, before time.Time, limit int) ([][]byte, error) {
+func (m *MockConnectivityRepo) GetHashDogEvents(ctx context.Context, pairedDevice *models.PairedDevice, after, before time.Time, limit int) ([]cloudevent.CloudEvent[json.RawMessage], error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetHashDogEvents", ctx, pairedDevice, after, before, limit)
-	ret0, _ := ret[0].([][]byte)
+	ret0, _ := ret[0].([]cloudevent.CloudEvent[json.RawMessage])
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -153,10 +153,10 @@ func (mr *MockConnectivityRepoMockRecorder) GetHashDogEvents(ctx, pairedDevice, 
 }
 
 // GetRuptelaStatusEvents mocks base method.
-func (m *MockConnectivityRepo) GetRuptelaStatusEvents(ctx context.Context, vehicleDID cloudevent.NFTDID, after, before time.Time, limit int) ([][]byte, error) {
+func (m *MockConnectivityRepo) GetRuptelaStatusEvents(ctx context.Context, vehicleDID cloudevent.NFTDID, after, before time.Time, limit int) ([]cloudevent.CloudEvent[json.RawMessage], error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetRuptelaStatusEvents", ctx, vehicleDID, after, before, limit)
-	ret0, _ := ret[0].([][]byte)
+	ret0, _ := ret[0].([]cloudevent.CloudEvent[json.RawMessage])
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -168,10 +168,10 @@ func (mr *MockConnectivityRepoMockRecorder) GetRuptelaStatusEvents(ctx, vehicleD
 }
 
 // GetSyntheticstatusEvents mocks base method.
-func (m *MockConnectivityRepo) GetSyntheticstatusEvents(ctx context.Context, vehicleDID cloudevent.NFTDID, after, before time.Time, limit int) ([][]byte, error) {
+func (m *MockConnectivityRepo) GetSyntheticstatusEvents(ctx context.Context, vehicleDID cloudevent.NFTDID, after, before time.Time, limit int) ([]cloudevent.CloudEvent[json.RawMessage], error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetSyntheticstatusEvents", ctx, vehicleDID, after, before, limit)
-	ret0, _ := ret[0].([][]byte)
+	ret0, _ := ret[0].([]cloudevent.CloudEvent[json.RawMessage])
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }

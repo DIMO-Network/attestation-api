@@ -141,34 +141,38 @@ func (s *Service) getLocationForVehicle(ctx context.Context, vehicleInfo *models
 
 // pullAutoPiEvents retrieves AutoPi events and extracts locations.
 func (s *Service) pullAutoPiEvents(ctx context.Context, device *models.PairedDevice) ([]verifiable.Location, error) {
-	return s.pullEvents(ctx, func(after, before time.Time, limit int) ([][]byte, error) {
+	fetchEvents := func(after, before time.Time, limit int) ([]cloudevent.CloudEvent[json.RawMessage], error) {
 		return s.connectivityRepo.GetAutoPiEvents(ctx, device, after, before, limit)
-	}, parseAutoPiEvent)
+	}
+	return s.pullEvents(ctx, fetchEvents, parseAutoPiEvent)
 }
 
 // pullMacaronEvents retrieves Macaron events and extracts locations.
 func (s *Service) pullMacaronEvents(ctx context.Context, device *models.PairedDevice) ([]verifiable.Location, error) {
-	return s.pullEvents(ctx, func(after, before time.Time, limit int) ([][]byte, error) {
+	fetchEvents := func(after, before time.Time, limit int) ([]cloudevent.CloudEvent[json.RawMessage], error) {
 		return s.connectivityRepo.GetHashDogEvents(ctx, device, after, before, limit)
-	}, parseMacaronEvent)
+	}
+	return s.pullEvents(ctx, fetchEvents, parseMacaronEvent)
 }
 
 // pullStatusEvents retrieves synthetic events and extracts locations.
 func (s *Service) pullStatusEvents(ctx context.Context, vehicleDID cloudevent.NFTDID) ([]verifiable.Location, error) {
-	return s.pullEvents(ctx, func(after, before time.Time, limit int) ([][]byte, error) {
+	fetchEvents := func(after, before time.Time, limit int) ([]cloudevent.CloudEvent[json.RawMessage], error) {
 		return s.connectivityRepo.GetSyntheticstatusEvents(ctx, vehicleDID, after, before, limit)
-	}, parseSyntheticEvent)
+	}
+	return s.pullEvents(ctx, fetchEvents, parseSyntheticEvent)
 }
 
 // pullRuptelaEvents retrieves Ruptela Status events and extracts locations.
 func (s *Service) pullRuptelaEvents(ctx context.Context, vehicleDID cloudevent.NFTDID) ([]verifiable.Location, error) {
-	return s.pullEvents(ctx, func(after, before time.Time, limit int) ([][]byte, error) {
+	fetchEvents := func(after, before time.Time, limit int) ([]cloudevent.CloudEvent[json.RawMessage], error) {
 		return s.connectivityRepo.GetRuptelaStatusEvents(ctx, vehicleDID, after, before, limit)
-	}, parseRuptelaEvent)
+	}
+	return s.pullEvents(ctx, fetchEvents, parseRuptelaEvent)
 }
 
 // pullEvents is a generic function for fetching events and extracting locations.
-func (s *Service) pullEvents(ctx context.Context, fetchEvents func(time.Time, time.Time, int) ([][]byte, error), parseEvent func([]byte) (cloudevent.CloudEvent[any], error)) ([]verifiable.Location, error) {
+func (s *Service) pullEvents(ctx context.Context, fetchEvents func(time.Time, time.Time, int) ([]cloudevent.CloudEvent[json.RawMessage], error), parseEvent func(cloudevent.CloudEvent[json.RawMessage]) (cloudevent.CloudEvent[any], error)) ([]verifiable.Location, error) {
 	limit := 10
 	weekAgo := time.Now().Add(-7 * 24 * time.Hour)
 	before := time.Now()
@@ -302,61 +306,61 @@ func compareLocations(firstEvent, curEvent cloudevent.CloudEvent[any]) []verifia
 }
 
 // parseAutoPiEvent parses twilo events and returns data for events with cell data.
-func parseAutoPiEvent(data []byte) (cloudevent.CloudEvent[any], error) {
-	var event cloudevent.CloudEvent[twilio.ConnectionEvent]
-	err := json.Unmarshal(data, &event)
+func parseAutoPiEvent(event cloudevent.CloudEvent[json.RawMessage]) (cloudevent.CloudEvent[any], error) {
+	var eventData twilio.ConnectionEvent
+	err := json.Unmarshal(event.Data, &eventData)
 	if err != nil {
 		return cloudevent.CloudEvent[any]{}, fmt.Errorf("failed to unmarshal twilio event: %w", err)
 	}
 	// only return events with cell data
-	if event.Data.Location == nil || event.Data.Location.CellID == "" {
+	if eventData.Location == nil || eventData.Location.CellID == "" {
 		return cloudevent.CloudEvent[any]{CloudEventHeader: event.CloudEventHeader}, nil
 	}
-	return cloudevent.CloudEvent[any]{CloudEventHeader: event.CloudEventHeader, Data: event.Data}, nil
+	return cloudevent.CloudEvent[any]{CloudEventHeader: event.CloudEventHeader, Data: eventData}, nil
 }
 
 // parseMacaronEvent parses lorawan events and returns data for events with gateway data.
-func parseMacaronEvent(data []byte) (cloudevent.CloudEvent[any], error) {
-	var event cloudevent.CloudEvent[lorawan.Data]
-	err := json.Unmarshal(data, &event)
+func parseMacaronEvent(event cloudevent.CloudEvent[json.RawMessage]) (cloudevent.CloudEvent[any], error) {
+	var eventData lorawan.Data
+	err := json.Unmarshal(event.Data, &eventData)
 	if err != nil {
 		return cloudevent.CloudEvent[any]{}, fmt.Errorf("failed to unmarshal lorawan event: %w", err)
 	}
 
 	// only return events with gateway data
-	if getFirstGWMeta(event.Data.Via).GatewayID == "" {
+	if getFirstGWMeta(eventData.Via).GatewayID == "" {
 		return cloudevent.CloudEvent[any]{CloudEventHeader: event.CloudEventHeader}, nil
 	}
 
-	return cloudevent.CloudEvent[any]{CloudEventHeader: event.CloudEventHeader, Data: event.Data}, nil
+	return cloudevent.CloudEvent[any]{CloudEventHeader: event.CloudEventHeader, Data: eventData}, nil
 }
 
 // parseSyntheticEvent parses status events and returns data for events with lat and long data.
-func parseSyntheticEvent(data []byte) (cloudevent.CloudEvent[any], error) {
-	eventHdr := cloudevent.CloudEventHeader{}
-	err := json.Unmarshal(data, &eventHdr)
+func parseSyntheticEvent(event cloudevent.CloudEvent[json.RawMessage]) (cloudevent.CloudEvent[any], error) {
+	if !acceptableStatusSources.Contains(event.Source) {
+		return cloudevent.CloudEvent[any]{CloudEventHeader: event.CloudEventHeader}, nil
+	}
+	data, err := json.Marshal(event)
 	if err != nil {
-		return cloudevent.CloudEvent[any]{}, fmt.Errorf("failed to unmarshal event: %w", err)
+		return cloudevent.CloudEvent[any]{}, fmt.Errorf("failed to marshal event data: %w", err)
 	}
-	if !acceptableStatusSources.Contains(eventHdr.Source) {
-		return cloudevent.CloudEvent[any]{CloudEventHeader: eventHdr}, nil
-	}
+
+	// TODO this context argument will be going away.
 	signals, err := nativestatus.SignalsFromPayload(context.TODO(), nil, data)
 	if err != nil {
 		return cloudevent.CloudEvent[any]{}, fmt.Errorf("failed to convert signals: %w", err)
 	}
 	latLong, ok := getH3Cells(signals)
 	if !ok {
-		return cloudevent.CloudEvent[any]{CloudEventHeader: eventHdr}, nil
+		return cloudevent.CloudEvent[any]{CloudEventHeader: event.CloudEventHeader}, nil
 	}
-	return cloudevent.CloudEvent[any]{CloudEventHeader: eventHdr, Data: latLong}, nil
+	return cloudevent.CloudEvent[any]{CloudEventHeader: event.CloudEventHeader, Data: latLong}, nil
 }
 
-func parseRuptelaEvent(data []byte) (cloudevent.CloudEvent[any], error) {
-	eventHdr := cloudevent.CloudEventHeader{}
-	err := json.Unmarshal(data, &eventHdr)
+func parseRuptelaEvent(event cloudevent.CloudEvent[json.RawMessage]) (cloudevent.CloudEvent[any], error) {
+	data, err := json.Marshal(event)
 	if err != nil {
-		return cloudevent.CloudEvent[any]{}, fmt.Errorf("failed to unmarshal event: %w", err)
+		return cloudevent.CloudEvent[any]{}, fmt.Errorf("failed to marshal event data: %w", err)
 	}
 	signals, err := status.DecodeStatusSignals(data)
 	if err != nil {
@@ -368,9 +372,9 @@ func parseRuptelaEvent(data []byte) (cloudevent.CloudEvent[any], error) {
 	}
 	latLong, ok := getH3Cells(signals)
 	if !ok {
-		return cloudevent.CloudEvent[any]{CloudEventHeader: eventHdr}, nil
+		return cloudevent.CloudEvent[any]{CloudEventHeader: event.CloudEventHeader}, nil
 	}
-	return cloudevent.CloudEvent[any]{CloudEventHeader: eventHdr, Data: latLong}, nil
+	return cloudevent.CloudEvent[any]{CloudEventHeader: event.CloudEventHeader, Data: latLong}, nil
 }
 
 // handleError logs an error and returns a Fiber error with the given message.

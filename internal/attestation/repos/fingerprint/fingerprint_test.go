@@ -3,6 +3,7 @@ package fingerprint
 import (
 	"encoding/base64"
 	"encoding/binary"
+	"encoding/json"
 	"fmt"
 	"math"
 	"testing"
@@ -90,11 +91,6 @@ func TestDecodeFingerprintMessage(t *testing.T) {
 			},
 		},
 		{
-			name:        "Invalid JSON",
-			data:        []byte(`{"time":"2024-05-30T15:04:05Z","data":{"vin":"1HGCM82633A123456"`),
-			expectError: true,
-		},
-		{
 			name:        "Missing VIN in Data and Data64",
 			data:        []byte(`{"time":"2024-05-30T15:04:05Z","data":{"vin":""},"data64":""}`),
 			expectError: true,
@@ -124,7 +120,10 @@ func TestDecodeFingerprintMessage(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			srv := Service{ruptelaSource: common.HexToAddress("0x3A6603E1065C9b3142403b1b7e349a6Ae936E819")}
-			decodedData, err := srv.decodeFingerprintMessage(tt.data)
+			event := cloudevent.CloudEvent[json.RawMessage]{}
+			err := json.Unmarshal(tt.data, &event)
+			require.NoError(t, err)
+			decodedData, err := srv.decodeFingerprintMessage(event)
 
 			if tt.expectError {
 				require.Error(t, err)

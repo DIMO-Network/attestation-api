@@ -23,10 +23,10 @@ type IdentityAPI interface {
 
 // ConnectivityRepo defines the interface for retrieving connectivity events.
 type ConnectivityRepo interface {
-	GetAutoPiEvents(ctx context.Context, pairedDevice *models.PairedDevice, after, before time.Time, limit int) ([][]byte, error)
-	GetHashDogEvents(ctx context.Context, pairedDevice *models.PairedDevice, after, before time.Time, limit int) ([][]byte, error)
-	GetSyntheticstatusEvents(ctx context.Context, vehicleDID cloudevent.NFTDID, after, before time.Time, limit int) ([][]byte, error)
-	GetRuptelaStatusEvents(ctx context.Context, vehicleDID cloudevent.NFTDID, after, before time.Time, limit int) ([][]byte, error)
+	GetAutoPiEvents(ctx context.Context, pairedDevice *models.PairedDevice, after, before time.Time, limit int) ([]cloudevent.CloudEvent[json.RawMessage], error)
+	GetHashDogEvents(ctx context.Context, pairedDevice *models.PairedDevice, after, before time.Time, limit int) ([]cloudevent.CloudEvent[json.RawMessage], error)
+	GetSyntheticstatusEvents(ctx context.Context, vehicleDID cloudevent.NFTDID, after, before time.Time, limit int) ([]cloudevent.CloudEvent[json.RawMessage], error)
+	GetRuptelaStatusEvents(ctx context.Context, vehicleDID cloudevent.NFTDID, after, before time.Time, limit int) ([]cloudevent.CloudEvent[json.RawMessage], error)
 }
 
 // Issuer defines the interface for creating control documents.
