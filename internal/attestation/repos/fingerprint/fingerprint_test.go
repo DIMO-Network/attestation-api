@@ -26,7 +26,7 @@ func TestDecodeFingerprintMessage(t *testing.T) {
 			name: "Valid VIN in Data",
 			data: []byte(`{
 				"id":"2jhCq04sdOL4fzgXccW8cJSG3vn",
-				"source":"aftermarket/device/fingerprint",
+				"source":"0xAff1B580F05F2ee577162B39851b79f84F82f46A",
 				"specversion":"1.0",
 				"subject":"0x24A8a66388e549BB6E5C743A6C033D611f017b2D",
 				"time":"2024-05-30T15:04:05Z",
@@ -49,7 +49,7 @@ func TestDecodeFingerprintMessage(t *testing.T) {
 					Type:        "zone.dimo.aftermarket.device.fingerprint",
 					DataSchema:  "dimo.zone.status/v2.0",
 					Time:        time.Date(2024, 5, 30, 15, 4, 5, 0, time.UTC),
-					Source:      "aftermarket/device/fingerprint",
+					Source:      "0xAff1B580F05F2ee577162B39851b79f84F82f46A",
 					Extras: map[string]any{
 						"signature": "0x8f4a67281978a93fafc9231e10c6a3489b5c732239ffc72b02e3603608c7375516f876e9ac33aa3b5a2b475521dbca4e1e68d85a797ea7b07f7d9b6369b805751c",
 					},
