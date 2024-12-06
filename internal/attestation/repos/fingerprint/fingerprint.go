@@ -16,18 +16,21 @@ import (
 	"github.com/DIMO-Network/attestation-api/internal/models"
 	"github.com/DIMO-Network/model-garage/pkg/cloudevent"
 	"github.com/DIMO-Network/model-garage/pkg/ruptela/fingerprint"
+	teslafp "github.com/DIMO-Network/model-garage/pkg/tesla/fingerprint"
 	"github.com/DIMO-Network/nameindexer/pkg/clickhouse/indexrepo"
 	"github.com/ethereum/go-ethereum/common"
 )
 
 type decodeError string
 
-var (
-	basicVINExp     = regexp.MustCompile(`^[A-Z0-9]{17}$`)
+const (
 	macaronSource   = "macaron/fingerprint"
 	autopiSource    = "0xAff1B580F05F2ee577162B39851b79f84F82f46A"
+	teslaSource     = "0xFFEE022fAb46610EAFe98b87377B42e366364a71"
 	syntheticSource = "synthetic/device/fingerprint"
 )
+
+var basicVINExp = regexp.MustCompile(`^[A-Z0-9]{17}$`)
 
 func (d decodeError) Error() string {
 	return fmt.Sprintf("failed to decode fingerprint message: %s", string(d))
@@ -125,9 +128,15 @@ func (s *Service) decodeFingerprintMessage(msg cloudevent.CloudEvent[json.RawMes
 		}
 		fpEvent, err := fingerprint.DecodeFingerprint(data)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to decode fingerprint: %w", err)
 		}
 		vin = fpEvent.Data.VIN
+	case msg.Source == teslaSource:
+		fpEvent, err := teslafp.DecodeFingerprintFromData(msg.Data)
+		if err != nil {
+			return nil, fmt.Errorf("failed to decode fingerprint: %w", err)
+		}
+		vin = fpEvent.VIN
 	}
 
 	if vin == "" {

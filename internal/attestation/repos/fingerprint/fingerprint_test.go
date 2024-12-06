@@ -91,6 +91,21 @@ func TestDecodeFingerprintMessage(t *testing.T) {
 			},
 		},
 		{
+			name: "Valid VIN from Tesla",
+			data: []byte(teslaStatusPayload),
+			expectedData: models.DecodedFingerprintData{
+				CloudEventHeader: cloudevent.CloudEventHeader{
+					SpecVersion: "1.0",
+					Subject:     "did:nft:80003:0x45fbCD3ef7361d156e8b16F5538AE36DEdf61Da8_15",
+					ID:          "2pcYwspbaBFJ7NPGZ2kivkuJ12a",
+					Producer:    "did:nft:80003:0x78513c8CB4D6B6079f813850376bc9c7fc8aE67f_12",
+					Source:      teslaSource,
+					Type:        cloudevent.TypeFingerprint,
+				},
+				VIN: "VF33E1EB4K55F700D",
+			},
+		},
+		{
 			name:        "Missing VIN in Data and Data64",
 			data:        []byte(`{"time":"2024-05-30T15:04:05Z","data":{"vin":""},"data64":""}`),
 			expectError: true,
@@ -196,4 +211,24 @@ var ruptelaStatusPayload = `
 	"ds": "r/v0/s",
 	"subject": "did:nft:1:0xbA5738a18d83D41847dfFbDC6101d37C69c9B0cF_33",
 	"time": "2024-09-27T08:33:26Z"
+}`
+
+var teslaStatusPayload = `{
+	"id": "2pcYwspbaBFJ7NPGZ2kivkuJ12a",
+	"source": "0xFFEE022fAb46610EAFe98b87377B42e366364a71",
+	"producer": "did:nft:80003:0x78513c8CB4D6B6079f813850376bc9c7fc8aE67f_12",
+	"specversion": "1.0",
+	"subject": "did:nft:80003:0x45fbCD3ef7361d156e8b16F5538AE36DEdf61Da8_15",
+	"type": "dimo.fingerprint",
+	"data": {
+		"id": 234234,
+		"user_id": 32425456,
+		"vehicle_id": 33,
+		"vin": "VF33E1EB4K55F700D",
+		"color": null,
+		"access_type": "OWNER",
+		"granular_access": {
+			"hide_private": false
+		}
+	}
 }`
