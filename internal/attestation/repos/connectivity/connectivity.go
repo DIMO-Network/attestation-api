@@ -23,6 +23,7 @@ var (
 	syntheticSource = common.HexToAddress("0x0000000000000000000000000000000000000000")
 	twilioSource    = common.HexToAddress("0x0000000000000000000000000000000000000000")
 	hashDogSource   = common.HexToAddress("0x0000000000000000000000000000000000000000")
+	ruptelaSource   = common.HexToAddress("0x5a87788D90f0ded17A35E4BDaCb47f1993021630")
 )
 
 // ConnectivityRepo is a repository for retrieving connectivity events.
@@ -35,15 +36,13 @@ type ConnectivityRepo struct {
 	statusDataType    string
 	statusBucketName  string
 	cloudEventBucket  string
-	ruptelaSource     common.Address
 }
 
 // NewConnectivityRepo creates a new instance of ConnectivityRepoImpl.
-func NewConnectivityRepo(chConn clickhouse.Conn, objGetter indexrepo.ObjectGetter, autoPiDataType, autoPiBucketName, hashDogDataType, hashDogBucketName, statusDataType, statusBucketName, cloudEventBucketName string, ruptelaSource common.Address) *ConnectivityRepo {
+func NewConnectivityRepo(chConn clickhouse.Conn, objGetter indexrepo.ObjectGetter, autoPiDataType, autoPiBucketName, hashDogDataType, hashDogBucketName, statusDataType, statusBucketName, cloudEventBucketName string) *ConnectivityRepo {
 	return &ConnectivityRepo{
 		indexService:     indexrepo.New(chConn, objGetter),
 		cloudEventBucket: cloudEventBucketName,
-		ruptelaSource:    ruptelaSource,
 
 		// These can go away when we switch storage
 		autoPiDataType:    autoPiDataType,
@@ -96,7 +95,7 @@ func (r *ConnectivityRepo) GetSyntheticstatusEvents(ctx context.Context, vehicle
 
 // GetRuptelaStatusEvents returns the status events for a vehicle.
 func (r *ConnectivityRepo) GetRuptelaStatusEvents(ctx context.Context, vehicleDID cloudevent.NFTDID, after, before time.Time, limit int) ([]cloudevent.CloudEvent[json.RawMessage], error) {
-	records, err := r.getEvents(ctx, r.ruptelaSource, vehicleDID, after, before, limit)
+	records, err := r.getEvents(ctx, ruptelaSource, vehicleDID, after, before, limit)
 	if errors.Is(err, sql.ErrNoRows) {
 		subject := repos.TokenIDToString(vehicleDID.TokenID)
 		return r.getLegacyEvents(ctx, r.statusBucketName, r.statusDataType, subject, after, before, limit)

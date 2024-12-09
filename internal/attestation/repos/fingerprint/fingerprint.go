@@ -23,10 +23,11 @@ import (
 
 type decodeError string
 
-const (
+var (
 	macaronSource   = "macaron/fingerprint"
-	autopiSource    = "0xAff1B580F05F2ee577162B39851b79f84F82f46A"
-	teslaSource     = "0xFFEE022fAb46610EAFe98b87377B42e366364a71"
+	autopiSource    = common.HexToAddress("0x762Fd53c4973075a6fC0d17237BC65E183299980")
+	teslaSource     = common.HexToAddress("0x354574EC2cC27A29410df751e43723B1bC362Ce4")
+	ruptelaSource   = common.HexToAddress("0x5a87788D90f0ded17A35E4BDaCb47f1993021630")
 	syntheticSource = "synthetic/device/fingerprint"
 )
 
@@ -41,20 +42,18 @@ type Service struct {
 	indexService     *indexrepo.Service
 	dataType         string
 	cloudEventBucket string
-	ruptelaSource    common.Address
 
 	// TODO (kevin): Remove this when ingest is updated
 	bucketName string
 }
 
 // New creates a new instance of Service.
-func New(chConn clickhouse.Conn, objGetter indexrepo.ObjectGetter, cloudeventBucket, legacyBucketName, fingerprintDataType string, ruptelaSource common.Address) *Service {
+func New(chConn clickhouse.Conn, objGetter indexrepo.ObjectGetter, cloudeventBucket, legacyBucketName, fingerprintDataType string) *Service {
 	return &Service{
 		indexService:     indexrepo.New(chConn, objGetter),
 		dataType:         fingerprintDataType,
 		bucketName:       legacyBucketName,
 		cloudEventBucket: cloudeventBucket,
-		ruptelaSource:    ruptelaSource,
 	}
 }
 
@@ -103,7 +102,7 @@ func (s *Service) decodeFingerprintMessage(msg cloudevent.CloudEvent[json.RawMes
 	var vin string
 	var err error
 	switch {
-	case msg.Source == autopiSource || msg.Source == syntheticSource:
+	case autopiSource.Cmp(common.HexToAddress(msg.Source)) == 0 || msg.Source == syntheticSource:
 		vin, err = decodeVINFromData(msg.Data)
 		if err != nil {
 			return nil, err
@@ -120,7 +119,7 @@ func (s *Service) decodeFingerprintMessage(msg cloudevent.CloudEvent[json.RawMes
 		if err != nil {
 			return nil, err
 		}
-	case s.ruptelaSource.Cmp(common.HexToAddress(msg.Source)) == 0:
+	case ruptelaSource.Cmp(common.HexToAddress(msg.Source)) == 0:
 		// TODO (kevin): I know this double marshal is ugly but works for now.
 		data, err := json.Marshal(msg)
 		if err != nil {
@@ -131,7 +130,7 @@ func (s *Service) decodeFingerprintMessage(msg cloudevent.CloudEvent[json.RawMes
 			return nil, fmt.Errorf("failed to decode fingerprint: %w", err)
 		}
 		vin = fpEvent.Data.VIN
-	case msg.Source == teslaSource:
+	case teslaSource.Cmp(common.HexToAddress(msg.Source)) == 0:
 		fpEvent, err := teslafp.DecodeFingerprintFromData(msg.Data)
 		if err != nil {
 			return nil, fmt.Errorf("failed to decode fingerprint: %w", err)

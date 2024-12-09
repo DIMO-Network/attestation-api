@@ -2,7 +2,6 @@ package config
 
 import (
 	"github.com/DIMO-Network/clickhouse-infra/pkg/connect/config"
-	"github.com/ethereum/go-ethereum/common"
 )
 
 // Settings contains the application config.
@@ -36,6 +35,5 @@ type Settings struct {
 	DIMORegistryChainID       int64           `yaml:"DIMO_REGISTRY_CHAIN_ID"`
 	ExternalHostname          string          `yaml:"EXTERNAL_HOSTNAME"`
 	RevokedTokenIDs           string          `yaml:"REVOKED_TOKEN_IDS"`
-	RuptelaSource             common.Address  `yaml:"RUPTELA_SOURCE_ADDRESS"`
 	Clickhouse                config.Settings `yaml:",inline"`
 }
