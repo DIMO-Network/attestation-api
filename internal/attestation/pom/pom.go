@@ -18,6 +18,7 @@ import (
 	"github.com/DIMO-Network/model-garage/pkg/lorawan"
 	"github.com/DIMO-Network/model-garage/pkg/nativestatus"
 	"github.com/DIMO-Network/model-garage/pkg/ruptela/status"
+	teslastatus "github.com/DIMO-Network/model-garage/pkg/tesla/status"
 	"github.com/DIMO-Network/model-garage/pkg/twilio"
 	"github.com/DIMO-Network/model-garage/pkg/vss"
 	"github.com/DIMO-Network/shared/set"
@@ -340,29 +341,26 @@ func parseSyntheticEvent(event cloudevent.CloudEvent[json.RawMessage]) (cloudeve
 	if !acceptableStatusSources.Contains(event.Source) {
 		return cloudevent.CloudEvent[any]{CloudEventHeader: event.CloudEventHeader}, nil
 	}
-	data, err := json.Marshal(event)
-	if err != nil {
-		return cloudevent.CloudEvent[any]{}, fmt.Errorf("failed to marshal event data: %w", err)
+	decoder := func(msgBytes []byte) ([]vss.Signal, error) {
+		return nativestatus.SignalsFromPayload(context.TODO(), nil, msgBytes)
 	}
-
-	// TODO this context argument will be going away.
-	signals, err := nativestatus.SignalsFromPayload(context.TODO(), nil, data)
-	if err != nil {
-		return cloudevent.CloudEvent[any]{}, fmt.Errorf("failed to convert signals: %w", err)
-	}
-	latLong, ok := getH3Cells(signals)
-	if !ok {
-		return cloudevent.CloudEvent[any]{CloudEventHeader: event.CloudEventHeader}, nil
-	}
-	return cloudevent.CloudEvent[any]{CloudEventHeader: event.CloudEventHeader, Data: latLong}, nil
+	return parseSignals(event, decoder)
 }
 
 func parseRuptelaEvent(event cloudevent.CloudEvent[json.RawMessage]) (cloudevent.CloudEvent[any], error) {
+	return parseSignals(event, status.DecodeStatusSignals)
+}
+
+func parseTeslaEvent(event cloudevent.CloudEvent[json.RawMessage]) (cloudevent.CloudEvent[any], error) {
+	return parseSignals(event, teslastatus.Decode)
+}
+
+func parseSignals(event cloudevent.CloudEvent[json.RawMessage], decoder func(msgBytes []byte) ([]vss.Signal, error)) (cloudevent.CloudEvent[any], error) {
 	data, err := json.Marshal(event)
 	if err != nil {
 		return cloudevent.CloudEvent[any]{}, fmt.Errorf("failed to marshal event data: %w", err)
 	}
-	signals, err := status.DecodeStatusSignals(data)
+	signals, err := decoder(data)
 	if err != nil {
 		convErr := convert.ConversionError{}
 		if !errors.As(err, &convErr) || len(convErr.DecodedSignals) == 0 {
