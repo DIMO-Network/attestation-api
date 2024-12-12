@@ -14,19 +14,16 @@ import (
 
 	"github.com/ClickHouse/clickhouse-go/v2"
 	"github.com/DIMO-Network/attestation-api/internal/models"
+	"github.com/DIMO-Network/attestation-api/internal/sources"
 	"github.com/DIMO-Network/model-garage/pkg/cloudevent"
 	"github.com/DIMO-Network/model-garage/pkg/ruptela/fingerprint"
 	"github.com/DIMO-Network/nameindexer/pkg/clickhouse/indexrepo"
-	"github.com/ethereum/go-ethereum/common"
 )
 
 type decodeError string
 
 var (
-	basicVINExp     = regexp.MustCompile(`^[A-Z0-9]{17}$`)
-	macaronSource   = "macaron/fingerprint"
-	autopiSource    = "0xAff1B580F05F2ee577162B39851b79f84F82f46A"
-	syntheticSource = "synthetic/device/fingerprint"
+	basicVINExp = regexp.MustCompile(`^[A-Z0-9]{17}$`)
 )
 
 func (d decodeError) Error() string {
@@ -38,20 +35,18 @@ type Service struct {
 	indexService     *indexrepo.Service
 	dataType         string
 	cloudEventBucket string
-	ruptelaSource    common.Address
 
 	// TODO (kevin): Remove this when ingest is updated
 	bucketName string
 }
 
 // New creates a new instance of Service.
-func New(chConn clickhouse.Conn, objGetter indexrepo.ObjectGetter, cloudeventBucket, legacyBucketName, fingerprintDataType string, ruptelaSource common.Address) *Service {
+func New(chConn clickhouse.Conn, objGetter indexrepo.ObjectGetter, cloudeventBucket, legacyBucketName, fingerprintDataType string) *Service {
 	return &Service{
 		indexService:     indexrepo.New(chConn, objGetter),
 		dataType:         fingerprintDataType,
 		bucketName:       legacyBucketName,
 		cloudEventBucket: cloudeventBucket,
-		ruptelaSource:    ruptelaSource,
 	}
 }
 
@@ -100,12 +95,12 @@ func (s *Service) decodeFingerprintMessage(msg cloudevent.CloudEvent[json.RawMes
 	var vin string
 	var err error
 	switch {
-	case msg.Source == autopiSource || msg.Source == syntheticSource:
+	case msg.Source == sources.SyntheticOldSource || sources.AddrEqualString(sources.AutoPiSource, msg.Source):
 		vin, err = decodeVINFromData(msg.Data)
 		if err != nil {
 			return nil, err
 		}
-	case msg.Source == macaronSource:
+	case msg.Source == sources.MacaronOldFpSource:
 		if msg.Extras == nil {
 			return nil, decodeError("missing data for macaron fingerprint")
 		}
@@ -117,7 +112,7 @@ func (s *Service) decodeFingerprintMessage(msg cloudevent.CloudEvent[json.RawMes
 		if err != nil {
 			return nil, err
 		}
-	case s.ruptelaSource.Cmp(common.HexToAddress(msg.Source)) == 0:
+	case sources.AddrEqualString(sources.RuptelaSource, msg.Source):
 		// TODO (kevin): I know this double marshal is ugly but works for now.
 		data, err := json.Marshal(msg)
 		if err != nil {
