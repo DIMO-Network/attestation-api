@@ -88,6 +88,9 @@ func (s *Service) legacyGetLatestFingerprintMessages(ctx context.Context, device
 	if err != nil {
 		return nil, err
 	}
+	if msg.Producer == "" {
+		msg.Producer = device.DID.String()
+	}
 	return msg, nil
 }
 
@@ -95,7 +98,7 @@ func (s *Service) decodeFingerprintMessage(msg cloudevent.CloudEvent[json.RawMes
 	var vin string
 	var err error
 	switch {
-	case msg.Source == sources.SyntheticOldSource || sources.AddrEqualString(sources.AutoPiSource, msg.Source):
+	case msg.Source == sources.SyntheticOldSource || msg.Source == sources.AutiPiOldSource || sources.AddrEqualString(sources.AutoPiSource, msg.Source):
 		vin, err = decodeVINFromData(msg.Data)
 		if err != nil {
 			return nil, err
