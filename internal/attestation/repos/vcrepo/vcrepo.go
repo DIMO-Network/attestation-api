@@ -7,10 +7,10 @@ import (
 	"time"
 
 	"github.com/ClickHouse/clickhouse-go/v2"
+	"github.com/DIMO-Network/attestation-api/internal/sources"
 	"github.com/DIMO-Network/attestation-api/pkg/verifiable"
 	"github.com/DIMO-Network/model-garage/pkg/cloudevent"
 	"github.com/DIMO-Network/nameindexer/pkg/clickhouse/indexrepo"
-	"github.com/ethereum/go-ethereum/common"
 	"github.com/segmentio/ksuid"
 )
 
@@ -35,7 +35,7 @@ func New(chConn clickhouse.Conn, objGetter indexrepo.ObjectGetter, vcBucketName,
 // GetLatestVINVC fetches the latest vinvc from S3.
 func (r *Repo) GetLatestVINVC(ctx context.Context, vehicleDID cloudevent.NFTDID) (*verifiable.Credential, error) {
 	opts := &indexrepo.SearchOptions{
-		Subject:     &vehicleDID,
+		Subject:     ref(vehicleDID.String()),
 		DataVersion: &r.vinDataVersion,
 	}
 	dataObj, err := r.indexService.GetLatestCloudEvent(ctx, r.vcBucketName, opts)
@@ -66,7 +66,7 @@ func (r *Repo) storeVC(ctx context.Context, vehicleDID, producerDID cloudevent.N
 			SpecVersion:     "1.0",
 			ID:              ksuid.New().String(),
 			Time:            time.Now(),
-			Source:          common.HexToAddress("0x0").String(),
+			Source:          sources.DINCSource.String(),
 			Subject:         vehicleDID.String(),
 			Producer:        producerDID.String(),
 			Type:            cloudevent.TypeVerifableCredential,
@@ -82,4 +82,8 @@ func (r *Repo) storeVC(ctx context.Context, vehicleDID, producerDID cloudevent.N
 	}
 
 	return nil
+}
+
+func ref[T any](v T) *T {
+	return &v
 }
