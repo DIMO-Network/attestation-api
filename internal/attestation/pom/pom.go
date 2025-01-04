@@ -411,7 +411,11 @@ func getH3Cells(signals []vss.Signal) ([]h3.Cell, bool) {
 	for _, latLng := range latLongPairs {
 		if latLng.Latitude != nil && latLng.Longitude != nil {
 			h3LatLng := h3.NewLatLng(*latLng.Latitude, *latLng.Longitude)
-			cells = append(cells, h3.LatLngToCell(h3LatLng, h3Resolution))
+			cell, err := h3.LatLngToCell(h3LatLng, h3Resolution)
+			if err != nil {
+				return nil, false
+			}
+			cells = append(cells, cell)
 		}
 	}
 
