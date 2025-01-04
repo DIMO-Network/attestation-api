@@ -54,8 +54,8 @@ func New(chConn clickhouse.Conn, objGetter indexrepo.ObjectGetter, cloudeventBuc
 func (s *Service) GetLatestFingerprintMessages(ctx context.Context, vehicleDID cloudevent.NFTDID, device models.PairedDevice) (*models.DecodedFingerprintData, error) {
 	fingerprintType := cloudevent.TypeFingerprint
 	opts := &indexrepo.SearchOptions{
-		Subject:  &vehicleDID,
-		Producer: &device.DID,
+		Subject:  ref(vehicleDID.String()),
+		Producer: ref(device.DID.String()),
 		Type:     &fingerprintType,
 	}
 	dataObj, err := s.indexService.GetLatestCloudEvent(ctx, s.cloudEventBucket, opts)
@@ -76,15 +76,20 @@ func (s *Service) GetLatestFingerprintMessages(ctx context.Context, vehicleDID c
 // TODO (kevin): Remove this when ingest is updated
 func (s *Service) legacyGetLatestFingerprintMessages(ctx context.Context, device models.PairedDevice) (*models.DecodedFingerprintData, error) {
 	encodedAddress := device.Address[2:]
-	opts := &indexrepo.RawSearchOptions{
+	opts := &indexrepo.SearchOptions{
 		Subject:     &encodedAddress,
 		DataVersion: &s.dataType,
 	}
-	dataObj, err := s.indexService.GetLatestCloudEventFromRaw(ctx, s.bucketName, opts)
+	dataObj, err := s.indexService.GetLatestCloudEvent(ctx, s.bucketName, opts)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get vc: %w", err)
 	}
-	msg, err := s.decodeFingerprintMessage(dataObj)
+	embeddedEvent := cloudevent.CloudEvent[json.RawMessage]{}
+	err = json.Unmarshal(dataObj.Data, &embeddedEvent)
+	if err != nil {
+		return nil, fmt.Errorf("failed to unmarshal legacy fingerprint message: %w", err)
+	}
+	msg, err := s.decodeFingerprintMessage(embeddedEvent)
 	if err != nil {
 		return nil, err
 	}
@@ -185,4 +190,8 @@ func decodeVINFromBase64(data string) (string, error) {
 		return "", fmt.Errorf("failed to read binary data: %w", err)
 	}
 	return string(macData.VIN[:]), nil
+}
+
+func ref[T any](v T) *T {
+	return &v
 }

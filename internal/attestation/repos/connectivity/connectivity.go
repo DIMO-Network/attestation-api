@@ -102,9 +102,9 @@ func (r *ConnectivityRepo) GetRuptelaStatusEvents(ctx context.Context, vehicleDI
 
 func (r *ConnectivityRepo) getEvents(ctx context.Context, source common.Address, subject cloudevent.NFTDID, after, before time.Time, limit int) ([]cloudevent.CloudEvent[json.RawMessage], error) {
 	opts := &indexrepo.SearchOptions{
-		Subject: &subject,
+		Subject: ref(subject.String()),
 		Type:    &cloudEventStatus,
-		Source:  &source,
+		Source:  ref(source.String()),
 		After:   after,
 		Before:  before,
 	}
@@ -116,15 +116,27 @@ func (r *ConnectivityRepo) getEvents(ctx context.Context, source common.Address,
 }
 
 func (r *ConnectivityRepo) getLegacyEvents(ctx context.Context, bucketName string, dataType string, subject string, after, before time.Time, limit int) ([]cloudevent.CloudEvent[json.RawMessage], error) {
-	opts := &indexrepo.RawSearchOptions{
+	opts := &indexrepo.SearchOptions{
 		Subject:     &subject,
 		DataVersion: &dataType,
 		After:       after,
 		Before:      before,
 	}
-	events, err := r.indexService.ListCloudEventsFromRaw(ctx, bucketName, limit, opts)
+	events, err := r.indexService.ListCloudEvents(ctx, bucketName, limit, opts)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get filenames: %w", err)
 	}
+	for i := range events {
+		embededEvent := cloudevent.CloudEvent[json.RawMessage]{}
+		err = json.Unmarshal(events[i].Data, &embededEvent)
+		if err != nil {
+			return nil, fmt.Errorf("failed to unmarshal event: %w", err)
+		}
+		events[i] = embededEvent
+	}
 	return events, nil
+}
+
+func ref[T any](v T) *T {
+	return &v
 }
