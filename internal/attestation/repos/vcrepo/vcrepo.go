@@ -61,22 +61,18 @@ func (r *Repo) StorePOMVC(ctx context.Context, vehicleDID, producerDID cloudeven
 
 func (r *Repo) storeVC(ctx context.Context, vehicleDID, producerDID cloudevent.NFTDID, rawVC json.RawMessage, dataVersion string) error {
 	// expire at the end of the week
-	cloudEvent := cloudevent.CloudEvent[json.RawMessage]{
-		CloudEventHeader: cloudevent.CloudEventHeader{
-			SpecVersion:     "1.0",
-			ID:              ksuid.New().String(),
-			Time:            time.Now(),
-			Source:          sources.DINCSource.String(),
-			Subject:         vehicleDID.String(),
-			Producer:        producerDID.String(),
-			Type:            cloudevent.TypeVerifableCredential,
-			DataContentType: "application/json",
-			DataVersion:     dataVersion,
-		},
-		Data: rawVC,
+	hdr := cloudevent.CloudEventHeader{
+		SpecVersion:     "1.0",
+		ID:              ksuid.New().String(),
+		Time:            time.Now(),
+		Source:          sources.DINCSource.String(),
+		Subject:         vehicleDID.String(),
+		Producer:        producerDID.String(),
+		Type:            cloudevent.TypeVerifableCredential,
+		DataContentType: "application/json",
+		DataVersion:     dataVersion,
 	}
-
-	err := r.indexService.StoreCloudEvent(ctx, r.vcBucketName, cloudEvent)
+	err := r.indexService.StoreObject(ctx, r.vcBucketName, &hdr, rawVC)
 	if err != nil {
 		return fmt.Errorf("failed to store VC: %w", err)
 	}

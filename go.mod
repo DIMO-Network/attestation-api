@@ -7,7 +7,7 @@ require (
 	github.com/DIMO-Network/clickhouse-infra v0.0.3
 	github.com/DIMO-Network/device-definitions-api v1.2.80
 	github.com/DIMO-Network/model-garage v0.4.5
-	github.com/DIMO-Network/nameindexer v0.1.0
+	github.com/DIMO-Network/nameindexer v0.1.1
 	github.com/DIMO-Network/shared v0.12.7
 	github.com/aws/aws-sdk-go-v2 v1.32.7
 	github.com/aws/aws-sdk-go-v2/credentials v1.17.48
