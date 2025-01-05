@@ -121,12 +121,11 @@ func (s *Service) decodeFingerprintMessage(msg cloudevent.CloudEvent[json.RawMes
 			return nil, err
 		}
 	case sources.AddrEqualString(sources.RuptelaSource, msg.Source):
-		// TODO (kevin): I know this double marshal is ugly but works for now.
-		data, err := json.Marshal(msg)
+		fullMsgData, err := json.Marshal(msg)
 		if err != nil {
 			return nil, fmt.Errorf("failed to marshal fingerprint message: %w", err)
 		}
-		fpEvent, err := fingerprint.DecodeFingerprint(data)
+		fpEvent, err := fingerprint.DecodeFingerprint(fullMsgData)
 		if err != nil {
 			return nil, err
 		}
