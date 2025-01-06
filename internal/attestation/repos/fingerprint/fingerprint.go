@@ -80,12 +80,16 @@ func (s *Service) legacyGetLatestFingerprintMessages(ctx context.Context, device
 		Subject:     &encodedAddress,
 		DataVersion: &s.dataType,
 	}
-	dataObj, err := s.indexService.GetLatestCloudEvent(ctx, s.bucketName, opts)
+	cloudIdx, err := s.indexService.GetLatestIndex(ctx, opts)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get vc: %w", err)
+		return nil, fmt.Errorf("failed to get latest fingerprint: %w", err)
+	}
+	dataObj, err := s.indexService.GetObjectFromKey(ctx, cloudIdx.Data.Key, s.bucketName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get latest fingerprint object: %w", err)
 	}
 	embeddedEvent := cloudevent.CloudEvent[json.RawMessage]{}
-	err = json.Unmarshal(dataObj.Data, &embeddedEvent)
+	err = json.Unmarshal(dataObj, &embeddedEvent)
 	if err != nil {
 		return nil, fmt.Errorf("failed to unmarshal legacy fingerprint message: %w", err)
 	}
@@ -121,12 +125,11 @@ func (s *Service) decodeFingerprintMessage(msg cloudevent.CloudEvent[json.RawMes
 			return nil, err
 		}
 	case sources.AddrEqualString(sources.RuptelaSource, msg.Source):
-		// TODO (kevin): I know this double marshal is ugly but works for now.
-		data, err := json.Marshal(msg)
+		fullMsgData, err := json.Marshal(msg)
 		if err != nil {
 			return nil, fmt.Errorf("failed to marshal fingerprint message: %w", err)
 		}
-		fpEvent, err := fingerprint.DecodeFingerprint(data)
+		fpEvent, err := fingerprint.DecodeFingerprint(fullMsgData)
 		if err != nil {
 			return nil, err
 		}

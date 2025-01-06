@@ -75,8 +75,11 @@ func (r *Repo) storeVC(ctx context.Context, vehicleDID, producerDID cloudevent.N
 		},
 		Data: rawVC,
 	}
-
-	err := r.indexService.StoreCloudEvent(ctx, r.vcBucketName, cloudEvent)
+	eventBytes, err := json.Marshal(cloudEvent)
+	if err != nil {
+		return fmt.Errorf("failed to marshal cloud event: %w", err)
+	}
+	err = r.indexService.StoreObject(ctx, r.vcBucketName, &cloudEvent.CloudEventHeader, eventBytes)
 	if err != nil {
 		return fmt.Errorf("failed to store VC: %w", err)
 	}
