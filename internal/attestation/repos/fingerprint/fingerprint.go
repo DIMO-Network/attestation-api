@@ -80,12 +80,16 @@ func (s *Service) legacyGetLatestFingerprintMessages(ctx context.Context, device
 		Subject:     &encodedAddress,
 		DataVersion: &s.dataType,
 	}
-	dataObj, err := s.indexService.GetLatestCloudEvent(ctx, s.bucketName, opts)
+	cloudIdx, err := s.indexService.GetLatestIndex(ctx, opts)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get vc: %w", err)
+		return nil, fmt.Errorf("failed to get latest fingerprint: %w", err)
+	}
+	dataObj, err := s.indexService.GetObjectFromKey(ctx, cloudIdx.Data.Key, s.bucketName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get latest fingerprint object: %w", err)
 	}
 	embeddedEvent := cloudevent.CloudEvent[json.RawMessage]{}
-	err = json.Unmarshal(dataObj.Data, &embeddedEvent)
+	err = json.Unmarshal(dataObj, &embeddedEvent)
 	if err != nil {
 		return nil, fmt.Errorf("failed to unmarshal legacy fingerprint message: %w", err)
 	}
