@@ -10,19 +10,16 @@ on:
 jobs:
   tests:
     if: "!contains(github.event.head_commit.message, 'Merge pull request')"
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
 
     steps:
-      - name: Install Go
-        uses: actions/setup-go@v5
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
         with:
-          go-version: 1.22
+          go-version-file: 'go.mod'
 
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: modVerify
+      - name: Run go mod verify
         run: go mod verify
 
-      - name: Run Tests with go testsum
+      - name: Run Tests
         run: make test

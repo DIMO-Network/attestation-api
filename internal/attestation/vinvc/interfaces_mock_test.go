@@ -17,7 +17,7 @@ import (
 
 	models "github.com/DIMO-Network/attestation-api/internal/models"
 	verifiable "github.com/DIMO-Network/attestation-api/pkg/verifiable"
-	common "github.com/ethereum/go-ethereum/common"
+	cloudevent "github.com/DIMO-Network/model-garage/pkg/cloudevent"
 	gomock "go.uber.org/mock/gomock"
 )
 
@@ -25,6 +25,7 @@ import (
 type MockVCRepo struct {
 	ctrl     *gomock.Controller
 	recorder *MockVCRepoMockRecorder
+	isgomock struct{}
 }
 
 // MockVCRepoMockRecorder is the mock recorder for MockVCRepo.
@@ -45,38 +46,39 @@ func (m *MockVCRepo) EXPECT() *MockVCRepoMockRecorder {
 }
 
 // GetLatestVINVC mocks base method.
-func (m *MockVCRepo) GetLatestVINVC(ctx context.Context, tokenID uint32) (*verifiable.Credential, error) {
+func (m *MockVCRepo) GetLatestVINVC(ctx context.Context, vehicleDID cloudevent.NFTDID) (*verifiable.Credential, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetLatestVINVC", ctx, tokenID)
+	ret := m.ctrl.Call(m, "GetLatestVINVC", ctx, vehicleDID)
 	ret0, _ := ret[0].(*verifiable.Credential)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetLatestVINVC indicates an expected call of GetLatestVINVC.
-func (mr *MockVCRepoMockRecorder) GetLatestVINVC(ctx, tokenID any) *gomock.Call {
+func (mr *MockVCRepoMockRecorder) GetLatestVINVC(ctx, vehicleDID any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetLatestVINVC", reflect.TypeOf((*MockVCRepo)(nil).GetLatestVINVC), ctx, tokenID)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetLatestVINVC", reflect.TypeOf((*MockVCRepo)(nil).GetLatestVINVC), ctx, vehicleDID)
 }
 
 // StoreVINVC mocks base method.
-func (m *MockVCRepo) StoreVINVC(ctx context.Context, tokenID uint32, vinvc json.RawMessage) error {
+func (m *MockVCRepo) StoreVINVC(ctx context.Context, vehicleDID, producerDID cloudevent.NFTDID, vinvc json.RawMessage) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "StoreVINVC", ctx, tokenID, vinvc)
+	ret := m.ctrl.Call(m, "StoreVINVC", ctx, vehicleDID, producerDID, vinvc)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // StoreVINVC indicates an expected call of StoreVINVC.
-func (mr *MockVCRepoMockRecorder) StoreVINVC(ctx, tokenID, vinvc any) *gomock.Call {
+func (mr *MockVCRepoMockRecorder) StoreVINVC(ctx, vehicleDID, producerDID, vinvc any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StoreVINVC", reflect.TypeOf((*MockVCRepo)(nil).StoreVINVC), ctx, tokenID, vinvc)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StoreVINVC", reflect.TypeOf((*MockVCRepo)(nil).StoreVINVC), ctx, vehicleDID, producerDID, vinvc)
 }
 
 // MockIdentityAPI is a mock of IdentityAPI interface.
 type MockIdentityAPI struct {
 	ctrl     *gomock.Controller
 	recorder *MockIdentityAPIMockRecorder
+	isgomock struct{}
 }
 
 // MockIdentityAPIMockRecorder is the mock recorder for MockIdentityAPI.
@@ -97,24 +99,25 @@ func (m *MockIdentityAPI) EXPECT() *MockIdentityAPIMockRecorder {
 }
 
 // GetVehicleInfo mocks base method.
-func (m *MockIdentityAPI) GetVehicleInfo(ctx context.Context, tokenID uint32) (*models.VehicleInfo, error) {
+func (m *MockIdentityAPI) GetVehicleInfo(ctx context.Context, vehicleDID cloudevent.NFTDID) (*models.VehicleInfo, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetVehicleInfo", ctx, tokenID)
+	ret := m.ctrl.Call(m, "GetVehicleInfo", ctx, vehicleDID)
 	ret0, _ := ret[0].(*models.VehicleInfo)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetVehicleInfo indicates an expected call of GetVehicleInfo.
-func (mr *MockIdentityAPIMockRecorder) GetVehicleInfo(ctx, tokenID any) *gomock.Call {
+func (mr *MockIdentityAPIMockRecorder) GetVehicleInfo(ctx, vehicleDID any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetVehicleInfo", reflect.TypeOf((*MockIdentityAPI)(nil).GetVehicleInfo), ctx, tokenID)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetVehicleInfo", reflect.TypeOf((*MockIdentityAPI)(nil).GetVehicleInfo), ctx, vehicleDID)
 }
 
 // MockFingerprintRepo is a mock of FingerprintRepo interface.
 type MockFingerprintRepo struct {
 	ctrl     *gomock.Controller
 	recorder *MockFingerprintRepoMockRecorder
+	isgomock struct{}
 }
 
 // MockFingerprintRepoMockRecorder is the mock recorder for MockFingerprintRepo.
@@ -135,24 +138,25 @@ func (m *MockFingerprintRepo) EXPECT() *MockFingerprintRepoMockRecorder {
 }
 
 // GetLatestFingerprintMessages mocks base method.
-func (m *MockFingerprintRepo) GetLatestFingerprintMessages(ctx context.Context, pairedDeviceAddr common.Address) (*models.DecodedFingerprintData, error) {
+func (m *MockFingerprintRepo) GetLatestFingerprintMessages(ctx context.Context, vehicle cloudevent.NFTDID, pairedDeviceAddr models.PairedDevice) (*models.DecodedFingerprintData, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetLatestFingerprintMessages", ctx, pairedDeviceAddr)
+	ret := m.ctrl.Call(m, "GetLatestFingerprintMessages", ctx, vehicle, pairedDeviceAddr)
 	ret0, _ := ret[0].(*models.DecodedFingerprintData)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetLatestFingerprintMessages indicates an expected call of GetLatestFingerprintMessages.
-func (mr *MockFingerprintRepoMockRecorder) GetLatestFingerprintMessages(ctx, pairedDeviceAddr any) *gomock.Call {
+func (mr *MockFingerprintRepoMockRecorder) GetLatestFingerprintMessages(ctx, vehicle, pairedDeviceAddr any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetLatestFingerprintMessages", reflect.TypeOf((*MockFingerprintRepo)(nil).GetLatestFingerprintMessages), ctx, pairedDeviceAddr)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetLatestFingerprintMessages", reflect.TypeOf((*MockFingerprintRepo)(nil).GetLatestFingerprintMessages), ctx, vehicle, pairedDeviceAddr)
 }
 
 // MockVINAPI is a mock of VINAPI interface.
 type MockVINAPI struct {
 	ctrl     *gomock.Controller
 	recorder *MockVINAPIMockRecorder
+	isgomock struct{}
 }
 
 // MockVINAPIMockRecorder is the mock recorder for MockVINAPI.
@@ -191,6 +195,7 @@ func (mr *MockVINAPIMockRecorder) DecodeVIN(ctx, vin, countryCode any) *gomock.C
 type MockIssuer struct {
 	ctrl     *gomock.Controller
 	recorder *MockIssuerMockRecorder
+	isgomock struct{}
 }
 
 // MockIssuerMockRecorder is the mock recorder for MockIssuer.

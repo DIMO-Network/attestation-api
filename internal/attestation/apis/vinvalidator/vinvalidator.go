@@ -36,5 +36,5 @@ func (s *Service) DecodeVIN(ctx context.Context, vin, countryCode string) (strin
 	if err != nil {
 		return "", fmt.Errorf("failed to decode vin %s: %w", vin, err)
 	}
-	return resp.GetNameSlug(), nil
+	return resp.GetDefinitionId(), nil
 }

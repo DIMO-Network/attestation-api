@@ -7,62 +7,79 @@ import (
 	"time"
 
 	"github.com/ClickHouse/clickhouse-go/v2"
+	"github.com/DIMO-Network/attestation-api/internal/sources"
 	"github.com/DIMO-Network/attestation-api/pkg/verifiable"
-	"github.com/DIMO-Network/nameindexer"
+	"github.com/DIMO-Network/model-garage/pkg/cloudevent"
 	"github.com/DIMO-Network/nameindexer/pkg/clickhouse/indexrepo"
+	"github.com/segmentio/ksuid"
 )
 
 // Repo manages storing and retrieving VCs.
 type Repo struct {
-	indexService  *indexrepo.Service
-	vinDataType   string
-	vinBucketName string
-	pomDataType   string
-	pomBucketName string
+	indexService   *indexrepo.Service
+	vinDataVersion string
+	pomDataVersion string
+	vcBucketName   string
 }
 
 // New creates a new instance of VCRepo.
-func New(chConn clickhouse.Conn, objGetter indexrepo.ObjectGetter, vinbucketName, vinvcDataType, pombucketName, pomvcDataType string) *Repo {
+func New(chConn clickhouse.Conn, objGetter indexrepo.ObjectGetter, vcBucketName, vinVCDataVersion, pomVCDataversion string) *Repo {
 	return &Repo{
-		indexService:  indexrepo.New(chConn, objGetter),
-		vinDataType:   vinvcDataType,
-		vinBucketName: vinbucketName,
-		pomDataType:   pomvcDataType,
-		pomBucketName: pombucketName,
+		indexService:   indexrepo.New(chConn, objGetter),
+		vinDataVersion: vinVCDataVersion,
+		pomDataVersion: pomVCDataversion,
+		vcBucketName:   vcBucketName,
 	}
 }
 
 // GetLatestVINVC fetches the latest vinvc from S3.
-func (r *Repo) GetLatestVINVC(ctx context.Context, vehicleTokenID uint32) (*verifiable.Credential, error) {
-	opts := indexrepo.SearchOptions{
-		Subject: &nameindexer.Subject{
-			Identifier: nameindexer.TokenID(vehicleTokenID),
-		},
-		DataType: &r.vinDataType,
+func (r *Repo) GetLatestVINVC(ctx context.Context, vehicleDID cloudevent.NFTDID) (*verifiable.Credential, error) {
+	opts := &indexrepo.SearchOptions{
+		Subject:     ref(vehicleDID.String()),
+		DataVersion: &r.vinDataVersion,
 	}
-	data, err := r.indexService.GetLatestData(ctx, r.vinBucketName, opts)
+	dataObj, err := r.indexService.GetLatestCloudEvent(ctx, r.vcBucketName, opts)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get vc: %w", err)
 	}
-	msg := verifiable.Credential{}
-	if err := json.Unmarshal(data, &msg); err != nil {
+	msg := cloudevent.CloudEvent[verifiable.Credential]{}
+	if err := json.Unmarshal(dataObj.Data, &msg); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal fingerprint message: %w", err)
 	}
-	return &msg, nil
+	return &msg.Data, nil
 }
 
 // StoreVINVC stores a new VC in S3.
-func (r *Repo) StoreVINVC(ctx context.Context, vehicleTokenID uint32, rawVC json.RawMessage) error {
-	// expire at the end of the wee
-	index := nameindexer.Index{
-		Timestamp: time.Now(),
-		Subject: nameindexer.Subject{
-			Identifier: nameindexer.TokenID(vehicleTokenID),
-		},
-		DataType: r.vinDataType,
-	}
+func (r *Repo) StoreVINVC(ctx context.Context, vehicleDID, producerDID cloudevent.NFTDID, rawVC json.RawMessage) error {
+	return r.storeVC(ctx, vehicleDID, producerDID, rawVC, r.vinDataVersion)
+}
 
-	err := r.indexService.StoreFile(ctx, &index, r.vinBucketName, rawVC)
+// StorePOMVC stores a new VC in S3.
+func (r *Repo) StorePOMVC(ctx context.Context, vehicleDID, producerDID cloudevent.NFTDID, rawVC json.RawMessage) error {
+	return r.storeVC(ctx, vehicleDID, producerDID, rawVC, r.pomDataVersion)
+}
+
+func (r *Repo) storeVC(ctx context.Context, vehicleDID, producerDID cloudevent.NFTDID, rawVC json.RawMessage, dataVersion string) error {
+	// expire at the end of the week
+	cloudEvent := cloudevent.CloudEvent[json.RawMessage]{
+		CloudEventHeader: cloudevent.CloudEventHeader{
+			SpecVersion:     "1.0",
+			ID:              ksuid.New().String(),
+			Time:            time.Now(),
+			Source:          sources.DINCSource.String(),
+			Subject:         vehicleDID.String(),
+			Producer:        producerDID.String(),
+			Type:            cloudevent.TypeVerifableCredential,
+			DataContentType: "application/json",
+			DataVersion:     dataVersion,
+		},
+		Data: rawVC,
+	}
+	eventBytes, err := json.Marshal(cloudEvent)
+	if err != nil {
+		return fmt.Errorf("failed to marshal cloud event: %w", err)
+	}
+	err = r.indexService.StoreObject(ctx, r.vcBucketName, &cloudEvent.CloudEventHeader, eventBytes)
 	if err != nil {
 		return fmt.Errorf("failed to store VC: %w", err)
 	}
@@ -70,21 +87,6 @@ func (r *Repo) StoreVINVC(ctx context.Context, vehicleTokenID uint32, rawVC json
 	return nil
 }
 
-// StorePOMVC stores a new VC in S3.
-func (r *Repo) StorePOMVC(ctx context.Context, vehicleTokenID uint32, rawVC json.RawMessage) error {
-	// expire at the end of the wee
-	index := nameindexer.Index{
-		Timestamp: time.Now(),
-		Subject: nameindexer.Subject{
-			Identifier: nameindexer.TokenID(vehicleTokenID),
-		},
-		DataType: r.pomDataType,
-	}
-
-	err := r.indexService.StoreFile(ctx, &index, r.pomBucketName, rawVC)
-	if err != nil {
-		return fmt.Errorf("failed to store VC: %w", err)
-	}
-
-	return nil
+func ref[T any](v T) *T {
+	return &v
 }

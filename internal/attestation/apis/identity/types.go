@@ -7,6 +7,7 @@ const query = `
 	query ($tokenId: Int!) {
 		vehicle(tokenId: $tokenId) {
 			aftermarketDevice {
+				tokenId
 				address
 				imei
 				manufacturer {
@@ -14,6 +15,7 @@ const query = `
 				}
 			}
 			syntheticDevice {
+				tokenId
 				address
 			}
 			definition{
@@ -43,6 +45,7 @@ type vehicleField struct {
 
 // deviceResponse represents the structure of the device response.
 type deviceResponse struct {
+	TokenID      uint32       `json:"tokenId"`
 	Address      string       `json:"address"`
 	IMEI         string       `json:"imei"`
 	Manufacturer manufacturer `json:"manufacturer"`

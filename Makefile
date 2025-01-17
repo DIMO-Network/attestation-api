@@ -1,8 +1,8 @@
 .PHONY: clean run build install dep test lint format docker
 
+SHELL := /bin/bash
 PATHINSTBIN = $(abspath ./bin)
 export PATH := $(PATHINSTBIN):$(PATH)
-SHELL := env PATH=$(PATH) $(SHELL)
 
 BIN_NAME					?= attestation-api
 DEFAULT_INSTALL_DIR			:= $(go env GOPATH)/$(PATHINSTBIN)
@@ -18,7 +18,7 @@ VERSION   := $(shell git describe --tags || echo "v0.0.0")
 VER_CUT   := $(shell echo $(VERSION) | cut -c2-)
 
 # Dependency versions
-GOLANGCI_VERSION   = v1.56.2
+GOLANGCI_VERSION   = latest
 SWAGGO_VERSION     = $(shell go list -m -f '{{.Version}}' github.com/swaggo/swag)
 MOCKGEN_VERSION    = $(shell go list -m -f '{{.Version}}' go.uber.org/mock)
 PROTOC_VERSION             = 21.12
@@ -53,10 +53,7 @@ test: ## run tests
 	@go test ./...
 
 lint: ## run linter
-	@golangci-lint run
-
-format:
-	@golangci-lint run --fix
+	@golangci-lint run --timeout 10m
 
 docker: dep ## build docker image
 	@docker build -f ./Dockerfile . -t dimozone/$(BIN_NAME):$(VER_CUT)
@@ -94,9 +91,11 @@ tools-protoc-gen-go-grpc:
 	@mkdir -p bin
 	curl -L https://github.com/grpc/grpc-go/releases/download/cmd/protoc-gen-go-grpc/v${PROTOC_GEN_GO_GRPC_VERSION}/protoc-gen-go-grpc.v${PROTOC_GEN_GO_GRPC_VERSION}.$(shell uname | tr A-Z a-z).amd64.tar.gz | tar -zOxf - ./protoc-gen-go-grpc > ./bin/protoc-gen-go-grpc
 	@chmod +x ./bin/protoc-gen-go-grpc
+
 make tools: tools-golangci-lint tools-swagger tools-mockgen tools-protoc tools-protoc-gen-go tools-protoc-gen-go-grpc## install all tools
 
 generate: swagger go-generate ## run all file generation for the project
+
 swagger: ## generate swagger documentation
 	@swag -version
 	swag init -g cmd/attestation-api/main.go --parseDependency --parseInternal

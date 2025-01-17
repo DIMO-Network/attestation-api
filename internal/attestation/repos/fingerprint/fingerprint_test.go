@@ -3,12 +3,14 @@ package fingerprint
 import (
 	"encoding/base64"
 	"encoding/binary"
+	"encoding/json"
 	"fmt"
 	"math"
 	"testing"
 	"time"
 
 	"github.com/DIMO-Network/attestation-api/internal/models"
+	"github.com/DIMO-Network/model-garage/pkg/cloudevent"
 	"github.com/stretchr/testify/require"
 )
 
@@ -23,7 +25,7 @@ func TestDecodeFingerprintMessage(t *testing.T) {
 			name: "Valid VIN in Data",
 			data: []byte(`{
 				"id":"2jhCq04sdOL4fzgXccW8cJSG3vn",
-				"source":"aftermarket/device/fingerprint",
+				"source":"0x5e31bBc786D7bEd95216383787deA1ab0f1c1897",
 				"specversion":"1.0",
 				"subject":"0x24A8a66388e549BB6E5C743A6C033D611f017b2D",
 				"time":"2024-05-30T15:04:05Z",
@@ -36,29 +38,56 @@ func TestDecodeFingerprintMessage(t *testing.T) {
 					"protocol":"6",
 					"softwareVersion":"1.25.5"
 				},
-				"signature":"0x9f4a67281978a93fafc9231e10c6a3489b5c732239ffc72b02e3603608c7375516f876e9ac33aa3b5a2b475521dbca4e1e68d85a797ea7b07f7d9b6369b805751c"
+				"signature":"0x8f4a67281978a93fafc9231e10c6a3489b5c732239ffc72b02e3603608c7375516f876e9ac33aa3b5a2b475521dbca4e1e68d85a797ea7b07f7d9b6369b805751c"
 				}`),
 			expectedData: models.DecodedFingerprintData{
-				VIN:       "1HGCM82633A123456",
-				Timestamp: time.Date(2024, 5, 30, 15, 4, 5, 0, time.UTC),
-				Source:    "0x24A8a66388e549BB6E5C743A6C033D611f017b2D",
+				CloudEventHeader: cloudevent.CloudEventHeader{
+					SpecVersion: "1.0",
+					ID:          "2jhCq04sdOL4fzgXccW8cJSG3vn",
+					Subject:     "0x24A8a66388e549BB6E5C743A6C033D611f017b2D",
+					Type:        "zone.dimo.aftermarket.device.fingerprint",
+					DataSchema:  "dimo.zone.status/v2.0",
+					Time:        time.Date(2024, 5, 30, 15, 4, 5, 0, time.UTC),
+					Source:      "0x5e31bBc786D7bEd95216383787deA1ab0f1c1897",
+					Extras: map[string]any{
+						"signature": "0x8f4a67281978a93fafc9231e10c6a3489b5c732239ffc72b02e3603608c7375516f876e9ac33aa3b5a2b475521dbca4e1e68d85a797ea7b07f7d9b6369b805751c",
+					},
+				},
+				VIN: "1HGCM82633A123456",
 			},
 			expectError: false,
 		},
 		{
 			name: "Valid VIN in Data64",
-			data: []byte(fmt.Sprintf(`{"time":"2024-05-30T15:04:05Z","data_base64":"%s"}`, mockMacronFingerprint("ABCD1234567890XYZ"))),
+			data: []byte(fmt.Sprintf(`{"time":"2024-05-30T15:04:05Z","data_base64":"%s","source":"macaron/fingerprint"}`, mockMacronFingerprint("ABCD1234567890XYZ"))),
 			expectedData: models.DecodedFingerprintData{
-				VIN:       "ABCD1234567890XYZ",
-				Timestamp: time.Date(2024, 5, 30, 15, 4, 5, 0, time.UTC),
+				CloudEventHeader: cloudevent.CloudEventHeader{
+					SpecVersion: "1.0",
+					Time:        time.Date(2024, 5, 30, 15, 4, 5, 0, time.UTC),
+					Source:      "macaron/fingerprint",
+					Extras: map[string]any{
+						"data_base64": mockMacronFingerprint("ABCD1234567890XYZ"),
+					},
+				},
+				VIN: "ABCD1234567890XYZ",
 			},
 			expectError: false,
 		},
-
 		{
-			name:        "Invalid JSON",
-			data:        []byte(`{"time":"2024-05-30T15:04:05Z","data":{"vin":"1HGCM82633A123456"`),
-			expectError: true,
+			name: "Valid VIN from Ruptela",
+			data: []byte(ruptelaStatusPayload),
+			expectedData: models.DecodedFingerprintData{
+				CloudEventHeader: cloudevent.CloudEventHeader{
+					SpecVersion: "1.0",
+					Subject:     "did:nft:1:0xbA5738a18d83D41847dfFbDC6101d37C69c9B0cF_33",
+					Time:        time.Date(2024, 9, 27, 8, 33, 26, 0, time.UTC),
+					Source:      "0xF26421509Efe92861a587482100c6d728aBf1CD0",
+					Extras: map[string]interface{}{
+						"ds": "r/v0/s",
+					},
+				},
+				VIN: "ABCD1234567890XYZ",
+			},
 		},
 		{
 			name:        "Missing VIN in Data and Data64",
@@ -89,7 +118,11 @@ func TestDecodeFingerprintMessage(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			decodedData, err := decodeFingerprintMessage(tt.data)
+			srv := Service{}
+			event := cloudevent.CloudEvent[json.RawMessage]{}
+			err := json.Unmarshal(tt.data, &event)
+			require.NoError(t, err)
+			decodedData, err := srv.decodeFingerprintMessage(event)
 
 			if tt.expectError {
 				require.Error(t, err)
@@ -132,3 +165,34 @@ func mockMacronFingerprint(vin string) string {
 
 	return base64.StdEncoding.EncodeToString(buf)
 }
+
+var ruptelaStatusPayload = `
+{
+	"source": "0xF26421509Efe92861a587482100c6d728aBf1CD0",
+	"data": {
+		"pos": {
+			"alt": 1048,
+			"dir": 19730,
+			"hdop": 6,
+			"lat": 822721466,
+			"lon": 4014316,
+			"sat": 20,
+			"spd": 0
+		},
+		"prt": 0,
+		"signals": {
+			"102": "0",
+			"103": "0",
+			"104": "4142434431323334",
+			"105": "3536373839305859",
+			"106": "5a00000000000000",
+			"107": "0",
+			"108": "0",
+			"114": "0"
+		},
+		"trigger": 7
+	},
+	"ds": "r/v0/s",
+	"subject": "did:nft:1:0xbA5738a18d83D41847dfFbDC6101d37C69c9B0cF_33",
+	"time": "2024-09-27T08:33:26Z"
+}`

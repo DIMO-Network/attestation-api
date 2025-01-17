@@ -8,23 +8,23 @@ import (
 
 	"github.com/DIMO-Network/attestation-api/internal/models"
 	"github.com/DIMO-Network/attestation-api/pkg/verifiable"
-	"github.com/ethereum/go-ethereum/common"
+	"github.com/DIMO-Network/model-garage/pkg/cloudevent"
 )
 
 // VCRepo defines the interface for manging VC storage.
 type VCRepo interface {
-	GetLatestVINVC(ctx context.Context, tokenID uint32) (*verifiable.Credential, error)
-	StoreVINVC(ctx context.Context, tokenID uint32, vinvc json.RawMessage) error
+	GetLatestVINVC(ctx context.Context, vehicleDID cloudevent.NFTDID) (*verifiable.Credential, error)
+	StoreVINVC(ctx context.Context, vehicleDID, producerDID cloudevent.NFTDID, vinvc json.RawMessage) error
 }
 
 // IdentityAPI defines the interface for identity operations.
 type IdentityAPI interface {
-	GetVehicleInfo(ctx context.Context, tokenID uint32) (*models.VehicleInfo, error)
+	GetVehicleInfo(ctx context.Context, vehicleDID cloudevent.NFTDID) (*models.VehicleInfo, error)
 }
 
 // FingerprintRepo defines the interface for fingerprint message operations.
 type FingerprintRepo interface {
-	GetLatestFingerprintMessages(ctx context.Context, pairedDeviceAddr common.Address) (*models.DecodedFingerprintData, error)
+	GetLatestFingerprintMessages(ctx context.Context, vehicle cloudevent.NFTDID, pairedDeviceAddr models.PairedDevice) (*models.DecodedFingerprintData, error)
 }
 
 // VINAPI defines the interface for VIN validation.
