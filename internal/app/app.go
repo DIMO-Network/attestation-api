@@ -2,12 +2,14 @@ package app
 
 import (
 	"errors"
-	"strconv"
 	"strings"
 
 	"github.com/DIMO-Network/attestation-api/internal/config"
 	"github.com/DIMO-Network/attestation-api/internal/controllers/httphandlers"
+	"github.com/DIMO-Network/attestation-api/internal/controllers/rpc"
 	"github.com/DIMO-Network/attestation-api/pkg/auth"
+	attgrpc "github.com/DIMO-Network/attestation-api/pkg/grpc"
+	"github.com/DIMO-Network/shared/middleware/metrics"
 	"github.com/DIMO-Network/shared/middleware/privilegetoken"
 	"github.com/DIMO-Network/shared/privileges"
 	"github.com/ethereum/go-ethereum/common"
@@ -16,10 +18,29 @@ import (
 	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/gofiber/fiber/v2/middleware/recover"
 	"github.com/gofiber/swagger"
+	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
+	grpc_ctxtags "github.com/grpc-ecosystem/go-grpc-middleware/tags"
+	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/recovery"
+	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
 	"github.com/rs/zerolog"
+	"google.golang.org/grpc"
 )
 
-func StartWebAPI(logger *zerolog.Logger, settings *config.Settings) {
+// CreateServers creates a new fiber app and grpc server with the given settings.
+func CreateServers(logger *zerolog.Logger, settings *config.Settings) (*fiber.App, *grpc.Server, error) {
+	statusRoute := "/v1/vc/status"
+	keysRoute := "/v1/vc/keys"
+	vocabRoute := "/v1/vc/context/vocab"
+	jsonLDRoute := "/v1/vc/context"
+	httpCtrl, rpcCtrl, err := createControllers(logger, settings, statusRoute, keysRoute, vocabRoute, jsonLDRoute)
+	if err != nil {
+		return nil, nil, err
+	}
+	app := setupHttpServer(logger, settings, httpCtrl, statusRoute, keysRoute, vocabRoute, jsonLDRoute)
+	rpc := setupRPCServer(logger, settings, rpcCtrl)
+	return app, rpc, nil
+}
+func setupHttpServer(logger *zerolog.Logger, settings *config.Settings, httpCtrl *httphandlers.HTTPController, statusRoute, keysRoute, vocabRoute, jsonLDRoute string) *fiber.App {
 	app := fiber.New(fiber.Config{
 		ErrorHandler: func(c *fiber.Ctx, err error) error {
 			return ErrorHandler(c, err, logger)
@@ -31,14 +52,6 @@ func StartWebAPI(logger *zerolog.Logger, settings *config.Settings) {
 		JWKSetURLs: []string{settings.TokenExchangeJWTKeySetURL},
 		Claims:     &privilegetoken.Token{},
 	})
-	statusRoute := "/v1/vc/status"
-	keysRoute := "/v1/vc/keys"
-	vocabRoute := "/v1/vc/context/vocab"
-	jsonLDRoute := "/v1/vc/context"
-	httpCtrl, err := createHttpController(logger, settings, statusRoute, keysRoute, vocabRoute, jsonLDRoute)
-	if err != nil {
-		logger.Fatal().Err(err).Msg("Failed to create VC service")
-	}
 
 	app.Use(recover.New(recover.Config{
 		Next:              nil,
@@ -66,12 +79,22 @@ func StartWebAPI(logger *zerolog.Logger, settings *config.Settings) {
 	pomMiddleware := auth.AllOf(vehicleAddr, "tokenId", []privileges.Privilege{privileges.VehicleAllTimeLocation})
 	app.Post("/v1/vc/pom/:"+httphandlers.TokenIDParam, jwtAuth, pomMiddleware, httpCtrl.GetPOMVC)
 
-	logger.Info().Int("port", settings.Port).Msg("Server Started")
+	return app
+}
 
-	// Start Server
-	if err := app.Listen(":" + strconv.Itoa(settings.Port)); err != nil {
-		logger.Fatal().Err(err).Msg("Failed to run server")
-	}
+func setupRPCServer(logger *zerolog.Logger, settings *config.Settings, rpcCtrl *rpc.Server) *grpc.Server {
+	grpcPanic := metrics.GRPCPanicker{Logger: logger}
+	server := grpc.NewServer(
+		grpc.UnaryInterceptor(grpc_middleware.ChainUnaryServer(
+			metrics.GRPCMetricsAndLogMiddleware(logger),
+			grpc_ctxtags.UnaryServerInterceptor(),
+			grpc_prometheus.UnaryServerInterceptor,
+			recovery.UnaryServerInterceptor(recovery.WithRecoveryHandler(grpcPanic.GRPCPanicRecoveryHandler)),
+		)),
+		grpc.StreamInterceptor(grpc_prometheus.StreamServerInterceptor),
+	)
+	attgrpc.RegisterAttestationServiceServer(server, rpcCtrl)
+	return server
 }
 
 // ErrorHandler custom handler to log recovered errors using our logger and return json instead of string
