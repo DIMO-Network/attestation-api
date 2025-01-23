@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/DIMO-Network/attestation-api/internal/controllers/ctrlerrors"
 	"github.com/DIMO-Network/attestation-api/internal/models"
 	"github.com/DIMO-Network/attestation-api/pkg/verifiable"
 	"github.com/DIMO-Network/model-garage/pkg/cloudevent"
@@ -98,7 +99,7 @@ func (v *Service) GenerateVINVC(ctx context.Context, tokenID uint32, logger *zer
 	}
 	vehicleInfo, err := v.identityAPI.GetVehicleInfo(ctx, vehicleDID)
 	if err != nil {
-		return handleError(err, logger, "Failed to get vehicle info")
+		return ctrlerrors.Error{InternalError: err, ExternalMsg: "Failed to get vehicle info"}
 	}
 
 	// get a valid VIN for the vehilce
@@ -121,16 +122,16 @@ func (v *Service) GenerateVINVC(ctx context.Context, tokenID uint32, logger *zer
 	expTime := time.Now().AddDate(0, 0, daysInWeek-int(time.Now().Weekday())).UTC().Truncate(time.Hour * 24)
 	rawVC, err := v.issuer.CreateVINVC(vinSubject, expTime)
 	if err != nil {
-		return handleError(err, logger, "Failed to create VC")
+		return ctrlerrors.Error{InternalError: err, ExternalMsg: "Failed to create VC"}
 	}
 	producerDID, err := cloudevent.DecodeNFTDID(validFP.Producer)
 	if err != nil {
-		return handleError(err, logger, "Failed to decode producer DID")
+		return ctrlerrors.Error{InternalError: err, ExternalMsg: "Failed to decode producer DID"}
 	}
 	// store the VC
 	err = v.vcRepo.StoreVINVC(ctx, vehicleDID, producerDID, rawVC)
 	if err != nil {
-		return handleError(err, logger, "Failed to store VC")
+		return ctrlerrors.Error{InternalError: err, ExternalMsg: "Failed to store VC"}
 	}
 
 	return nil
@@ -141,7 +142,6 @@ func (v *Service) getValidFingerPrint(ctx context.Context, vehicleInfo *models.V
 	if len(vehicleInfo.PairedDevices) == 0 {
 		return nil, fiber.NewError(fiber.StatusBadRequest, "No paired devices")
 	}
-	logger := v.logger.With().Uint32("vehicleTokenId", vehicleInfo.DID.TokenID).Logger()
 	var latestFP *models.DecodedFingerprintData
 
 	var fingerprintErr error
@@ -149,8 +149,8 @@ func (v *Service) getValidFingerPrint(ctx context.Context, vehicleInfo *models.V
 		fingerprint, err := v.fingerprintRepo.GetLatestFingerprintMessages(ctx, vehicleInfo.DID, device)
 		if err != nil {
 			// log the error and continue to the next device if possible
-			localLogger := logger.With().Str("device", device.DID.String()).Logger()
-			err := handleError(err, &localLogger, "Failed to get latest fingerprint message")
+			msg := fmt.Sprintf("Failed to get latest vin message for device %s", device.DID.String())
+			err = ctrlerrors.Error{InternalError: err, ExternalMsg: msg}
 			fingerprintErr = errors.Join(fingerprintErr, err)
 			continue
 		}
@@ -166,21 +166,15 @@ func (v *Service) getValidFingerPrint(ctx context.Context, vehicleInfo *models.V
 	}
 	decodedNameSlug, err := v.vinAPI.DecodeVIN(ctx, latestFP.VIN, countryCode)
 	if err != nil {
-		return nil, handleError(err, &logger, "Failed to decode VIN")
+		return nil, ctrlerrors.Error{InternalError: err, ExternalMsg: "Failed to decode VIN"}
 	}
 	if decodedNameSlug != vehicleInfo.NameSlug {
-		message := "Invalid VIN from fingerprint"
-		logger.Error().Str("decodedNameSlug", decodedNameSlug).Str("vehicleNameSlug", vehicleInfo.NameSlug).Msg(message)
-		return nil, fiber.NewError(fiber.StatusBadRequest, message)
+		message := "Invalid VIN Decoding from fingerprint"
+		err := fmt.Errorf("decodedNameSlug: %s != identityNameSlug: %s", decodedNameSlug, vehicleInfo.NameSlug)
+		return nil, ctrlerrors.Error{InternalError: err, ExternalMsg: message, Code: fiber.StatusBadRequest}
 	}
 
 	return latestFP, nil
-}
-
-// handleError logs an error and returns a Fiber error with the given message.
-func handleError(err error, logger *zerolog.Logger, message string) error {
-	logger.Error().Err(err).Msg(message)
-	return fiber.NewError(fiber.StatusInternalServerError, message)
 }
 
 // GenerateKeyControlDocument generates a new control document for sharing public keys.
