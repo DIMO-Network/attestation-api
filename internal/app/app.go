@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/DIMO-Network/attestation-api/internal/config"
+	"github.com/DIMO-Network/attestation-api/internal/controllers/ctrlerrors"
 	"github.com/DIMO-Network/attestation-api/internal/controllers/httphandlers"
 	"github.com/DIMO-Network/attestation-api/internal/controllers/rpc"
 	"github.com/DIMO-Network/attestation-api/pkg/auth"
@@ -102,13 +103,19 @@ func ErrorHandler(ctx *fiber.Ctx, err error, logger *zerolog.Logger) error {
 	code := fiber.StatusInternalServerError // Default 500 statuscode
 	message := "Internal error."
 
-	var e *fiber.Error
-	if errors.As(err, &e) {
-		code = e.Code
-		message = e.Message
+	var fiberErr *fiber.Error
+	var ctrlErr ctrlerrors.Error
+	if errors.As(err, &fiberErr) {
+		code = fiberErr.Code
+		message = fiberErr.Message
+	} else if errors.As(err, &ctrlErr) {
+		message = ctrlErr.ExternalMsg
+		if ctrlErr.Code != 0 {
+			code = ctrlErr.Code
+		}
 	}
 
-	// don't log not found errors
+	// log all errors except 404
 	if code != fiber.StatusNotFound {
 		logger.Err(err).Int("httpStatusCode", code).
 			Str("httpPath", strings.TrimPrefix(ctx.Path(), "/")).

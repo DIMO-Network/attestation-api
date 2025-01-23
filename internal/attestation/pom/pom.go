@@ -11,6 +11,7 @@ import (
 	"slices"
 	"time"
 
+	"github.com/DIMO-Network/attestation-api/internal/controllers/ctrlerrors"
 	"github.com/DIMO-Network/attestation-api/internal/models"
 	"github.com/DIMO-Network/attestation-api/pkg/verifiable"
 	"github.com/DIMO-Network/model-garage/pkg/cloudevent"
@@ -22,7 +23,6 @@ import (
 	"github.com/DIMO-Network/model-garage/pkg/vss"
 	"github.com/DIMO-Network/shared/set"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/gofiber/fiber/v2"
 	"github.com/rs/zerolog"
 	"github.com/uber/h3-go/v4"
 )
@@ -79,7 +79,7 @@ func (s *Service) CreatePOMVC(ctx context.Context, tokenID uint32) error {
 
 	vehicleInfo, err := s.identityAPI.GetVehicleInfo(ctx, vehicleDID)
 	if err != nil {
-		return handleError(err, &logger, "Failed to get vehicle info")
+		return ctrlerrors.Error{InternalError: err, ExternalMsg: "Failed to get vehicle info"}
 	}
 
 	pairedDevice, locations, err := s.getLocationForVehicle(ctx, vehicleInfo, &logger)
@@ -88,7 +88,7 @@ func (s *Service) CreatePOMVC(ctx context.Context, tokenID uint32) error {
 		if errors.Is(err, errNoLocation) {
 			msg = "No movement detected in the last 7 days"
 		}
-		return handleError(err, &logger, msg)
+		return ctrlerrors.Error{InternalError: err, ExternalMsg: msg}
 	}
 
 	pomSubject := verifiable.POMSubject{
@@ -100,11 +100,11 @@ func (s *Service) CreatePOMVC(ctx context.Context, tokenID uint32) error {
 
 	vc, err := s.issuer.CreatePOMVC(pomSubject)
 	if err != nil {
-		return handleError(err, &logger, "Failed to create POM VC")
+		return ctrlerrors.Error{InternalError: err, ExternalMsg: "Failed to create POM VC"}
 	}
 
 	if err = s.vcRepo.StorePOMVC(ctx, vehicleDID, pairedDevice.DID, vc); err != nil {
-		return handleError(err, &logger, "Failed to store POM VC")
+		return ctrlerrors.Error{InternalError: err, ExternalMsg: "Failed to create POM VC"}
 	}
 
 	return nil
@@ -375,12 +375,6 @@ func parseRuptelaEvent(event cloudevent.CloudEvent[json.RawMessage]) (cloudevent
 		return cloudevent.CloudEvent[any]{CloudEventHeader: event.CloudEventHeader}, nil
 	}
 	return cloudevent.CloudEvent[any]{CloudEventHeader: event.CloudEventHeader, Data: latLong}, nil
-}
-
-// handleError logs an error and returns a Fiber error with the given message.
-func handleError(err error, logger *zerolog.Logger, message string) error {
-	logger.Error().Err(err).Msg(message)
-	return fiber.NewError(fiber.StatusInternalServerError, message)
 }
 
 // getFirstGWMeta retrieves the first gateway metadata from a list of Via events.
