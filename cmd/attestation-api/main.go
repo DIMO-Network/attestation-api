@@ -52,6 +52,11 @@ func main() {
 	runFiber(gCtx, monApp, ":"+strconv.Itoa(settings.MonPort), group)
 	logger.Info().Str("port", strconv.Itoa(settings.Port)).Msgf("Starting web server")
 	runFiber(gCtx, webServer, ":"+strconv.Itoa(settings.Port), group)
+
+	if err := group.Wait(); err != nil {
+		logger.Fatal().Err(err).Msg("Server failed.")
+	}
+	logger.Info().Msg("Server stopped.")
 }
 
 func runFiber(ctx context.Context, fiberApp *fiber.App, addr string, group *errgroup.Group) {
@@ -89,8 +94,6 @@ func runGRPC(ctx context.Context, grpcServer *grpc.Server, addr string, group *e
 }
 
 func CreateMonitoringServer(port string, logger *zerolog.Logger) *fiber.App {
-	logger.Info().Str("port", port).Msg("Starting monitoring web server.")
-
 	monApp := fiber.New(fiber.Config{DisableStartupMessage: true})
 
 	monApp.Get("/", func(*fiber.Ctx) error { return nil })
