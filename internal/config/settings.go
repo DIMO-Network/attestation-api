@@ -9,6 +9,7 @@ import (
 type Settings struct {
 	Port                      int             `yaml:"PORT"`
 	MonPort                   int             `yaml:"MON_PORT"`
+	GRPCPort                  int             `yaml:"GRPC_PORT"`
 	DefinitionsGRPCAddr       string          `yaml:"DEFINITIONS_GRPC_ADDR"`
 	TokenExchangeJWTKeySetURL string          `yaml:"TOKEN_EXCHANGE_JWK_KEY_SET_URL"`
 	TokenExchangeIssuer       string          `yaml:"TOKEN_EXCHANGE_ISSUER_URL"`

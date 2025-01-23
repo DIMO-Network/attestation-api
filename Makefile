@@ -21,9 +21,9 @@ VER_CUT   := $(shell echo $(VERSION) | cut -c2-)
 GOLANGCI_VERSION   = latest
 SWAGGO_VERSION     = $(shell go list -m -f '{{.Version}}' github.com/swaggo/swag)
 MOCKGEN_VERSION    = $(shell go list -m -f '{{.Version}}' go.uber.org/mock)
-PROTOC_VERSION             = 21.12
-PROTOC_GEN_GO_VERSION      = 1.30.0
-PROTOC_GEN_GO_GRPC_VERSION = 1.3.0
+PROTOC_VERSION             = 28.3
+PROTOC_GEN_GO_VERSION      = $(shell go list -m -f '{{.Version}}' google.golang.org/protobuf)
+PROTOC_GEN_GO_GRPC_VERSION = v1.5.1
 
 help:
 	@echo "\nSpecify a subcommand:\n"
@@ -72,38 +72,45 @@ tools-mockgen: ## install mockgen tool
 	GOBIN=$(PATHINSTBIN) go install go.uber.org/mock/mockgen@$(MOCKGEN_VERSION)
 
 tools-protoc:
-	@mkdir -p bin/protoc
+	@mkdir -p $(PATHINSTBIN)
+	rm -rf $(PATHINSTBIN)/protoc
 ifeq ($(shell uname | tr A-Z a-z), darwin)
 	curl -L https://github.com/protocolbuffers/protobuf/releases/download/v${PROTOC_VERSION}/protoc-${PROTOC_VERSION}-osx-x86_64.zip > bin/protoc.zip
 endif
 ifeq ($(shell uname | tr A-Z a-z), linux)
 	curl -L https://github.com/protocolbuffers/protobuf/releases/download/v${PROTOC_VERSION}/protoc-${PROTOC_VERSION}-linux-x86_64.zip > bin/protoc.zip
 endif
-	unzip bin/protoc.zip -d bin/protoc
-	rm bin/protoc.zip
+	unzip -o $(PATHINSTBIN)/protoc.zip -d $(PATHINSTBIN)/protoclib 
+	mv -f $(PATHINSTBIN)/protoclib/bin/protoc $(PATHINSTBIN)/protoc
+	rm -rf $(PATHINSTBIN)/include
+	mv $(PATHINSTBIN)/protoclib/include $(PATHINSTBIN)/ 
+	rm $(PATHINSTBIN)/protoc.zip
 
 tools-protoc-gen-go:
-	@mkdir -p bin
-	curl -L https://github.com/protocolbuffers/protobuf-go/releases/download/v${PROTOC_GEN_GO_VERSION}/protoc-gen-go.v${PROTOC_GEN_GO_VERSION}.$(shell uname | tr A-Z a-z).amd64.tar.gz | tar -zOxf - protoc-gen-go > ./bin/protoc-gen-go
-	@chmod +x ./bin/protoc-gen-go
+	@mkdir -p $(PATHINSTBIN)
+	rm -f $(PATHINSTBIN)/protoc-gen-go
+	curl -L https://github.com/protocolbuffers/protobuf-go/releases/download/${PROTOC_GEN_GO_VERSION}/protoc-gen-go.${PROTOC_GEN_GO_VERSION}.$(shell uname | tr A-Z a-z).amd64.tar.gz | tar -zOxf - protoc-gen-go > $(PATHINSTBIN)/protoc-gen-go
+	@chmod +x $(PATHINSTBIN)/protoc-gen-go
 
 tools-protoc-gen-go-grpc:
-	@mkdir -p bin
-	curl -L https://github.com/grpc/grpc-go/releases/download/cmd/protoc-gen-go-grpc/v${PROTOC_GEN_GO_GRPC_VERSION}/protoc-gen-go-grpc.v${PROTOC_GEN_GO_GRPC_VERSION}.$(shell uname | tr A-Z a-z).amd64.tar.gz | tar -zOxf - ./protoc-gen-go-grpc > ./bin/protoc-gen-go-grpc
-	@chmod +x ./bin/protoc-gen-go-grpc
+	@mkdir -p $(PATHINSTBIN)
+	rm -f $(PATHINSTBIN)/protoc-gen-go-grpc
+	curl -L https://github.com/grpc/grpc-go/releases/download/cmd/protoc-gen-go-grpc/${PROTOC_GEN_GO_GRPC_VERSION}/protoc-gen-go-grpc.${PROTOC_GEN_GO_GRPC_VERSION}.$(shell uname | tr A-Z a-z).amd64.tar.gz | tar -zOxf - ./protoc-gen-go-grpc > $(PATHINSTBIN)/protoc-gen-go-grpc
+	@chmod +x $(PATHINSTBIN)/protoc-gen-go-grpc
+
 
 make tools: tools-golangci-lint tools-swagger tools-mockgen tools-protoc tools-protoc-gen-go tools-protoc-gen-go-grpc## install all tools
 
-generate: swagger go-generate ## run all file generation for the project
+generate: generate-swagger generate-go generate-grpc ## run all file generation for the project
 
-swagger: ## generate swagger documentation
+generate-swagger: ## generate swagger documentation
 	@swag -version
 	swag init -g cmd/attestation-api/main.go --parseDependency --parseInternal
 
-go-generate:## run go generate
+generate-go:## run go generate
 	@go generate ./...
 
-grpc:
+generate-grpc: ## generate grpc files
 	@protoc --go_out=. --go_opt=paths=source_relative \
     --go-grpc_out=. --go-grpc_opt=paths=source_relative \
     pkg/grpc/*.proto

@@ -26,6 +26,7 @@ cronJob:
 env:
   PORT: 8080
   MON_PORT: 8888
+  GRPC_PORT: 8086
   CLICKHOUSE_TCP_PORT: 9440
   CLICKHOUSE_DATABASE: file_index
   DEFINITIONS_GRPC_ADDR: device-definitions-api-dev:8086

@@ -19,6 +19,7 @@ import (
 	"github.com/DIMO-Network/attestation-api/internal/attestation/vinvc"
 	"github.com/DIMO-Network/attestation-api/internal/config"
 	"github.com/DIMO-Network/attestation-api/internal/controllers/httphandlers"
+	"github.com/DIMO-Network/attestation-api/internal/controllers/rpc"
 	"github.com/DIMO-Network/attestation-api/pkg/verifiable"
 	"github.com/DIMO-Network/clickhouse-infra/pkg/connect"
 	ddgrpc "github.com/DIMO-Network/device-definitions-api/pkg/grpc"
@@ -31,18 +32,18 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 )
 
-// createHttpController creates a new http controller with the given settings.
-func createHttpController(logger *zerolog.Logger, settings *config.Settings, statusRoute, keysRoute, vocabRoute, jsonLDRoute string) (*httphandlers.HTTPController, error) {
+// createControllers creates a new controllers with the given settings.
+func createControllers(logger *zerolog.Logger, settings *config.Settings, statusRoute, keysRoute, vocabRoute, jsonLDRoute string) (*httphandlers.HTTPController, *rpc.Server, error) {
 	// Initialize ClickHouse connection
 	chConn, err := connect.GetClickhouseConn(&settings.Clickhouse)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create ClickHouse connection: %w", err)
+		return nil, nil, fmt.Errorf("failed to create ClickHouse connection: %w", err)
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
 	defer cancel()
 	err = chConn.Ping(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("failed to ping ClickHouse: %w", err)
+		return nil, nil, fmt.Errorf("failed to ping ClickHouse: %w", err)
 	}
 
 	// Initialize S3 client
@@ -51,17 +52,17 @@ func createHttpController(logger *zerolog.Logger, settings *config.Settings, sta
 	// Initialize VC issuer and revoked list
 	issuer, err := issuerFromSettings(settings, statusRoute, keysRoute, vocabRoute, jsonLDRoute)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	revokedList, err := revokedListFromSettings(settings)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	// Initialize device definition API client
 	deviceDefGRPCClient, err := deviceDefAPIClientFromSettings(settings)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create device definition API client: %w", err)
+		return nil, nil, fmt.Errorf("failed to create device definition API client: %w", err)
 	}
 	vinValidateSerivce := vinvalidator.New(deviceDefGRPCClient)
 
@@ -74,7 +75,7 @@ func createHttpController(logger *zerolog.Logger, settings *config.Settings, sta
 	// Initialize identity API client
 	identityAPI, err := identity.NewService(settings.IdentityAPIURL, settings.AfterMarketNFTAddress, settings.SyntheticNFTAddress, nil)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create identity service: %w", err)
+		return nil, nil, fmt.Errorf("failed to create identity service: %w", err)
 	}
 
 	// Initialize VC service using the initialized services
@@ -84,14 +85,20 @@ func createHttpController(logger *zerolog.Logger, settings *config.Settings, sta
 
 	pomService, err := pom.NewService(logger, identityAPI, conRepo, vcRepo, issuer, settings.VehicleNFTAddress)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create POM service: %w", err)
+		return nil, nil, fmt.Errorf("failed to create POM service: %w", err)
 	}
 
 	ctrl, err := httphandlers.NewVCController(vinvcService, pomService, settings.TelemetryURL)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create VC controller: %w", err)
+		return nil, nil, fmt.Errorf("failed to create VC controller: %w", err)
 	}
-	return ctrl, nil
+	if !common.IsHexAddress(settings.VehicleNFTAddress) {
+		return nil, nil, fmt.Errorf("invalid vehicle NFT address: %s", settings.VehicleNFTAddress)
+	}
+
+	server := rpc.NewServer(vinvcService, vcRepo, common.HexToAddress(settings.VehicleNFTAddress), settings.DIMORegistryChainID)
+
+	return ctrl, server, nil
 
 }
 
