@@ -72,7 +72,7 @@ func (v *Service) GetOrCreateVC(ctx context.Context, tokenID uint32, force bool)
 		logger.Debug().Msg("Valid VC already exists skipping generation")
 		return nil
 	}
-	return v.GenerateVINVC(ctx, tokenID, &logger)
+	return v.GenerateVINVCAndStore(ctx, tokenID)
 }
 
 // hasValidVC checks if a valid VC exists for the given token ID.
@@ -92,7 +92,33 @@ func (v *Service) hasValidVC(ctx context.Context, tokenID uint32) bool {
 	return false
 }
 
-func (v *Service) GenerateVINVC(ctx context.Context, tokenID uint32, logger *zerolog.Logger) error {
+// GenerateVINVC generates a new VIN VC and returns it.
+func (v *Service) GenerateVINVC(ctx context.Context, tokenID uint32) (json.RawMessage, error) {
+	_, _, rawVC, err := v.generateVINVC(ctx, tokenID)
+	if err != nil {
+		return nil, err
+	}
+	return rawVC, nil
+}
+
+// GenerateVINVCAndStore generates a new VIN VC and stores it in Object Storage.
+func (v *Service) GenerateVINVCAndStore(ctx context.Context, tokenID uint32) error {
+	vehicleDID, producer, rawVC, err := v.generateVINVC(ctx, tokenID)
+	if err != nil {
+		return err
+	}
+	producerDID, err := cloudevent.DecodeNFTDID(producer)
+	if err != nil {
+		return ctrlerrors.Error{InternalError: err, ExternalMsg: "Failed to decode producer DID"}
+	}
+	err = v.vcRepo.StoreVINVC(ctx, vehicleDID, producerDID, rawVC)
+	if err != nil {
+		return ctrlerrors.Error{InternalError: err, ExternalMsg: "Failed to store VC"}
+	}
+	return nil
+}
+
+func (v *Service) generateVINVC(ctx context.Context, tokenID uint32) (cloudevent.NFTDID, string, json.RawMessage, error) {
 	// get meta data about the vehilce
 	vehicleDID := cloudevent.NFTDID{
 		ChainID:         v.chainID,
@@ -101,13 +127,13 @@ func (v *Service) GenerateVINVC(ctx context.Context, tokenID uint32, logger *zer
 	}
 	vehicleInfo, err := v.identityAPI.GetVehicleInfo(ctx, vehicleDID)
 	if err != nil {
-		return ctrlerrors.Error{InternalError: err, ExternalMsg: "Failed to get vehicle info"}
+		return cloudevent.NFTDID{}, "", nil, ctrlerrors.Error{InternalError: err, ExternalMsg: "Failed to get vehicle info"}
 	}
 
 	// get a valid VIN for the vehilce
 	validFP, err := v.getValidFingerPrint(ctx, vehicleInfo, "")
 	if err != nil {
-		return err
+		return cloudevent.NFTDID{}, "", nil, err
 	}
 
 	// creatae the subject for the VC
@@ -124,19 +150,10 @@ func (v *Service) GenerateVINVC(ctx context.Context, tokenID uint32, logger *zer
 	expTime := time.Now().AddDate(0, 0, daysInWeek-int(time.Now().Weekday())).UTC().Truncate(time.Hour * 24)
 	rawVC, err := v.issuer.CreateVINVC(vinSubject, expTime)
 	if err != nil {
-		return ctrlerrors.Error{InternalError: err, ExternalMsg: "Failed to create VC"}
-	}
-	producerDID, err := cloudevent.DecodeNFTDID(validFP.Producer)
-	if err != nil {
-		return ctrlerrors.Error{InternalError: err, ExternalMsg: "Failed to decode producer DID"}
-	}
-	// store the VC
-	err = v.vcRepo.StoreVINVC(ctx, vehicleDID, producerDID, rawVC)
-	if err != nil {
-		return ctrlerrors.Error{InternalError: err, ExternalMsg: "Failed to store VC"}
+		return cloudevent.NFTDID{}, "", nil, ctrlerrors.Error{InternalError: err, ExternalMsg: "Failed to create VC"}
 	}
 
-	return nil
+	return vehicleDID, validFP.Producer, rawVC, nil
 }
 
 // getValidFingerPrint validates and reconciles VINs from the paired devices.

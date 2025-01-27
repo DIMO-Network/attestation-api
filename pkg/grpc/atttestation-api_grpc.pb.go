@@ -19,8 +19,9 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	AttestationService_EnsureVinVc_FullMethodName    = "/grpc.AttestationService/EnsureVinVc"
-	AttestationService_GetVinVcLatest_FullMethodName = "/grpc.AttestationService/GetVinVcLatest"
+	AttestationService_EnsureVinVc_FullMethodName       = "/grpc.AttestationService/EnsureVinVc"
+	AttestationService_GetVinVcLatest_FullMethodName    = "/grpc.AttestationService/GetVinVcLatest"
+	AttestationService_TestVinVcCreation_FullMethodName = "/grpc.AttestationService/TestVinVcCreation"
 )
 
 // AttestationServiceClient is the client API for AttestationService service.
@@ -29,6 +30,7 @@ const (
 type AttestationServiceClient interface {
 	EnsureVinVc(ctx context.Context, in *EnsureVinVcRequest, opts ...grpc.CallOption) (*EnsureVinVcResponse, error)
 	GetVinVcLatest(ctx context.Context, in *GetLatestVinVcRequest, opts ...grpc.CallOption) (*GetLatestVinVcResponse, error)
+	TestVinVcCreation(ctx context.Context, in *TestVinVcCreationRequest, opts ...grpc.CallOption) (*TestVinVcCreationResponse, error)
 }
 
 type attestationServiceClient struct {
@@ -59,12 +61,23 @@ func (c *attestationServiceClient) GetVinVcLatest(ctx context.Context, in *GetLa
 	return out, nil
 }
 
+func (c *attestationServiceClient) TestVinVcCreation(ctx context.Context, in *TestVinVcCreationRequest, opts ...grpc.CallOption) (*TestVinVcCreationResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(TestVinVcCreationResponse)
+	err := c.cc.Invoke(ctx, AttestationService_TestVinVcCreation_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // AttestationServiceServer is the server API for AttestationService service.
 // All implementations must embed UnimplementedAttestationServiceServer
 // for forward compatibility.
 type AttestationServiceServer interface {
 	EnsureVinVc(context.Context, *EnsureVinVcRequest) (*EnsureVinVcResponse, error)
 	GetVinVcLatest(context.Context, *GetLatestVinVcRequest) (*GetLatestVinVcResponse, error)
+	TestVinVcCreation(context.Context, *TestVinVcCreationRequest) (*TestVinVcCreationResponse, error)
 	mustEmbedUnimplementedAttestationServiceServer()
 }
 
@@ -80,6 +93,9 @@ func (UnimplementedAttestationServiceServer) EnsureVinVc(context.Context, *Ensur
 }
 func (UnimplementedAttestationServiceServer) GetVinVcLatest(context.Context, *GetLatestVinVcRequest) (*GetLatestVinVcResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetVinVcLatest not implemented")
+}
+func (UnimplementedAttestationServiceServer) TestVinVcCreation(context.Context, *TestVinVcCreationRequest) (*TestVinVcCreationResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method TestVinVcCreation not implemented")
 }
 func (UnimplementedAttestationServiceServer) mustEmbedUnimplementedAttestationServiceServer() {}
 func (UnimplementedAttestationServiceServer) testEmbeddedByValue()                            {}
@@ -138,6 +154,24 @@ func _AttestationService_GetVinVcLatest_Handler(srv interface{}, ctx context.Con
 	return interceptor(ctx, in, info, handler)
 }
 
+func _AttestationService_TestVinVcCreation_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(TestVinVcCreationRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AttestationServiceServer).TestVinVcCreation(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AttestationService_TestVinVcCreation_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AttestationServiceServer).TestVinVcCreation(ctx, req.(*TestVinVcCreationRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // AttestationService_ServiceDesc is the grpc.ServiceDesc for AttestationService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -152,6 +186,10 @@ var AttestationService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetVinVcLatest",
 			Handler:    _AttestationService_GetVinVcLatest_Handler,
+		},
+		{
+			MethodName: "TestVinVcCreation",
+			Handler:    _AttestationService_TestVinVcCreation_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
