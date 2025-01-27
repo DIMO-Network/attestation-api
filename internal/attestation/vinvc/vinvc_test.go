@@ -26,6 +26,7 @@ import (
 const (
 	defaultNameSlug   = "toyota_tacoma-4wd_2023"
 	defaultNFTAddress = "0x1234567890abcdef"
+	polygonChainID    = 137
 )
 
 var testVCPayload = json.RawMessage(`{"test": "payload"}`)
@@ -59,7 +60,7 @@ func TestVCController_GetVINVC(t *testing.T) {
 				tokenID := uint32(123)
 				vehicleInfo := &models.VehicleInfo{
 					DID: cloudevent.NFTDID{
-						ChainID:         vinvc.PolygonChainID,
+						ChainID:         polygonChainID,
 						TokenID:         tokenID,
 						ContractAddress: common.HexToAddress(defaultNFTAddress),
 					},
@@ -79,7 +80,7 @@ func TestVCController_GetVINVC(t *testing.T) {
 					Address: pairedAddr.String(),
 					Type:    models.DeviceTypeAftermarket,
 					DID: cloudevent.NFTDID{
-						ChainID:         vinvc.PolygonChainID,
+						ChainID:         polygonChainID,
 						TokenID:         10,
 						ContractAddress: common.HexToAddress(defaultNFTAddress),
 					},
@@ -89,7 +90,7 @@ func TestVCController_GetVINVC(t *testing.T) {
 					PairedDevices: []models.PairedDevice{pariedDevice},
 					NameSlug:      defaultNameSlug,
 					DID: cloudevent.NFTDID{
-						ChainID:         vinvc.PolygonChainID,
+						ChainID:         polygonChainID,
 						TokenID:         tokenID,
 						ContractAddress: common.HexToAddress(defaultNFTAddress),
 					},
@@ -125,7 +126,7 @@ func TestVCController_GetVINVC(t *testing.T) {
 				tokenID := uint32(125)
 				vehicleInfo := &models.VehicleInfo{
 					DID: cloudevent.NFTDID{
-						ChainID:         vinvc.PolygonChainID,
+						ChainID:         polygonChainID,
 						TokenID:         tokenID,
 						ContractAddress: common.HexToAddress(defaultNFTAddress),
 					},
@@ -145,7 +146,7 @@ func TestVCController_GetVINVC(t *testing.T) {
 					Address: pairedAddr.String(),
 					Type:    models.DeviceTypeAftermarket,
 					DID: cloudevent.NFTDID{
-						ChainID:         vinvc.PolygonChainID,
+						ChainID:         polygonChainID,
 						TokenID:         10,
 						ContractAddress: common.HexToAddress(defaultNFTAddress),
 					},
@@ -154,7 +155,7 @@ func TestVCController_GetVINVC(t *testing.T) {
 					PairedDevices: []models.PairedDevice{pariedDevice},
 					NameSlug:      defaultNameSlug,
 					DID: cloudevent.NFTDID{
-						ChainID:         vinvc.PolygonChainID,
+						ChainID:         polygonChainID,
 						TokenID:         tokenID,
 						ContractAddress: common.HexToAddress(defaultNFTAddress),
 					},
@@ -176,7 +177,7 @@ func TestVCController_GetVINVC(t *testing.T) {
 					Address: pairedAddr.String(),
 					Type:    models.DeviceTypeAftermarket,
 					DID: cloudevent.NFTDID{
-						ChainID:         vinvc.PolygonChainID,
+						ChainID:         polygonChainID,
 						TokenID:         10,
 						ContractAddress: common.HexToAddress(defaultNFTAddress),
 					},
@@ -185,7 +186,7 @@ func TestVCController_GetVINVC(t *testing.T) {
 					Address: pairedAddr2.String(),
 					Type:    models.DeviceTypeSynthetic,
 					DID: cloudevent.NFTDID{
-						ChainID:         vinvc.PolygonChainID,
+						ChainID:         polygonChainID,
 						TokenID:         11,
 						ContractAddress: common.HexToAddress(defaultNFTAddress),
 					},
@@ -194,7 +195,7 @@ func TestVCController_GetVINVC(t *testing.T) {
 					PairedDevices: []models.PairedDevice{device1, device2},
 					NameSlug:      defaultNameSlug,
 					DID: cloudevent.NFTDID{
-						ChainID:         vinvc.PolygonChainID,
+						ChainID:         polygonChainID,
 						TokenID:         tokenID,
 						ContractAddress: common.HexToAddress(defaultNFTAddress),
 					},
@@ -245,7 +246,7 @@ func TestVCController_GetVINVC(t *testing.T) {
 					Address: pairedAddr.String(),
 					Type:    models.DeviceTypeAftermarket,
 					DID: cloudevent.NFTDID{
-						ChainID:         vinvc.PolygonChainID,
+						ChainID:         polygonChainID,
 						TokenID:         10,
 						ContractAddress: common.HexToAddress(defaultNFTAddress),
 					},
@@ -254,7 +255,7 @@ func TestVCController_GetVINVC(t *testing.T) {
 					PairedDevices: []models.PairedDevice{pariedDevice},
 					NameSlug:      defaultNameSlug,
 					DID: cloudevent.NFTDID{
-						ChainID:         vinvc.PolygonChainID,
+						ChainID:         polygonChainID,
 						TokenID:         tokenID,
 						ContractAddress: common.HexToAddress(defaultNFTAddress),
 					},
@@ -284,7 +285,7 @@ func TestVCController_GetVINVC(t *testing.T) {
 					Address: pairedAddr.String(),
 					Type:    models.DeviceTypeAftermarket,
 					DID: cloudevent.NFTDID{
-						ChainID:         vinvc.PolygonChainID,
+						ChainID:         polygonChainID,
 						TokenID:         10,
 						ContractAddress: common.HexToAddress(defaultNFTAddress),
 					},
@@ -293,7 +294,7 @@ func TestVCController_GetVINVC(t *testing.T) {
 					PairedDevices: []models.PairedDevice{pariedDevice},
 					NameSlug:      defaultNameSlug,
 					DID: cloudevent.NFTDID{
-						ChainID:         vinvc.PolygonChainID,
+						ChainID:         polygonChainID,
 						TokenID:         tokenID,
 						ContractAddress: common.HexToAddress(defaultNFTAddress),
 					},
@@ -323,7 +324,7 @@ func TestVCController_GetVINVC(t *testing.T) {
 					Address: pairedAddr.String(),
 					Type:    models.DeviceTypeAftermarket,
 					DID: cloudevent.NFTDID{
-						ChainID:         vinvc.PolygonChainID,
+						ChainID:         polygonChainID,
 						TokenID:         10,
 						ContractAddress: common.HexToAddress(defaultNFTAddress),
 					},
@@ -332,7 +333,7 @@ func TestVCController_GetVINVC(t *testing.T) {
 					PairedDevices: []models.PairedDevice{pariedDevice},
 					NameSlug:      defaultNameSlug,
 					DID: cloudevent.NFTDID{
-						ChainID:         vinvc.PolygonChainID,
+						ChainID:         polygonChainID,
 						TokenID:         tokenID,
 						ContractAddress: common.HexToAddress(defaultNFTAddress),
 					},
@@ -368,7 +369,7 @@ func TestVCController_GetVINVC(t *testing.T) {
 				tokenID := uint32(132)
 				vehicleInfo := &models.VehicleInfo{
 					DID: cloudevent.NFTDID{
-						ChainID:         vinvc.PolygonChainID,
+						ChainID:         polygonChainID,
 						TokenID:         tokenID,
 						ContractAddress: common.HexToAddress(defaultNFTAddress),
 					},
@@ -388,7 +389,7 @@ func TestVCController_GetVINVC(t *testing.T) {
 					Address: pairedAddr.String(),
 					Type:    models.DeviceTypeAftermarket,
 					DID: cloudevent.NFTDID{
-						ChainID:         vinvc.PolygonChainID,
+						ChainID:         polygonChainID,
 						TokenID:         10,
 						ContractAddress: common.HexToAddress(defaultNFTAddress),
 					},
@@ -397,7 +398,7 @@ func TestVCController_GetVINVC(t *testing.T) {
 					PairedDevices: []models.PairedDevice{pariedDevice},
 					NameSlug:      defaultNameSlug,
 					DID: cloudevent.NFTDID{
-						ChainID:         vinvc.PolygonChainID,
+						ChainID:         polygonChainID,
 						TokenID:         tokenID,
 						ContractAddress: common.HexToAddress(defaultNFTAddress),
 					},
@@ -451,6 +452,7 @@ func TestVCController_GetVINVC(t *testing.T) {
 				mocks.vcRepo, mocks.identityAPI,
 				mocks.fingerprintRepo, mocks.vinAPI,
 				mocks.issuer, nil, defaultNFTAddress,
+				polygonChainID,
 			)
 
 			err := vcController.GetOrCreateVC(context.Background(), tt.tokenID, false)

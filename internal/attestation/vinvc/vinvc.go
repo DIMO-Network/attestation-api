@@ -18,8 +18,7 @@ import (
 )
 
 const (
-	daysInWeek     = 7
-	PolygonChainID = 137
+	daysInWeek = 7
 )
 
 // Service handles VIN VC-related operations.
@@ -32,6 +31,7 @@ type Service struct {
 	issuer            Issuer
 	revokedMap        map[uint32]struct{}
 	vehicleNFTAddress string
+	chainID           uint64
 }
 
 // NewService creates a new Service for VIN VC operations.
@@ -44,6 +44,7 @@ func NewService(
 	issuer Issuer,
 	revokedList []uint32,
 	vehicleNFTAddress string,
+	chainID int64,
 ) *Service {
 	revokeMap := make(map[uint32]struct{}, len(revokedList))
 	for _, id := range revokedList {
@@ -58,6 +59,7 @@ func NewService(
 		issuer:            issuer,
 		revokedMap:        revokeMap,
 		vehicleNFTAddress: vehicleNFTAddress,
+		chainID:           uint64(chainID),
 	}
 }
 
@@ -76,7 +78,7 @@ func (v *Service) GetOrCreateVC(ctx context.Context, tokenID uint32, force bool)
 // hasValidVC checks if a valid VC exists for the given token ID.
 func (v *Service) hasValidVC(ctx context.Context, tokenID uint32) bool {
 	vehicleDID := cloudevent.NFTDID{
-		ChainID:         PolygonChainID,
+		ChainID:         v.chainID,
 		ContractAddress: common.HexToAddress(v.vehicleNFTAddress),
 		TokenID:         tokenID,
 	}
@@ -93,7 +95,7 @@ func (v *Service) hasValidVC(ctx context.Context, tokenID uint32) bool {
 func (v *Service) GenerateVINVC(ctx context.Context, tokenID uint32, logger *zerolog.Logger) error {
 	// get meta data about the vehilce
 	vehicleDID := cloudevent.NFTDID{
-		ChainID:         PolygonChainID,
+		ChainID:         v.chainID,
 		ContractAddress: common.HexToAddress(v.vehicleNFTAddress),
 		TokenID:         tokenID,
 	}

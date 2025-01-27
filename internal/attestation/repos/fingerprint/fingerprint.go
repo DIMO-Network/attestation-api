@@ -64,7 +64,7 @@ func (s *Service) GetLatestFingerprintMessages(ctx context.Context, vehicleDID c
 		if errors.Is(err, sql.ErrNoRows) {
 			return s.legacyGetLatestFingerprintMessages(ctx, device)
 		}
-		return nil, fmt.Errorf("failed to get vc: %w", err)
+		return nil, fmt.Errorf("failed to get fingerprint message: %w", err)
 	}
 	msg, err := s.decodeFingerprintMessage(dataObj)
 	if err != nil {

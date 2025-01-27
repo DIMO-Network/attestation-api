@@ -32,8 +32,7 @@ const (
 	hashDogManufacturer = "HashDog"
 	ruptelaManufacturer = "Ruptela"
 	// h3Resolution resolution for h3 hex 8 ~= 0.737327598 km2
-	h3Resolution   = 8
-	PolygonChainID = 137
+	h3Resolution = 8
 )
 
 var errNoLocation = fmt.Errorf("no location data found")
@@ -52,9 +51,10 @@ type Service struct {
 	vcRepo                 VCRepo
 	issuer                 Issuer
 	vehicleContractAddress common.Address
+	chainID                uint64
 }
 
-func NewService(logger *zerolog.Logger, identityAPI IdentityAPI, connectivityRepo ConnectivityRepo, vcRepo VCRepo, issuer Issuer, vehicleContractAddress string) (*Service, error) {
+func NewService(logger *zerolog.Logger, identityAPI IdentityAPI, connectivityRepo ConnectivityRepo, vcRepo VCRepo, issuer Issuer, vehicleContractAddress string, chainID int64) (*Service, error) {
 	if !common.IsHexAddress(vehicleContractAddress) {
 		return nil, fmt.Errorf("invalid vehicle contract address: %s", vehicleContractAddress)
 	}
@@ -65,13 +65,14 @@ func NewService(logger *zerolog.Logger, identityAPI IdentityAPI, connectivityRep
 		vcRepo:                 vcRepo,
 		issuer:                 issuer,
 		vehicleContractAddress: common.HexToAddress(vehicleContractAddress),
+		chainID:                uint64(chainID),
 	}, nil
 }
 
 // CreatePOMVC generates a Proof of Movement VC.
 func (s *Service) CreatePOMVC(ctx context.Context, tokenID uint32) error {
 	vehicleDID := cloudevent.NFTDID{
-		ChainID:         PolygonChainID,
+		ChainID:         s.chainID,
 		TokenID:         tokenID,
 		ContractAddress: s.vehicleContractAddress,
 	}
