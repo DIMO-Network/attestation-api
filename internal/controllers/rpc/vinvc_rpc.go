@@ -30,6 +30,7 @@ func NewServer(ctrl vinCtrl, repo vinRepo, vehicleNFTAddr common.Address, chainI
 
 type vinCtrl interface {
 	GetOrCreateVC(ctx context.Context, tokenID uint32, force bool) error
+	GenerateVINVC(ctx context.Context, tokenID uint32) (json.RawMessage, error)
 }
 
 type vinRepo interface {
@@ -61,4 +62,12 @@ func (s *Server) GetVinVcLatest(ctx context.Context, req *grpc.GetLatestVinVcReq
 	}
 
 	return &grpc.GetLatestVinVcResponse{RawVc: string(raw)}, nil
+}
+
+func (s Server) TestVinVcCreation(ctx context.Context, req *grpc.TestVinVcCreationRequest) (*grpc.TestVinVcCreationResponse, error) {
+	_, err := s.ctrl.GenerateVINVC(ctx, req.GetTokenId())
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate VIN VC: %w", err)
+	}
+	return &grpc.TestVinVcCreationResponse{}, nil
 }
