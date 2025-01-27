@@ -16,7 +16,7 @@ env:
   SYNTHETIC_NFT_ADDRESS: '0x4804e8D1661cd1a1e5dDdE1ff458A7f878c0aC6D'
   DEFINITIONS_GRPC_ADDR: device-definitions-api-prod:8086
   TELEMETRY_URL: https://telemetry-api.dimo.zone
-  IDENTITY_API_URL: http://identity-api:8080
+  IDENTITY_API_URL: http://identity-api-prod:8080
   FINGERPRINT_BUCKET: dimo-network-fingerprint-prod
   AUTOPI_BUCKET_NAME: dimo-network-connectivity-prod
   HASHDOG_BUCKET_NAME: dimo-network-connectivity-prod
