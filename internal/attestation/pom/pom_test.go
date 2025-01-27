@@ -29,7 +29,7 @@ func TestService_CreatePOMVC(t *testing.T) {
 	mockIssuer := NewMockIssuer(ctrl)
 
 	logger := zerolog.New(nil)
-	service, err := pom.NewService(&logger, mockIdentityAPI, mockConnectivityRepo, mockVCRepo, mockIssuer, "0xbA5738a18d83D41847dfFbDC6101d37C69c9B0cF")
+	service, err := pom.NewService(&logger, mockIdentityAPI, mockConnectivityRepo, mockVCRepo, mockIssuer, "0xbA5738a18d83D41847dfFbDC6101d37C69c9B0cF", 137)
 	require.NoError(t, err)
 
 	ctx := context.TODO()

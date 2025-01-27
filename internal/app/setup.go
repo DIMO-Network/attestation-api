@@ -79,11 +79,11 @@ func createControllers(logger *zerolog.Logger, settings *config.Settings, status
 	}
 
 	// Initialize VC service using the initialized services
-	vinvcService := vinvc.NewService(logger, vcRepo, identityAPI, fingerprintRepo, vinValidateSerivce, issuer, revokedList, settings.VehicleNFTAddress)
+	vinvcService := vinvc.NewService(logger, vcRepo, identityAPI, fingerprintRepo, vinValidateSerivce, issuer, revokedList, settings.VehicleNFTAddress, settings.DIMORegistryChainID)
 
 	conRepo := connectivity.NewConnectivityRepo(chConn, s3Client, settings.AutoPiDataType, settings.AutoPiBucketName, settings.HashDogDataType, settings.HashDogBucketName, settings.StatusDataType, settings.StatusBucketName, settings.CloudEventBucket)
 
-	pomService, err := pom.NewService(logger, identityAPI, conRepo, vcRepo, issuer, settings.VehicleNFTAddress)
+	pomService, err := pom.NewService(logger, identityAPI, conRepo, vcRepo, issuer, settings.VehicleNFTAddress, settings.DIMORegistryChainID)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to create POM service: %w", err)
 	}
