@@ -189,7 +189,7 @@ func (v *Service) getValidFingerPrint(ctx context.Context, vehicleInfo *models.V
 	}
 	if decodedNameSlug != vehicleInfo.NameSlug {
 		message := "Invalid VIN Decoding from fingerprint"
-		err := fmt.Errorf("decodedNameSlug: %s != identityNameSlug: %s", decodedNameSlug, vehicleInfo.NameSlug)
+		err := fmt.Errorf("decodedNameSlug: %s != identityNameSlug: %s vin = %s", decodedNameSlug, vehicleInfo.NameSlug, latestFP.VIN)
 		return nil, ctrlerrors.Error{InternalError: err, ExternalMsg: message, Code: fiber.StatusBadRequest}
 	}
 
