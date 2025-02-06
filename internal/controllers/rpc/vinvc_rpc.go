@@ -64,10 +64,19 @@ func (s *Server) GetVinVcLatest(ctx context.Context, req *grpc.GetLatestVinVcReq
 	return &grpc.GetLatestVinVcResponse{RawVc: string(raw)}, nil
 }
 
-func (s Server) TestVinVcCreation(ctx context.Context, req *grpc.TestVinVcCreationRequest) (*grpc.TestVinVcCreationResponse, error) {
+func (s *Server) TestVinVcCreation(ctx context.Context, req *grpc.TestVinVcCreationRequest) (*grpc.TestVinVcCreationResponse, error) {
 	_, err := s.ctrl.GenerateVINVC(ctx, req.GetTokenId())
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate VIN VC: %w", err)
 	}
 	return &grpc.TestVinVcCreationResponse{}, nil
+}
+
+// ManualVinVcCreation
+func (s *Server) ManualVinVcCreation(ctx context.Context, req *grpc.ManualVinVcCreationRequest) (*grpc.ManualVinVcCreationResponse, error) {
+	_, err := s.ctrl.GenerateVINVC(ctx, req.GetTokenId())
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate VIN VC: %w", err)
+	}
+	return &grpc.ManualVinVcCreationResponse{}, nil
 }

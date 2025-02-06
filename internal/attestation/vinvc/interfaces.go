@@ -14,7 +14,7 @@ import (
 // VCRepo defines the interface for manging VC storage.
 type VCRepo interface {
 	GetLatestVINVC(ctx context.Context, vehicleDID cloudevent.NFTDID) (*verifiable.Credential, error)
-	StoreVINVC(ctx context.Context, vehicleDID, producerDID cloudevent.NFTDID, vinvc json.RawMessage) error
+	StoreVINVC(ctx context.Context, vehicleDID, producerDID string, vinvc json.RawMessage) error
 }
 
 // IdentityAPI defines the interface for identity operations.

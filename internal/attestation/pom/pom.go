@@ -104,7 +104,7 @@ func (s *Service) CreatePOMVC(ctx context.Context, tokenID uint32) error {
 		return ctrlerrors.Error{InternalError: err, ExternalMsg: "Failed to create POM VC"}
 	}
 
-	if err = s.vcRepo.StorePOMVC(ctx, vehicleDID, pairedDevice.DID, vc); err != nil {
+	if err = s.vcRepo.StorePOMVC(ctx, vehicleDID.String(), pairedDevice.DID.String(), vc); err != nil {
 		return ctrlerrors.Error{InternalError: err, ExternalMsg: "Failed to create POM VC"}
 	}
 

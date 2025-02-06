@@ -61,7 +61,7 @@ func (mr *MockVCRepoMockRecorder) GetLatestVINVC(ctx, vehicleDID any) *gomock.Ca
 }
 
 // StoreVINVC mocks base method.
-func (m *MockVCRepo) StoreVINVC(ctx context.Context, vehicleDID, producerDID cloudevent.NFTDID, vinvc json.RawMessage) error {
+func (m *MockVCRepo) StoreVINVC(ctx context.Context, vehicleDID, producerDID string, vinvc json.RawMessage) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "StoreVINVC", ctx, vehicleDID, producerDID, vinvc)
 	ret0, _ := ret[0].(error)

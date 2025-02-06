@@ -10,6 +10,7 @@ import (
 
 	"github.com/DIMO-Network/attestation-api/internal/controllers/ctrlerrors"
 	"github.com/DIMO-Network/attestation-api/internal/models"
+	"github.com/DIMO-Network/attestation-api/internal/sources"
 	"github.com/DIMO-Network/attestation-api/pkg/verifiable"
 	"github.com/DIMO-Network/model-garage/pkg/cloudevent"
 	"github.com/ethereum/go-ethereum/common"
@@ -111,7 +112,7 @@ func (v *Service) GenerateVINVCAndStore(ctx context.Context, tokenID uint32) err
 	if err != nil {
 		return ctrlerrors.Error{InternalError: err, ExternalMsg: "Failed to decode producer DID"}
 	}
-	err = v.vcRepo.StoreVINVC(ctx, vehicleDID, producerDID, rawVC)
+	err = v.vcRepo.StoreVINVC(ctx, vehicleDID.String(), producerDID.String(), rawVC)
 	if err != nil {
 		return ctrlerrors.Error{InternalError: err, ExternalMsg: "Failed to store VC"}
 	}
@@ -194,6 +195,41 @@ func (v *Service) getValidFingerPrint(ctx context.Context, vehicleInfo *models.V
 	}
 
 	return latestFP, nil
+}
+
+func (v *Service) GenerateManualVC(ctx context.Context, tokenID uint32, vin string, countryCode string) (json.RawMessage, error) {
+	producer := cloudevent.EthrDID{
+		ChainID:         v.chainID,
+		ContractAddress: sources.DINCSource,
+	}.String()
+
+	// create the subject for the Manually created VC
+	vinSubject := verifiable.VINSubject{
+		VehicleIdentificationNumber: vin,
+		VehicleTokenID:              tokenID,
+		CountryCode:                 countryCode,
+		RecordedBy:                  producer,
+		RecordedAt:                  time.Now(),
+	}
+
+	vehicleDID := cloudevent.NFTDID{
+		ChainID:         v.chainID,
+		ContractAddress: common.HexToAddress(v.vehicleNFTAddress),
+		TokenID:         tokenID,
+	}
+
+	// create the new VC
+	expTime := time.Now().AddDate(0, 0, daysInWeek-int(time.Now().Weekday())).UTC().Truncate(time.Hour * 24)
+	rawVC, err := v.issuer.CreateVINVC(vinSubject, expTime)
+	if err != nil {
+		return nil, ctrlerrors.Error{InternalError: err, ExternalMsg: "Failed to create VC"}
+	}
+
+	err = v.vcRepo.StoreVINVC(ctx, vehicleDID.String(), producer, rawVC)
+	if err != nil {
+		return nil, ctrlerrors.Error{InternalError: err, ExternalMsg: "Failed to store VC"}
+	}
+	return rawVC, nil
 }
 
 // GenerateKeyControlDocument generates a new control document for sharing public keys.
