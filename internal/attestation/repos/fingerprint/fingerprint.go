@@ -17,14 +17,13 @@ import (
 	"github.com/DIMO-Network/attestation-api/internal/sources"
 	"github.com/DIMO-Network/model-garage/pkg/cloudevent"
 	"github.com/DIMO-Network/model-garage/pkg/ruptela/fingerprint"
+	teslafp "github.com/DIMO-Network/model-garage/pkg/tesla/fingerprint"
 	"github.com/DIMO-Network/nameindexer/pkg/clickhouse/indexrepo"
 )
 
 type decodeError string
 
-var (
-	basicVINExp = regexp.MustCompile(`^[A-Z0-9]{17}$`)
-)
+var basicVINExp = regexp.MustCompile(`^[A-Z0-9]{17}$`)
 
 func (d decodeError) Error() string {
 	return fmt.Sprintf("failed to decode fingerprint message: %s", string(d))
@@ -131,9 +130,15 @@ func (s *Service) decodeFingerprintMessage(msg cloudevent.CloudEvent[json.RawMes
 		}
 		fpEvent, err := fingerprint.DecodeFingerprint(fullMsgData)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to decode fingerprint: %w", err)
 		}
 		vin = fpEvent.Data.VIN
+	case sources.AddrEqualString(sources.TeslaSource, msg.Source):
+		fpEvent, err := teslafp.DecodeFingerprintFromData(msg.Data)
+		if err != nil {
+			return nil, fmt.Errorf("failed to decode fingerprint: %w", err)
+		}
+		vin = fpEvent.VIN
 	}
 
 	if vin == "" {
