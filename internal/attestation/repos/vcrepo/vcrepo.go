@@ -50,16 +50,16 @@ func (r *Repo) GetLatestVINVC(ctx context.Context, vehicleDID cloudevent.NFTDID)
 }
 
 // StoreVINVC stores a new VC in S3.
-func (r *Repo) StoreVINVC(ctx context.Context, vehicleDID, producerDID cloudevent.NFTDID, rawVC json.RawMessage) error {
+func (r *Repo) StoreVINVC(ctx context.Context, vehicleDID, producerDID string, rawVC json.RawMessage) error {
 	return r.storeVC(ctx, vehicleDID, producerDID, rawVC, r.vinDataVersion)
 }
 
 // StorePOMVC stores a new VC in S3.
-func (r *Repo) StorePOMVC(ctx context.Context, vehicleDID, producerDID cloudevent.NFTDID, rawVC json.RawMessage) error {
+func (r *Repo) StorePOMVC(ctx context.Context, vehicleDID, producerDID string, rawVC json.RawMessage) error {
 	return r.storeVC(ctx, vehicleDID, producerDID, rawVC, r.pomDataVersion)
 }
 
-func (r *Repo) storeVC(ctx context.Context, vehicleDID, producerDID cloudevent.NFTDID, rawVC json.RawMessage, dataVersion string) error {
+func (r *Repo) storeVC(ctx context.Context, vehicleDID, producerDID string, rawVC json.RawMessage, dataVersion string) error {
 	// expire at the end of the week
 	cloudEvent := cloudevent.CloudEvent[json.RawMessage]{
 		CloudEventHeader: cloudevent.CloudEventHeader{
@@ -67,8 +67,8 @@ func (r *Repo) storeVC(ctx context.Context, vehicleDID, producerDID cloudevent.N
 			ID:              ksuid.New().String(),
 			Time:            time.Now(),
 			Source:          sources.DINCSource.String(),
-			Subject:         vehicleDID.String(),
-			Producer:        producerDID.String(),
+			Subject:         vehicleDID,
+			Producer:        producerDID,
 			Type:            cloudevent.TypeVerifableCredential,
 			DataContentType: "application/json",
 			DataVersion:     dataVersion,

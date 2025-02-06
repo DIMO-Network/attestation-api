@@ -19,9 +19,10 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	AttestationService_EnsureVinVc_FullMethodName       = "/grpc.AttestationService/EnsureVinVc"
-	AttestationService_GetVinVcLatest_FullMethodName    = "/grpc.AttestationService/GetVinVcLatest"
-	AttestationService_TestVinVcCreation_FullMethodName = "/grpc.AttestationService/TestVinVcCreation"
+	AttestationService_EnsureVinVc_FullMethodName         = "/grpc.AttestationService/EnsureVinVc"
+	AttestationService_GetVinVcLatest_FullMethodName      = "/grpc.AttestationService/GetVinVcLatest"
+	AttestationService_TestVinVcCreation_FullMethodName   = "/grpc.AttestationService/TestVinVcCreation"
+	AttestationService_ManualVinVcCreation_FullMethodName = "/grpc.AttestationService/ManualVinVcCreation"
 )
 
 // AttestationServiceClient is the client API for AttestationService service.
@@ -31,6 +32,7 @@ type AttestationServiceClient interface {
 	EnsureVinVc(ctx context.Context, in *EnsureVinVcRequest, opts ...grpc.CallOption) (*EnsureVinVcResponse, error)
 	GetVinVcLatest(ctx context.Context, in *GetLatestVinVcRequest, opts ...grpc.CallOption) (*GetLatestVinVcResponse, error)
 	TestVinVcCreation(ctx context.Context, in *TestVinVcCreationRequest, opts ...grpc.CallOption) (*TestVinVcCreationResponse, error)
+	ManualVinVcCreation(ctx context.Context, in *ManualVinVcCreationRequest, opts ...grpc.CallOption) (*ManualVinVcCreationResponse, error)
 }
 
 type attestationServiceClient struct {
@@ -71,6 +73,16 @@ func (c *attestationServiceClient) TestVinVcCreation(ctx context.Context, in *Te
 	return out, nil
 }
 
+func (c *attestationServiceClient) ManualVinVcCreation(ctx context.Context, in *ManualVinVcCreationRequest, opts ...grpc.CallOption) (*ManualVinVcCreationResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ManualVinVcCreationResponse)
+	err := c.cc.Invoke(ctx, AttestationService_ManualVinVcCreation_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // AttestationServiceServer is the server API for AttestationService service.
 // All implementations must embed UnimplementedAttestationServiceServer
 // for forward compatibility.
@@ -78,6 +90,7 @@ type AttestationServiceServer interface {
 	EnsureVinVc(context.Context, *EnsureVinVcRequest) (*EnsureVinVcResponse, error)
 	GetVinVcLatest(context.Context, *GetLatestVinVcRequest) (*GetLatestVinVcResponse, error)
 	TestVinVcCreation(context.Context, *TestVinVcCreationRequest) (*TestVinVcCreationResponse, error)
+	ManualVinVcCreation(context.Context, *ManualVinVcCreationRequest) (*ManualVinVcCreationResponse, error)
 	mustEmbedUnimplementedAttestationServiceServer()
 }
 
@@ -96,6 +109,9 @@ func (UnimplementedAttestationServiceServer) GetVinVcLatest(context.Context, *Ge
 }
 func (UnimplementedAttestationServiceServer) TestVinVcCreation(context.Context, *TestVinVcCreationRequest) (*TestVinVcCreationResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method TestVinVcCreation not implemented")
+}
+func (UnimplementedAttestationServiceServer) ManualVinVcCreation(context.Context, *ManualVinVcCreationRequest) (*ManualVinVcCreationResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ManualVinVcCreation not implemented")
 }
 func (UnimplementedAttestationServiceServer) mustEmbedUnimplementedAttestationServiceServer() {}
 func (UnimplementedAttestationServiceServer) testEmbeddedByValue()                            {}
@@ -172,6 +188,24 @@ func _AttestationService_TestVinVcCreation_Handler(srv interface{}, ctx context.
 	return interceptor(ctx, in, info, handler)
 }
 
+func _AttestationService_ManualVinVcCreation_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ManualVinVcCreationRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AttestationServiceServer).ManualVinVcCreation(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AttestationService_ManualVinVcCreation_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AttestationServiceServer).ManualVinVcCreation(ctx, req.(*ManualVinVcCreationRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // AttestationService_ServiceDesc is the grpc.ServiceDesc for AttestationService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -190,6 +224,10 @@ var AttestationService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "TestVinVcCreation",
 			Handler:    _AttestationService_TestVinVcCreation_Handler,
+		},
+		{
+			MethodName: "ManualVinVcCreation",
+			Handler:    _AttestationService_ManualVinVcCreation_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

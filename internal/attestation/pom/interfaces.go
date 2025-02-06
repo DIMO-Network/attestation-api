@@ -13,7 +13,7 @@ import (
 
 // VCRepo defines the interface for manging VC storage.
 type VCRepo interface {
-	StorePOMVC(ctx context.Context, vehicleDID, producerDID cloudevent.NFTDID, vinvc json.RawMessage) error
+	StorePOMVC(ctx context.Context, vehicleDID, producerDID string, vinvc json.RawMessage) error
 }
 
 // IdentityAPI defines the interface for identity operations.

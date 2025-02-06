@@ -95,7 +95,7 @@ func TestService_CreatePOMVC(t *testing.T) {
 
 				mockConnectivityRepo.EXPECT().GetAutoPiEvents(ctx, &pairedDevice, gomock.Any(), gomock.Any(), gomock.Any()).Return(eventBytes, nil)
 				mockIssuer.EXPECT().CreatePOMVC(gomock.Any()).Return([]byte(`{"vc": "some-vc"}`), nil)
-				mockVCRepo.EXPECT().StorePOMVC(ctx, vehicleInfo.DID, pairedDevice.DID, json.RawMessage(`{"vc": "some-vc"}`)).Return(nil)
+				mockVCRepo.EXPECT().StorePOMVC(ctx, vehicleInfo.DID.String(), pairedDevice.DID.String(), json.RawMessage(`{"vc": "some-vc"}`)).Return(nil)
 			},
 			expectError:       false,
 			expectedVCStored:  true,
@@ -127,7 +127,7 @@ func TestService_CreatePOMVC(t *testing.T) {
 
 				mockConnectivityRepo.EXPECT().GetSyntheticstatusEvents(ctx, vehicleInfo.DID, gomock.Any(), gomock.Any(), gomock.Any()).Return(eventBytes, nil)
 				mockIssuer.EXPECT().CreatePOMVC(gomock.Any()).Return([]byte(`{"vc": "some-vc"}`), nil)
-				mockVCRepo.EXPECT().StorePOMVC(ctx, vehicleInfo.DID, pairedDevice.DID, json.RawMessage(`{"vc": "some-vc"}`)).Return(nil)
+				mockVCRepo.EXPECT().StorePOMVC(ctx, vehicleInfo.DID.String(), pairedDevice.DID.String(), json.RawMessage(`{"vc": "some-vc"}`)).Return(nil)
 			},
 			expectError:       false,
 			expectedVCStored:  true,
@@ -188,7 +188,7 @@ func TestService_CreatePOMVC(t *testing.T) {
 
 				mockConnectivityRepo.EXPECT().GetHashDogEvents(ctx, &pairedDevice, gomock.Any(), gomock.Any(), gomock.Any()).Return(eventBytes, nil)
 				mockIssuer.EXPECT().CreatePOMVC(gomock.Any()).Return([]byte(`{"vc": "some-vc"}`), nil)
-				mockVCRepo.EXPECT().StorePOMVC(ctx, vehicleInfo.DID, pairedDevice.DID, json.RawMessage(`{"vc": "some-vc"}`)).Return(nil)
+				mockVCRepo.EXPECT().StorePOMVC(ctx, vehicleInfo.DID.String(), pairedDevice.DID.String(), json.RawMessage(`{"vc": "some-vc"}`)).Return(nil)
 			},
 			expectError:       false,
 			expectedVCStored:  true,
@@ -221,7 +221,7 @@ func TestService_CreatePOMVC(t *testing.T) {
 
 				mockConnectivityRepo.EXPECT().GetRuptelaStatusEvents(ctx, vehicleInfo.DID, gomock.Any(), gomock.Any(), gomock.Any()).Return(events, nil)
 				mockIssuer.EXPECT().CreatePOMVC(gomock.Any()).Return([]byte(`{"vc": "some-vc"}`), nil)
-				mockVCRepo.EXPECT().StorePOMVC(ctx, vehicleInfo.DID, pairedDevice.DID, json.RawMessage(`{"vc": "some-vc"}`)).Return(nil)
+				mockVCRepo.EXPECT().StorePOMVC(ctx, vehicleInfo.DID.String(), pairedDevice.DID.String(), json.RawMessage(`{"vc": "some-vc"}`)).Return(nil)
 			},
 			expectError: false,
 		},
@@ -274,7 +274,7 @@ func TestService_CreatePOMVC(t *testing.T) {
 
 				mockConnectivityRepo.EXPECT().GetAutoPiEvents(ctx, &autoPiDevice, gomock.Any(), gomock.Any(), gomock.Any()).Return(eventBytes, nil)
 				mockIssuer.EXPECT().CreatePOMVC(gomock.Any()).Return([]byte(`{"vc": "some-vc"}`), nil)
-				mockVCRepo.EXPECT().StorePOMVC(ctx, vehicleInfo.DID, autoPiDevice.DID, json.RawMessage(`{"vc": "some-vc"}`)).Return(nil)
+				mockVCRepo.EXPECT().StorePOMVC(ctx, vehicleInfo.DID.String(), autoPiDevice.DID.String(), json.RawMessage(`{"vc": "some-vc"}`)).Return(nil)
 			},
 			expectError:       false,
 			expectedVCStored:  true,
@@ -313,7 +313,7 @@ func TestService_CreatePOMVC(t *testing.T) {
 				mockConnectivityRepo.EXPECT().GetAutoPiEvents(ctx, &autoPiDevice, gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, nil)
 				mockConnectivityRepo.EXPECT().GetSyntheticstatusEvents(ctx, vehicleInfo.DID, gomock.Any(), gomock.Any(), gomock.Any()).Return(eventBytes, nil)
 				mockIssuer.EXPECT().CreatePOMVC(gomock.Any()).Return([]byte(`{"vc": "some-vc"}`), nil)
-				mockVCRepo.EXPECT().StorePOMVC(ctx, vehicleInfo.DID, statusDevice.DID, json.RawMessage(`{"vc": "some-vc"}`)).Return(nil)
+				mockVCRepo.EXPECT().StorePOMVC(ctx, vehicleInfo.DID.String(), statusDevice.DID.String(), json.RawMessage(`{"vc": "some-vc"}`)).Return(nil)
 			},
 			expectError:       false,
 			expectedVCStored:  true,
@@ -358,7 +358,7 @@ func TestService_CreatePOMVC(t *testing.T) {
 
 				mockConnectivityRepo.EXPECT().GetSyntheticstatusEvents(ctx, vehicleInfo.DID, gomock.Any(), gomock.Any(), gomock.Any()).Return(eventBytes, nil)
 				mockIssuer.EXPECT().CreatePOMVC(gomock.Any()).Return([]byte(`{"vc": "some-vc"}`), nil)
-				mockVCRepo.EXPECT().StorePOMVC(ctx, vehicleInfo.DID, pairedDevice.DID, json.RawMessage(`{"vc": "some-vc"}`)).Return(fmt.Errorf("store error"))
+				mockVCRepo.EXPECT().StorePOMVC(ctx, vehicleInfo.DID.String(), pairedDevice.DID.String(), json.RawMessage(`{"vc": "some-vc"}`)).Return(fmt.Errorf("store error"))
 			},
 			expectError:      true,
 			expectedVCStored: false,

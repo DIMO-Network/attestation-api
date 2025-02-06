@@ -11,6 +11,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 )
 
+// Server implements the AttestationServiceServer interface.
 type Server struct {
 	grpc.UnimplementedAttestationServiceServer
 	ctrl              vinCtrl
@@ -19,6 +20,7 @@ type Server struct {
 	chainID           uint64
 }
 
+// NewServer creates a new instance of the Server.
 func NewServer(ctrl vinCtrl, repo vinRepo, vehicleNFTAddr common.Address, chainID int64) *Server {
 	return &Server{
 		ctrl:              ctrl,
@@ -37,6 +39,7 @@ type vinRepo interface {
 	GetLatestVINVC(ctx context.Context, vehicleNFTDID cloudevent.NFTDID) (*verifiable.Credential, error)
 }
 
+// EnsureVinVc ensures that a VC exists for the given token ID.
 func (s *Server) EnsureVinVc(ctx context.Context, req *grpc.EnsureVinVcRequest) (*grpc.EnsureVinVcResponse, error) {
 	err := s.ctrl.GetOrCreateVC(ctx, req.GetTokenId(), req.GetForce())
 	if err != nil {
@@ -45,6 +48,7 @@ func (s *Server) EnsureVinVc(ctx context.Context, req *grpc.EnsureVinVcRequest) 
 	return &grpc.EnsureVinVcResponse{}, nil
 }
 
+// GetVinVcLatest retrieves the latest VIN VC for the given token ID.
 func (s *Server) GetVinVcLatest(ctx context.Context, req *grpc.GetLatestVinVcRequest) (*grpc.GetLatestVinVcResponse, error) {
 	vehicleDID := cloudevent.NFTDID{
 		ChainID:         s.chainID,
@@ -64,10 +68,24 @@ func (s *Server) GetVinVcLatest(ctx context.Context, req *grpc.GetLatestVinVcReq
 	return &grpc.GetLatestVinVcResponse{RawVc: string(raw)}, nil
 }
 
-func (s Server) TestVinVcCreation(ctx context.Context, req *grpc.TestVinVcCreationRequest) (*grpc.TestVinVcCreationResponse, error) {
-	_, err := s.ctrl.GenerateVINVC(ctx, req.GetTokenId())
+// TestVinVcCreation generates a VIN VC for the given token ID.
+func (s *Server) TestVinVcCreation(ctx context.Context, req *grpc.TestVinVcCreationRequest) (*grpc.TestVinVcCreationResponse, error) {
+	rawVC, err := s.ctrl.GenerateVINVC(ctx, req.GetTokenId())
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate VIN VC: %w", err)
 	}
-	return &grpc.TestVinVcCreationResponse{}, nil
+	return &grpc.TestVinVcCreationResponse{
+		RawVc: string(rawVC),
+	}, nil
+}
+
+// ManualVinVcCreation generates a VIN VC for the given token ID.
+func (s *Server) ManualVinVcCreation(ctx context.Context, req *grpc.ManualVinVcCreationRequest) (*grpc.ManualVinVcCreationResponse, error) {
+	rawVC, err := s.ctrl.GenerateVINVC(ctx, req.GetTokenId())
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate VIN VC: %w", err)
+	}
+	return &grpc.ManualVinVcCreationResponse{
+		RawVc: string(rawVC),
+	}, nil
 }

@@ -46,7 +46,7 @@ func (m *MockVCRepo) EXPECT() *MockVCRepoMockRecorder {
 }
 
 // StorePOMVC mocks base method.
-func (m *MockVCRepo) StorePOMVC(ctx context.Context, vehicleDID, producerDID cloudevent.NFTDID, vinvc json.RawMessage) error {
+func (m *MockVCRepo) StorePOMVC(ctx context.Context, vehicleDID, producerDID string, vinvc json.RawMessage) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "StorePOMVC", ctx, vehicleDID, producerDID, vinvc)
 	ret0, _ := ret[0].(error)

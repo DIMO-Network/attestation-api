@@ -116,7 +116,7 @@ func TestVCController_GetVINVC(t *testing.T) {
 					VehicleContractAddress:      "eth:" + defaultNFTAddress,
 				}
 				mocks.issuer.EXPECT().CreateVINVC(vinSubject, gomock.Any()).Return(testVCPayload, nil)
-				mocks.vcRepo.EXPECT().StoreVINVC(ctxType, vehicleInfo.DID, pariedDevice.DID, testVCPayload).Return(nil)
+				mocks.vcRepo.EXPECT().StoreVINVC(ctxType, vehicleInfo.DID.String(), pariedDevice.DID.String(), testVCPayload).Return(nil)
 			},
 		},
 		{
@@ -233,7 +233,7 @@ func TestVCController_GetVINVC(t *testing.T) {
 					VehicleContractAddress:      "eth:" + defaultNFTAddress,
 				}
 				mocks.issuer.EXPECT().CreateVINVC(vinSubject, gomock.Any()).Return(testVCPayload, nil)
-				mocks.vcRepo.EXPECT().StoreVINVC(ctxType, vehicleInfo.DID, device2.DID, testVCPayload).Return(nil)
+				mocks.vcRepo.EXPECT().StoreVINVC(ctxType, vehicleInfo.DID.String(), device2.DID.String(), testVCPayload).Return(nil)
 			},
 		},
 		{
@@ -426,7 +426,7 @@ func TestVCController_GetVINVC(t *testing.T) {
 					VehicleContractAddress:      "eth:" + defaultNFTAddress,
 				}
 				mocks.issuer.EXPECT().CreateVINVC(vinSubject, gomock.Any()).Return(testVCPayload, nil)
-				mocks.vcRepo.EXPECT().StoreVINVC(ctxType, vehicleInfo.DID, pariedDevice.DID, testVCPayload).Return(nil)
+				mocks.vcRepo.EXPECT().StoreVINVC(ctxType, vehicleInfo.DID.String(), pariedDevice.DID.String(), testVCPayload).Return(nil)
 			},
 		},
 	}

@@ -8,6 +8,7 @@ service AttestationService {
   rpc EnsureVinVc(EnsureVinVcRequest) returns (EnsureVinVcResponse);
   rpc GetVinVcLatest(GetLatestVinVcRequest) returns (GetLatestVinVcResponse);
   rpc TestVinVcCreation(TestVinVcCreationRequest) returns (TestVinVcCreationResponse);
+  rpc ManualVinVcCreation(ManualVinVcCreationRequest) returns (ManualVinVcCreationResponse);
 }
 
 message EnsureVinVcRequest {
@@ -29,4 +30,14 @@ message TestVinVcCreationRequest {
   uint32 token_id = 1;
 }
 
-message TestVinVcCreationResponse {}
+message TestVinVcCreationResponse {
+  string raw_vc = 1;
+}
+
+message ManualVinVcCreationRequest {
+  uint32 token_id = 1;
+}
+
+message ManualVinVcCreationResponse {
+  string raw_vc = 1;
+}
