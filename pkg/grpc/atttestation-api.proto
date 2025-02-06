@@ -30,7 +30,9 @@ message TestVinVcCreationRequest {
   uint32 token_id = 1;
 }
 
-message TestVinVcCreationResponse {}
+message TestVinVcCreationResponse {
+  string raw_vc = 1;
+}
 
 message ManualVinVcCreationRequest {
   uint32 token_id = 1;
