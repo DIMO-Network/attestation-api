@@ -100,6 +100,19 @@ func (r *ConnectivityRepo) GetRuptelaStatusEvents(ctx context.Context, vehicleDI
 	return records, nil
 }
 
+// GetRuptelaStatusEvents returns the status events for a vehicle.
+func (r *ConnectivityRepo) GetCompassStatusEvents(ctx context.Context, vehicleDID cloudevent.NFTDID, after, before time.Time, limit int) ([]cloudevent.CloudEvent[json.RawMessage], error) {
+	records, err := r.getEvents(ctx, sources.CompassSource, vehicleDID, after, before, limit)
+	if errors.Is(err, sql.ErrNoRows) {
+		subject := repos.TokenIDToString(vehicleDID.TokenID)
+		return r.getLegacyEvents(ctx, r.statusBucketName, r.statusDataType, subject, after, before, limit)
+	}
+	if err != nil {
+		return nil, err
+	}
+	return records, nil
+}
+
 func (r *ConnectivityRepo) getEvents(ctx context.Context, source common.Address, subject cloudevent.NFTDID, after, before time.Time, limit int) ([]cloudevent.CloudEvent[json.RawMessage], error) {
 	opts := &indexrepo.SearchOptions{
 		Subject: ref(subject.String()),

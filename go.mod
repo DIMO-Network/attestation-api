@@ -6,7 +6,7 @@ require (
 	github.com/ClickHouse/clickhouse-go/v2 v2.30.3
 	github.com/DIMO-Network/clickhouse-infra v0.0.3
 	github.com/DIMO-Network/device-definitions-api v1.2.87
-	github.com/DIMO-Network/model-garage v0.4.7
+	github.com/DIMO-Network/model-garage v0.4.8
 	github.com/DIMO-Network/nameindexer v0.1.2
 	github.com/DIMO-Network/shared v0.12.9
 	github.com/aws/aws-sdk-go-v2 v1.36.0

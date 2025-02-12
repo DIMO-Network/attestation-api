@@ -16,6 +16,7 @@ import (
 	"github.com/DIMO-Network/attestation-api/internal/models"
 	"github.com/DIMO-Network/attestation-api/internal/sources"
 	"github.com/DIMO-Network/model-garage/pkg/cloudevent"
+	compass "github.com/DIMO-Network/model-garage/pkg/compass/fingerprint"
 	"github.com/DIMO-Network/model-garage/pkg/ruptela/fingerprint"
 	teslafp "github.com/DIMO-Network/model-garage/pkg/tesla/fingerprint"
 	"github.com/DIMO-Network/nameindexer/pkg/clickhouse/indexrepo"
@@ -106,7 +107,7 @@ func (s *Service) decodeFingerprintMessage(msg cloudevent.CloudEvent[json.RawMes
 	var vin string
 	var err error
 	switch {
-	case msg.Source == sources.SyntheticOldSource || msg.Source == sources.AutiPiOldSource || sources.AddrEqualString(sources.AutoPiSource, msg.Source):
+	case msg.Source == sources.SyntheticOldSource || msg.Source == sources.AutoPiOldSource || sources.AddrEqualString(sources.AutoPiSource, msg.Source):
 		vin, err = decodeVINFromData(msg.Data)
 		if err != nil {
 			return nil, err
@@ -135,6 +136,12 @@ func (s *Service) decodeFingerprintMessage(msg cloudevent.CloudEvent[json.RawMes
 		vin = fpEvent.Data.VIN
 	case sources.AddrEqualString(sources.TeslaSource, msg.Source):
 		fpEvent, err := teslafp.DecodeFingerprintFromData(msg.Data)
+		if err != nil {
+			return nil, fmt.Errorf("failed to decode fingerprint: %w", err)
+		}
+		vin = fpEvent.VIN
+	case sources.AddrEqualString(sources.CompassSource, msg.Source):
+		fpEvent, err := compass.DecodeFingerprintFromData(msg.Data)
 		if err != nil {
 			return nil, fmt.Errorf("failed to decode fingerprint: %w", err)
 		}
