@@ -137,6 +137,21 @@ func (mr *MockConnectivityRepoMockRecorder) GetAutoPiEvents(ctx, pairedDevice, a
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAutoPiEvents", reflect.TypeOf((*MockConnectivityRepo)(nil).GetAutoPiEvents), ctx, pairedDevice, after, before, limit)
 }
 
+// GetCompassStatusEvents mocks base method.
+func (m *MockConnectivityRepo) GetCompassStatusEvents(ctx context.Context, vehicleDID cloudevent.NFTDID, after, before time.Time, limit int) ([]cloudevent.CloudEvent[json.RawMessage], error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetCompassStatusEvents", ctx, vehicleDID, after, before, limit)
+	ret0, _ := ret[0].([]cloudevent.CloudEvent[json.RawMessage])
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetCompassStatusEvents indicates an expected call of GetCompassStatusEvents.
+func (mr *MockConnectivityRepoMockRecorder) GetCompassStatusEvents(ctx, vehicleDID, after, before, limit any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetCompassStatusEvents", reflect.TypeOf((*MockConnectivityRepo)(nil).GetCompassStatusEvents), ctx, vehicleDID, after, before, limit)
+}
+
 // GetHashDogEvents mocks base method.
 func (m *MockConnectivityRepo) GetHashDogEvents(ctx context.Context, pairedDevice *models.PairedDevice, after, before time.Time, limit int) ([]cloudevent.CloudEvent[json.RawMessage], error) {
 	m.ctrl.T.Helper()
