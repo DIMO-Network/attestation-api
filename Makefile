@@ -19,8 +19,6 @@ VER_CUT   := $(shell echo $(VERSION) | cut -c2-)
 
 # Dependency versions
 GOLANGCI_VERSION   = latest
-SWAGGO_VERSION     = $(shell go list -m -f '{{.Version}}' github.com/swaggo/swag)
-MOCKGEN_VERSION    = $(shell go list -m -f '{{.Version}}' go.uber.org/mock)
 PROTOC_VERSION             = 28.3
 PROTOC_GEN_GO_VERSION      = $(shell go list -m -f '{{.Version}}' google.golang.org/protobuf)
 PROTOC_GEN_GO_GRPC_VERSION = v1.5.1
@@ -63,14 +61,6 @@ tools-golangci-lint: ## install golangci-lint
 	@mkdir -p $(PATHINSTBIN)
 	curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | BINARY=golangci-lint bash -s -- ${GOLANGCI_VERSION}
 
-tools-swagger: ## install swagger tool
-	@mkdir -p $(PATHINSTBIN)
-	GOBIN=$(PATHINSTBIN) go install github.com/swaggo/swag/cmd/swag@$(SWAGGO_VERSION)
-
-tools-mockgen: ## install mockgen tool
-	@mkdir -p $(PATHINSTBIN)
-	GOBIN=$(PATHINSTBIN) go install go.uber.org/mock/mockgen@$(MOCKGEN_VERSION)
-
 tools-protoc:
 	@mkdir -p $(PATHINSTBIN)
 	rm -rf $(PATHINSTBIN)/protoc
@@ -99,13 +89,13 @@ tools-protoc-gen-go-grpc:
 	@chmod +x $(PATHINSTBIN)/protoc-gen-go-grpc
 
 
-make tools: tools-golangci-lint tools-swagger tools-mockgen tools-protoc tools-protoc-gen-go tools-protoc-gen-go-grpc## install all tools
+make tools: tools-golangci-lint tools-protoc tools-protoc-gen-go tools-protoc-gen-go-grpc## install all tools
 
 generate: generate-swagger generate-go generate-grpc ## run all file generation for the project
 
 generate-swagger: ## generate swagger documentation
-	@swag -version
-	swag init -g cmd/attestation-api/main.go --parseDependency --parseInternal
+	@go tool swag -version
+	go tool swag init -g cmd/attestation-api/main.go --parseDependency --parseInternal
 
 generate-go:## run go generate
 	@go generate ./...

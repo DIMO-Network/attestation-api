@@ -1,4 +1,4 @@
-//go:generate mockgen -source=interfaces.go -destination=interfaces_mock_test.go -package=pom_test
+//go:generate go tool mockgen -source=interfaces.go -destination=interfaces_mock_test.go -package=pom_test
 package pom
 
 import (
