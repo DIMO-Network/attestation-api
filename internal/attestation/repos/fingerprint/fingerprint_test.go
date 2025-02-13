@@ -106,6 +106,21 @@ func TestDecodeFingerprintMessage(t *testing.T) {
 			},
 		},
 		{
+			name: "Valid VIN from Compass",
+			data: []byte(compassStatusPayload),
+			expectedData: models.DecodedFingerprintData{
+				CloudEventHeader: cloudevent.CloudEventHeader{
+					SpecVersion: "1.0",
+					Subject:     "did:nft:80003:0x45fbCD3ef7361d156e8b16F5538AE36DEdf61Da8_15",
+					ID:          "2pcYwspbaBFJ7NPGZ2kivkuJ12a",
+					Producer:    "did:nft:80003:0x78513c8CB4D6B6079f813850376bc9c7fc8aE67f_12",
+					Source:      sources.CompassSource.String(),
+					Type:        cloudevent.TypeFingerprint,
+				},
+				VIN: "1C4SJSBP8RS133747",
+			},
+		},
+		{
 			name:        "Missing VIN in Data and Data64",
 			data:        []byte(`{"time":"2024-05-30T15:04:05Z","data":{"vin":""},"data64":""}`),
 			expectError: true,
@@ -231,4 +246,32 @@ var teslaStatusPayload = `{
 			"hide_private": false
 		}
 	}
+}`
+
+var compassStatusPayload = `{
+  "id": "2pcYwspbaBFJ7NPGZ2kivkuJ12a",
+  "source": "0x55BF1c27d468314Ea119CF74979E2b59F962295c",
+  "producer": "did:nft:80003:0x78513c8CB4D6B6079f813850376bc9c7fc8aE67f_12",
+  "specversion": "1.0",
+  "subject": "did:nft:80003:0x45fbCD3ef7361d156e8b16F5538AE36DEdf61Da8_15",
+  "type": "dimo.fingerprint",
+  "data": {
+    "id": "S76960rsT8SYlrvlTfMWoQ==",
+    "vehicle_id": "1C4SJSBP8RS133747",
+    "timestamp": {
+      "seconds": 1737988799
+    },
+    "transport_type": 0,
+    "vehicle_type": 0,
+    "position": {
+      "latlng": {
+        "lat": 34.821937,
+        "lng": -82.291492
+      }
+    },
+    "ingested_at": {
+      "seconds": 1737988847,
+      "nanos": 326690000
+    }
+  }
 }`

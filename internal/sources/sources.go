@@ -9,7 +9,8 @@ var (
 	SmartCarSource     = common.HexToAddress("0xcd445F4c6bDAD32b68a2939b912150Fe3C88803E")
 	TeslaSource        = common.HexToAddress("0xc4035Fecb1cc906130423EF05f9C20977F643722")
 	DINCSource         = common.HexToAddress("0x4F098Ea7cAd393365b4d251Dd109e791e6190239")
-	AutiPiOldSource    = "aftermarket/device/fingerprint"
+	CompassSource      = common.HexToAddress("0x55BF1c27d468314Ea119CF74979E2b59F962295c")
+	AutoPiOldSource    = "aftermarket/device/fingerprint"
 	MacaronOldFpSource = "macaron/fingerprint"
 	SyntheticOldSource = "synthetic/device/fingerprint"
 )
