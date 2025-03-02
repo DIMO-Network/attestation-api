@@ -76,6 +76,8 @@ github.com/DIMO-Network/device-definitions-api v1.2.87 h1:IpxqY9hmq050YQ+dMFjJTN
 github.com/DIMO-Network/device-definitions-api v1.2.87/go.mod h1:Oqj8QiNc4ylACXv710PCmL//e9x2JYE7vl0j6Jt2Pco=
 github.com/DIMO-Network/model-garage v0.4.8 h1:JR2iffNUloLGKaM5OyDv1MDuAEtK8aw5JDtox/QB7TI=
 github.com/DIMO-Network/model-garage v0.4.8/go.mod h1:XeYu3L7tBiKQ10e8RVnIR3wJanxYGgH/9Mnv0ViNows=
+github.com/DIMO-Network/model-garage v0.4.14 h1:pXkjITgDlHjiBxwYqjUphFrs4NY3Iaf7A3DfFNzTiTo=
+github.com/DIMO-Network/model-garage v0.4.14/go.mod h1:N4Tm1X7fU2IewHDfLhmx5aQqOnbxrC4LuhPBZccc25s=
 github.com/DIMO-Network/nameindexer v0.1.2 h1:xar3D+fe7RFy887BVWh+B1qhUo/K6tIzK3Ld1NTuRgo=
 github.com/DIMO-Network/nameindexer v0.1.2/go.mod h1:BmonIrd69A4Whe+7WHiyTP6RJf3KQiooOLBISqkeyII=
 github.com/DIMO-Network/shared v0.12.9 h1:I41R/d84WedhQERdT7Iu7Bq8OnmLLQormfQb9g+vl1M=
@@ -206,6 +208,7 @@ github.com/davecgh/go-spew v0.0.0-20171005155431-ecdeabc65495/go.mod h1:J7Y8YcW2
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
+github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/decred/dcrd/crypto/blake256 v1.0.0/go.mod h1:sQl2p6Y26YV+ZOcSTP6thNdn47hh8kt6rqSlvmrXFAc=
 github.com/decred/dcrd/crypto/blake256 v1.0.1 h1:7PltbUIQB7u/FfZ39+DGa/ShuMyJ5ilcvdfma9wOH6Y=
 github.com/decred/dcrd/crypto/blake256 v1.0.1/go.mod h1:2OfgNZ5wDpcsFmHmCK5gZTPcCXqlm2ArzUIkw9czNJo=
