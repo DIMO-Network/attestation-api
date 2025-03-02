@@ -42,11 +42,11 @@ func (r *Repo) GetLatestVINVC(ctx context.Context, vehicleDID cloudevent.NFTDID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get vc: %w", err)
 	}
-	msg := cloudevent.CloudEvent[verifiable.Credential]{}
-	if err := json.Unmarshal(dataObj.Data, &msg); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal fingerprint message: %w", err)
+	var vinVC verifiable.Credential
+	if err := json.Unmarshal(dataObj.Data, &vinVC); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal verifiable credential message: %w", err)
 	}
-	return &msg.Data, nil
+	return &vinVC, nil
 }
 
 // StoreVINVC stores a new VC in S3.
