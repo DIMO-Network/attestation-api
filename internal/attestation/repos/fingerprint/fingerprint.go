@@ -135,7 +135,7 @@ func (s *Service) decodeFingerprintMessage(msg cloudevent.CloudEvent[json.RawMes
 		}
 		vin = fpEvent.Data.VIN
 	case sources.AddrEqualString(sources.TeslaSource, msg.Source):
-		fpEvent, err := teslafp.DecodeFingerprintFromData(msg.Data)
+		fpEvent, err := teslafp.DecodeFingerprintFromData(msg)
 		if err != nil {
 			return nil, fmt.Errorf("failed to decode fingerprint: %w", err)
 		}
