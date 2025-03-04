@@ -16,7 +16,9 @@ message EnsureVinVcRequest {
   bool force = 2;
 }
 
-message EnsureVinVcResponse { }
+message EnsureVinVcResponse { 
+  string raw_vc = 1;
+}
 
 message GetLatestVinVcRequest {
   uint32 token_id = 1;

@@ -41,7 +41,7 @@ type HTTPController struct {
 
 // VINVCService defines the interface for VIN VC operations.
 type VINVCService interface {
-	GetOrCreateVC(ctx context.Context, tokenID uint32, force bool) error
+	GetOrCreateVC(ctx context.Context, tokenID uint32, force bool) (json.RawMessage, error)
 	GenerateStatusVC(tokenID uint32) (json.RawMessage, error)
 	GenerateKeyControlDocument() (json.RawMessage, error)
 	GenerateJSONLDDocument() (json.RawMessage, error)
@@ -108,7 +108,7 @@ func (v *HTTPController) GetVINVC(fiberCtx *fiber.Ctx) error {
 	force := fiberCtx.Query("force") == "true"
 
 	tokenID := uint32(tokenID64)
-	err = v.vinService.GetOrCreateVC(ctx, tokenID, force)
+	_, err = v.vinService.GetOrCreateVC(ctx, tokenID, force)
 	if err != nil {
 		return fmt.Errorf("failed to get or create VC: %w", err)
 	}
