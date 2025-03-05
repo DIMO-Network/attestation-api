@@ -31,7 +31,7 @@ func NewServer(ctrl vinCtrl, repo vinRepo, vehicleNFTAddr common.Address, chainI
 }
 
 type vinCtrl interface {
-	GetOrCreateVC(ctx context.Context, tokenID uint32, force bool) error
+	GetOrCreateVC(ctx context.Context, tokenID uint32, force bool) (json.RawMessage, error)
 	GenerateVINVC(ctx context.Context, tokenID uint32) (json.RawMessage, error)
 	GenerateManualVC(ctx context.Context, tokenID uint32, vin string, countryCode string) (json.RawMessage, error)
 }
@@ -42,11 +42,13 @@ type vinRepo interface {
 
 // EnsureVinVc ensures that a VC exists for the given token ID.
 func (s *Server) EnsureVinVc(ctx context.Context, req *grpc.EnsureVinVcRequest) (*grpc.EnsureVinVcResponse, error) {
-	err := s.ctrl.GetOrCreateVC(ctx, req.GetTokenId(), req.GetForce())
+	rawVC, err := s.ctrl.GetOrCreateVC(ctx, req.GetTokenId(), req.GetForce())
 	if err != nil {
 		return nil, err
 	}
-	return &grpc.EnsureVinVcResponse{}, nil
+	return &grpc.EnsureVinVcResponse{
+		RawVc: string(rawVC),
+	}, nil
 }
 
 // GetVinVcLatest retrieves the latest VIN VC for the given token ID.

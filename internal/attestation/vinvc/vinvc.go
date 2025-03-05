@@ -66,31 +66,48 @@ func NewService(
 
 // GetOrCreateVC retrieves or generates a VC for the given token ID.
 // if force is true, a new VC is generated regardless of the existing VC.
-func (v *Service) GetOrCreateVC(ctx context.Context, tokenID uint32, force bool) error {
+func (v *Service) GetOrCreateVC(ctx context.Context, tokenID uint32, force bool) (json.RawMessage, error) {
 	logger := v.logger.With().Uint32("vehicleTokenId", tokenID).Logger()
 
-	if !force && v.hasValidVC(ctx, tokenID) {
-		logger.Debug().Msg("Valid VC already exists skipping generation")
-		return nil
+	if !force {
+		// check if a valid VC already exists and return it instead of generating a new one
+		rawVC, err := v.getValidVC(ctx, tokenID)
+		if err == nil {
+			logger.Debug().Msg("Valid VC already exists skipping generation")
+			return rawVC, nil
+		}
 	}
+
 	return v.GenerateVINVCAndStore(ctx, tokenID)
 }
 
-// hasValidVC checks if a valid VC exists for the given token ID.
-func (v *Service) hasValidVC(ctx context.Context, tokenID uint32) bool {
+// getValidVC checks if an unexpired VC exists for the given token ID.
+func (v *Service) getValidVC(ctx context.Context, tokenID uint32) (json.RawMessage, error) {
 	vehicleDID := cloudevent.NFTDID{
 		ChainID:         v.chainID,
 		ContractAddress: common.HexToAddress(v.vehicleNFTAddress),
 		TokenID:         tokenID,
 	}
 	prevVC, err := v.vcRepo.GetLatestVINVC(ctx, vehicleDID)
-	if err == nil {
-		expireDate, err := time.Parse(time.RFC3339, prevVC.ValidFrom)
-		if err == nil && time.Now().Before(expireDate) {
-			return true
-		}
+	if err != nil {
+		return nil, ctrlerrors.Error{InternalError: err, ExternalMsg: "Failed to get VC"}
 	}
-	return false
+	rawVC, err := json.Marshal(prevVC)
+	if err != nil {
+		return nil, ctrlerrors.Error{InternalError: err, ExternalMsg: "Failed to marshal VC"}
+	}
+	if vcIsExpired(prevVC) {
+		return nil, ctrlerrors.Error{ExternalMsg: "VC is expired"}
+	}
+	return rawVC, nil
+}
+
+func vcIsExpired(vc *verifiable.Credential) bool {
+	expireDate, err := time.Parse(time.RFC3339, vc.ValidFrom)
+	if err != nil {
+		return true
+	}
+	return time.Now().After(expireDate)
 }
 
 // GenerateVINVC generates a new VIN VC and returns it.
@@ -103,20 +120,20 @@ func (v *Service) GenerateVINVC(ctx context.Context, tokenID uint32) (json.RawMe
 }
 
 // GenerateVINVCAndStore generates a new VIN VC and stores it in Object Storage.
-func (v *Service) GenerateVINVCAndStore(ctx context.Context, tokenID uint32) error {
+func (v *Service) GenerateVINVCAndStore(ctx context.Context, tokenID uint32) (json.RawMessage, error) {
 	vehicleDID, producer, rawVC, err := v.generateVINVC(ctx, tokenID)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	producerDID, err := cloudevent.DecodeNFTDID(producer)
 	if err != nil {
-		return ctrlerrors.Error{InternalError: err, ExternalMsg: "Failed to decode producer DID"}
+		return nil, ctrlerrors.Error{InternalError: err, ExternalMsg: "Failed to decode producer DID"}
 	}
 	err = v.vcRepo.StoreVINVC(ctx, vehicleDID.String(), producerDID.String(), rawVC)
 	if err != nil {
-		return ctrlerrors.Error{InternalError: err, ExternalMsg: "Failed to store VC"}
+		return nil, ctrlerrors.Error{InternalError: err, ExternalMsg: "Failed to store VC"}
 	}
-	return nil
+	return rawVC, nil
 }
 
 func (v *Service) generateVINVC(ctx context.Context, tokenID uint32) (cloudevent.NFTDID, string, json.RawMessage, error) {

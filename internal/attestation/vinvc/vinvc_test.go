@@ -455,7 +455,7 @@ func TestVCController_GetVINVC(t *testing.T) {
 				polygonChainID,
 			)
 
-			err := vcController.GetOrCreateVC(context.Background(), tt.tokenID, false)
+			_, err := vcController.GetOrCreateVC(context.Background(), tt.tokenID, false)
 			if tt.expectedErrror {
 				require.Error(t, err)
 				return
