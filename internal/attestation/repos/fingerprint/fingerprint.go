@@ -124,6 +124,12 @@ func (s *Service) decodeFingerprintMessage(msg cloudevent.CloudEvent[json.RawMes
 		if err != nil {
 			return nil, err
 		}
+	case sources.AddrEqualString(sources.HashDogSource, msg.Source):
+		vin, err = tmpDecodeHashdogFP(msg)
+		if err != nil {
+			return nil, fmt.Errorf("failed to decode hashdog fingerprint: %w", err)
+		}
+
 	case sources.AddrEqualString(sources.RuptelaSource, msg.Source):
 		fullMsgData, err := json.Marshal(msg)
 		if err != nil {
@@ -205,6 +211,25 @@ func decodeVINFromBase64(data string) (string, error) {
 		return "", fmt.Errorf("failed to read binary data: %w", err)
 	}
 	return string(macData.VIN[:]), nil
+}
+
+type HashdogFingerprint struct {
+	DecodedPayload HashDogPayload `json:"decodedPayload"`
+}
+
+type HashDogPayload struct {
+	VIN string `json:"vin"`
+}
+
+// tmpDecodeMacaronFP decodes a hashdog fingerprint message.
+// TODO (kevin): I am going to move this to model-garage in the next couple of days just need to unblock VIN VC first
+func tmpDecodeHashdogFP(event cloudevent.CloudEvent[json.RawMessage]) (string, error) {
+	var fpData HashdogFingerprint
+	err := json.Unmarshal(event.Data, &fpData)
+	if err != nil {
+		return "", fmt.Errorf("failed to unmarshal hashdog fingerprint data: %w", err)
+	}
+	return fpData.DecodedPayload.VIN, nil
 }
 
 func ref[T any](v T) *T {
