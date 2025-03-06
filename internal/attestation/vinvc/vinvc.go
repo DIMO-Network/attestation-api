@@ -66,12 +66,12 @@ func NewService(
 
 // GetOrCreateVC retrieves or generates a VC for the given token ID.
 // if force is true, a new VC is generated regardless of the existing VC.
-func (v *Service) GetOrCreateVC(ctx context.Context, tokenID uint32, force bool) (json.RawMessage, error) {
+func (v *Service) GetOrCreateVC(ctx context.Context, tokenID uint32, before time.Time, force bool) (json.RawMessage, error) {
 	logger := v.logger.With().Uint32("vehicleTokenId", tokenID).Logger()
 
 	if !force {
 		// check if a valid VC already exists and return it instead of generating a new one
-		rawVC, err := v.getValidVC(ctx, tokenID)
+		rawVC, err := v.getValidVC(ctx, tokenID, before)
 		if err == nil {
 			logger.Debug().Msg("Valid VC already exists skipping generation")
 			return rawVC, nil
@@ -82,7 +82,7 @@ func (v *Service) GetOrCreateVC(ctx context.Context, tokenID uint32, force bool)
 }
 
 // getValidVC checks if an unexpired VC exists for the given token ID.
-func (v *Service) getValidVC(ctx context.Context, tokenID uint32) (json.RawMessage, error) {
+func (v *Service) getValidVC(ctx context.Context, tokenID uint32, before time.Time) (json.RawMessage, error) {
 	vehicleDID := cloudevent.NFTDID{
 		ChainID:         v.chainID,
 		ContractAddress: common.HexToAddress(v.vehicleNFTAddress),
@@ -92,13 +92,24 @@ func (v *Service) getValidVC(ctx context.Context, tokenID uint32) (json.RawMessa
 	if err != nil {
 		return nil, ctrlerrors.Error{InternalError: err, ExternalMsg: "Failed to get VC"}
 	}
+	if vcIsExpired(prevVC) {
+		return nil, ctrlerrors.Error{ExternalMsg: "VC is expired"}
+	}
+	var vinSubject verifiable.VINSubject
+	err = json.Unmarshal(prevVC.CredentialSubject, &vinSubject)
+	if err != nil {
+		return nil, ctrlerrors.Error{InternalError: err, ExternalMsg: "Failed to unmarshal VIN VC Subject"}
+	}
+
+	if !before.IsZero() && vinSubject.RecordedAt.After(before) {
+		return nil, ctrlerrors.Error{ExternalMsg: "VC is too new"}
+	}
+
 	rawVC, err := json.Marshal(prevVC)
 	if err != nil {
 		return nil, ctrlerrors.Error{InternalError: err, ExternalMsg: "Failed to marshal VC"}
 	}
-	if vcIsExpired(prevVC) {
-		return nil, ctrlerrors.Error{ExternalMsg: "VC is expired"}
-	}
+
 	return rawVC, nil
 }
 

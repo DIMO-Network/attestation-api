@@ -2,6 +2,8 @@ syntax = "proto3";
 
 option go_package = "github.com/DIMO-Network/attestation-api/pkg/grpc";
 
+import "google/protobuf/timestamp.proto";
+
 package grpc;
 
 service AttestationService {
@@ -12,8 +14,12 @@ service AttestationService {
 }
 
 message EnsureVinVcRequest {
+  // The token Id of the VC to ensure.
   uint32 token_id = 1;
+  // If true, the VC will be created even if it already exists.
   bool force = 2;
+  // The recorded at time of the VIN VC must be before this time.
+  google.protobuf.Timestamp before = 3;
 }
 
 message EnsureVinVcResponse { 
