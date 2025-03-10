@@ -6,7 +6,7 @@ require (
 	github.com/ClickHouse/clickhouse-go/v2 v2.30.3
 	github.com/DIMO-Network/clickhouse-infra v0.0.3
 	github.com/DIMO-Network/device-definitions-api v1.2.87
-	github.com/DIMO-Network/model-garage v0.4.14
+	github.com/DIMO-Network/model-garage v0.5.0
 	github.com/DIMO-Network/nameindexer v0.1.2
 	github.com/DIMO-Network/shared v0.12.9
 	github.com/aws/aws-sdk-go-v2 v1.36.0
@@ -33,11 +33,12 @@ require (
 	go.uber.org/mock v0.5.0
 	golang.org/x/sync v0.11.0
 	google.golang.org/grpc v1.70.0
-	google.golang.org/protobuf v1.36.4
+	google.golang.org/protobuf v1.36.5
 )
 
 require (
 	github.com/ClickHouse/ch-go v0.64.1 // indirect
+	github.com/DIMO-Network/tesla-vss v0.1.1 // indirect
 	github.com/DIMO-Network/yaml v0.1.0 // indirect
 	github.com/KyleBanks/depth v1.2.1 // indirect
 	github.com/MicahParks/keyfunc/v2 v2.1.0 // indirect
@@ -88,7 +89,7 @@ require (
 	github.com/shopspring/decimal v1.4.0 // indirect
 	github.com/spf13/cast v1.7.0 // indirect
 	github.com/swaggo/files/v2 v2.0.2 // indirect
-	github.com/teslamotors/fleet-telemetry v0.6.0 // indirect
+	github.com/teslamotors/fleet-telemetry v0.7.2 // indirect
 	github.com/tidwall/gjson v1.18.0 // indirect
 	github.com/tidwall/match v1.1.1 // indirect
 	github.com/tidwall/pretty v1.2.1 // indirect
@@ -108,7 +109,7 @@ require (
 	golang.org/x/mod v0.22.0 // indirect
 	golang.org/x/net v0.34.0 // indirect
 	golang.org/x/sys v0.29.0 // indirect
-	golang.org/x/text v0.21.0 // indirect
+	golang.org/x/text v0.22.0 // indirect
 	golang.org/x/time v0.5.0 // indirect
 	golang.org/x/tools v0.29.0 // indirect
 	golang.org/x/xerrors v0.0.0-20240716161551-93cc26a95ae9 // indirect
