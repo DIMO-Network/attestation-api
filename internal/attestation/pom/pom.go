@@ -16,9 +16,9 @@ import (
 	"github.com/DIMO-Network/attestation-api/pkg/verifiable"
 	"github.com/DIMO-Network/model-garage/pkg/cloudevent"
 	"github.com/DIMO-Network/model-garage/pkg/convert"
-	"github.com/DIMO-Network/model-garage/pkg/lorawan"
+	"github.com/DIMO-Network/model-garage/pkg/hashdog"
 	"github.com/DIMO-Network/model-garage/pkg/nativestatus"
-	"github.com/DIMO-Network/model-garage/pkg/ruptela/status"
+	"github.com/DIMO-Network/model-garage/pkg/ruptela"
 	"github.com/DIMO-Network/model-garage/pkg/twilio"
 	"github.com/DIMO-Network/model-garage/pkg/vss"
 	"github.com/DIMO-Network/shared/set"
@@ -257,12 +257,12 @@ func compareLocations(firstEvent, curEvent cloudevent.CloudEvent[any]) []verifia
 				},
 			}
 		}
-	case lorawan.Data:
+	case hashdog.Data:
 		if firstEvent.CloudEventHeader.Equals(curEvent.CloudEventHeader) {
 			// gatway differences must be from different events
 			return nil
 		}
-		firstGatewayID := getFirstGWMeta(firstEvent.Data.(lorawan.Data).Via).GatewayID
+		firstGatewayID := getFirstGWMeta(firstEvent.Data.(hashdog.Data).Via).GatewayID
 		for _, via := range currData.Via {
 			if via.Metadata.GatewayID != "" && firstGatewayID != via.Metadata.GatewayID {
 				return []verifiable.Location{
@@ -320,12 +320,12 @@ func parseAutoPiEvent(event cloudevent.CloudEvent[json.RawMessage]) (cloudevent.
 	return cloudevent.CloudEvent[any]{CloudEventHeader: event.CloudEventHeader, Data: eventData}, nil
 }
 
-// parseMacaronEvent parses lorawan events and returns data for events with gateway data.
+// parseMacaronEvent parses hashdog events and returns data for events with gateway data.
 func parseMacaronEvent(event cloudevent.CloudEvent[json.RawMessage]) (cloudevent.CloudEvent[any], error) {
-	var eventData lorawan.Data
+	var eventData hashdog.Data
 	err := json.Unmarshal(event.Data, &eventData)
 	if err != nil {
-		return cloudevent.CloudEvent[any]{}, fmt.Errorf("failed to unmarshal lorawan event: %w", err)
+		return cloudevent.CloudEvent[any]{}, fmt.Errorf("failed to unmarshal hashdog event: %w", err)
 	}
 
 	// only return events with gateway data
@@ -359,11 +359,7 @@ func parseSyntheticEvent(event cloudevent.CloudEvent[json.RawMessage]) (cloudeve
 }
 
 func parseRuptelaEvent(event cloudevent.CloudEvent[json.RawMessage]) (cloudevent.CloudEvent[any], error) {
-	data, err := json.Marshal(event)
-	if err != nil {
-		return cloudevent.CloudEvent[any]{}, fmt.Errorf("failed to marshal event data: %w", err)
-	}
-	signals, err := status.DecodeStatusSignals(data)
+	signals, err := ruptela.DecodeStatusSignals(event)
 	if err != nil {
 		convErr := convert.ConversionError{}
 		if !errors.As(err, &convErr) || len(convErr.DecodedSignals) == 0 {
@@ -379,13 +375,13 @@ func parseRuptelaEvent(event cloudevent.CloudEvent[json.RawMessage]) (cloudevent
 }
 
 // getFirstGWMeta retrieves the first gateway metadata from a list of Via events.
-func getFirstGWMeta(vias []lorawan.Via) lorawan.GWMetadata {
+func getFirstGWMeta(vias []hashdog.Via) hashdog.GWMetadata {
 	for _, via := range vias {
 		if via.Metadata.GatewayID != "" {
 			return via.Metadata
 		}
 	}
-	return lorawan.GWMetadata{}
+	return hashdog.GWMetadata{}
 }
 
 func getH3Cells(signals []vss.Signal) ([]h3.Cell, bool) {

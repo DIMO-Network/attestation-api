@@ -10,8 +10,8 @@ import (
 	"time"
 
 	"github.com/DIMO-Network/attestation-api/internal/models"
-	"github.com/DIMO-Network/attestation-api/internal/sources"
 	"github.com/DIMO-Network/model-garage/pkg/cloudevent"
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/stretchr/testify/require"
 )
 
@@ -99,7 +99,7 @@ func TestDecodeFingerprintMessage(t *testing.T) {
 					Subject:     "did:nft:80003:0x45fbCD3ef7361d156e8b16F5538AE36DEdf61Da8_15",
 					ID:          "2pcYwspbaBFJ7NPGZ2kivkuJ12a",
 					Producer:    "did:nft:80003:0x78513c8CB4D6B6079f813850376bc9c7fc8aE67f_12",
-					Source:      sources.TeslaSource.String(),
+					Source:      common.HexToAddress("0xc4035Fecb1cc906130423EF05f9C20977F643722").String(), // tesla sources
 					Type:        cloudevent.TypeFingerprint,
 				},
 				VIN: "VF33E1EB4K55F700D",
@@ -114,7 +114,7 @@ func TestDecodeFingerprintMessage(t *testing.T) {
 					Subject:     "did:nft:80003:0x45fbCD3ef7361d156e8b16F5538AE36DEdf61Da8_15",
 					ID:          "2pcYwspbaBFJ7NPGZ2kivkuJ12a",
 					Producer:    "did:nft:80003:0x78513c8CB4D6B6079f813850376bc9c7fc8aE67f_12",
-					Source:      sources.CompassSource.String(),
+					Source:      common.HexToAddress("0x55BF1c27d468314Ea119CF74979E2b59F962295c").String(), // compass source
 					Type:        cloudevent.TypeFingerprint,
 				},
 				VIN: "1C4SJSBP8RS133747",
@@ -129,7 +129,7 @@ func TestDecodeFingerprintMessage(t *testing.T) {
 					Subject:     "did:nft:137:0xAb12Cd34Ef56Gh78Ij90Kl12Mn34Op56Qr78St_12345",
 					ID:          "9xYzA8bCdEf2GhIj3KlMnOpQ7rS",
 					Producer:    "did:nft:137:0x8a92B34cDeFg1H2i3J4k5L6m7N8o9P0qRsTuV_45678",
-					Source:      sources.HashDogSource.String(),
+					Source:      common.HexToAddress("0x4c674ddE8189aEF6e3b58F5a36d7438b2b1f6Bc2").String(), // hashdog source
 					Type:        cloudevent.TypeFingerprint,
 				},
 				VIN: "1ABCD2EFGH3JKLMNO",

@@ -6,7 +6,7 @@ require (
 	github.com/ClickHouse/clickhouse-go/v2 v2.30.3
 	github.com/DIMO-Network/clickhouse-infra v0.0.3
 	github.com/DIMO-Network/device-definitions-api v1.2.87
-	github.com/DIMO-Network/model-garage v0.4.14
+	github.com/DIMO-Network/model-garage v0.4.17-0.20250310203433-ab30812a7f39
 	github.com/DIMO-Network/nameindexer v0.1.2
 	github.com/DIMO-Network/shared v0.12.9
 	github.com/aws/aws-sdk-go-v2 v1.36.0
@@ -38,6 +38,7 @@ require (
 
 require (
 	github.com/ClickHouse/ch-go v0.64.1 // indirect
+	github.com/DIMO-Network/tesla-vss v0.1.0 // indirect
 	github.com/DIMO-Network/yaml v0.1.0 // indirect
 	github.com/KyleBanks/depth v1.2.1 // indirect
 	github.com/MicahParks/keyfunc/v2 v2.1.0 // indirect

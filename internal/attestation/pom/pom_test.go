@@ -10,7 +10,7 @@ import (
 	"github.com/DIMO-Network/attestation-api/internal/attestation/pom"
 	"github.com/DIMO-Network/attestation-api/internal/models"
 	"github.com/DIMO-Network/model-garage/pkg/cloudevent"
-	"github.com/DIMO-Network/model-garage/pkg/lorawan"
+	"github.com/DIMO-Network/model-garage/pkg/hashdog"
 	"github.com/DIMO-Network/model-garage/pkg/twilio"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/rs/zerolog"
@@ -154,19 +154,19 @@ func TestService_CreatePOMVC(t *testing.T) {
 
 				mockIdentityAPI.EXPECT().GetVehicleInfo(ctx, vehicleInfo.DID).Return(vehicleInfo, nil)
 
-				events := []lorawan.Data{
+				events := []hashdog.Data{
 					{
-						Via: []lorawan.Via{
+						Via: []hashdog.Via{
 							{
-								Metadata: lorawan.GWMetadata{GatewayID: "gateway123"},
+								Metadata: hashdog.GWMetadata{GatewayID: "gateway123"},
 							},
 						},
 						Timestamp: time.Now().UnixMilli(),
 					},
 					{
-						Via: []lorawan.Via{
+						Via: []hashdog.Via{
 							{
-								Metadata: lorawan.GWMetadata{GatewayID: "gateway456"},
+								Metadata: hashdog.GWMetadata{GatewayID: "gateway456"},
 							},
 						},
 						Timestamp: time.Now().Add(-5 * time.Minute).UnixMilli(),
