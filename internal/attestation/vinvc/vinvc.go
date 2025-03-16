@@ -246,8 +246,8 @@ func (v *Service) GenerateManualVC(ctx context.Context, tokenID uint32, vin stri
 		TokenID:         tokenID,
 	}
 
-	// create the new VC
-	expTime := time.Now().AddDate(0, 0, daysInWeek-int(time.Now().Weekday())).UTC().Truncate(time.Hour * 24)
+	// expire in 10 years
+	expTime := time.Now().AddDate(10, 0, 0).UTC().Truncate(time.Hour * 24)
 	rawVC, err := v.issuer.CreateVINVC(vinSubject, expTime)
 	if err != nil {
 		return nil, ctrlerrors.Error{InternalError: err, ExternalMsg: "Failed to create VC"}
