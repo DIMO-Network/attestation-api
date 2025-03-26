@@ -14,9 +14,9 @@ import (
 
 	"github.com/ClickHouse/clickhouse-go/v2"
 	"github.com/DIMO-Network/attestation-api/internal/models"
-	"github.com/DIMO-Network/model-garage/pkg/cloudevent"
+	"github.com/DIMO-Network/cloudevent"
+	"github.com/DIMO-Network/cloudevent/pkg/clickhouse/eventrepo"
 	"github.com/DIMO-Network/model-garage/pkg/modules"
-	"github.com/DIMO-Network/nameindexer/pkg/clickhouse/indexrepo"
 )
 
 type decodeError string
@@ -31,7 +31,7 @@ const macaronOldFpSource = "macaron/fingerprint"
 
 // Service manages and retrieves fingerprint messages.
 type Service struct {
-	indexService     *indexrepo.Service
+	indexService     *eventrepo.Service
 	dataType         string
 	cloudEventBucket string
 
@@ -40,9 +40,9 @@ type Service struct {
 }
 
 // New creates a new instance of Service.
-func New(chConn clickhouse.Conn, objGetter indexrepo.ObjectGetter, cloudeventBucket, legacyBucketName, fingerprintDataType string) *Service {
+func New(chConn clickhouse.Conn, objGetter eventrepo.ObjectGetter, cloudeventBucket, legacyBucketName, fingerprintDataType string) *Service {
 	return &Service{
-		indexService:     indexrepo.New(chConn, objGetter),
+		indexService:     eventrepo.New(chConn, objGetter),
 		dataType:         fingerprintDataType,
 		bucketName:       legacyBucketName,
 		cloudEventBucket: cloudeventBucket,
@@ -52,7 +52,7 @@ func New(chConn clickhouse.Conn, objGetter indexrepo.ObjectGetter, cloudeventBuc
 // GetLatestFingerprintMessages fetches the latest fingerprint message from S3.
 func (s *Service) GetLatestFingerprintMessages(ctx context.Context, vehicleDID cloudevent.NFTDID, device models.PairedDevice) (*models.DecodedFingerprintData, error) {
 	fingerprintType := cloudevent.TypeFingerprint
-	opts := &indexrepo.SearchOptions{
+	opts := &eventrepo.SearchOptions{
 		Subject:  ref(vehicleDID.String()),
 		Producer: ref(device.DID.String()),
 		Type:     &fingerprintType,
@@ -75,7 +75,7 @@ func (s *Service) GetLatestFingerprintMessages(ctx context.Context, vehicleDID c
 // TODO (kevin): Remove this when ingest is updated
 func (s *Service) legacyGetLatestFingerprintMessages(ctx context.Context, device models.PairedDevice) (*models.DecodedFingerprintData, error) {
 	encodedAddress := device.Address[2:]
-	opts := &indexrepo.SearchOptions{
+	opts := &eventrepo.SearchOptions{
 		Subject:     &encodedAddress,
 		DataVersion: &s.dataType,
 	}

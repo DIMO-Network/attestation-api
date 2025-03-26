@@ -11,9 +11,9 @@ import (
 	"github.com/ClickHouse/clickhouse-go/v2"
 	"github.com/DIMO-Network/attestation-api/internal/attestation/repos"
 	"github.com/DIMO-Network/attestation-api/internal/models"
-	"github.com/DIMO-Network/model-garage/pkg/cloudevent"
+	"github.com/DIMO-Network/cloudevent"
+	"github.com/DIMO-Network/cloudevent/pkg/clickhouse/eventrepo"
 	"github.com/DIMO-Network/model-garage/pkg/modules"
-	"github.com/DIMO-Network/nameindexer/pkg/clickhouse/indexrepo"
 	"github.com/ethereum/go-ethereum/common"
 )
 
@@ -24,7 +24,7 @@ var (
 
 // ConnectivityRepo is a repository for retrieving connectivity events.
 type ConnectivityRepo struct {
-	indexService      *indexrepo.Service
+	indexService      *eventrepo.Service
 	autoPiDataType    string
 	autoPiBucketName  string
 	hashDogDataType   string
@@ -35,9 +35,9 @@ type ConnectivityRepo struct {
 }
 
 // NewConnectivityRepo creates a new instance of ConnectivityRepoImpl.
-func NewConnectivityRepo(chConn clickhouse.Conn, objGetter indexrepo.ObjectGetter, autoPiDataType, autoPiBucketName, hashDogDataType, hashDogBucketName, statusDataType, statusBucketName, cloudEventBucketName string) *ConnectivityRepo {
+func NewConnectivityRepo(chConn clickhouse.Conn, objGetter eventrepo.ObjectGetter, autoPiDataType, autoPiBucketName, hashDogDataType, hashDogBucketName, statusDataType, statusBucketName, cloudEventBucketName string) *ConnectivityRepo {
 	return &ConnectivityRepo{
-		indexService:     indexrepo.New(chConn, objGetter),
+		indexService:     eventrepo.New(chConn, objGetter),
 		cloudEventBucket: cloudEventBucketName,
 
 		// These can go away when we switch storage
@@ -116,7 +116,7 @@ func (r *ConnectivityRepo) GetCompassStatusEvents(ctx context.Context, vehicleDI
 }
 
 func (r *ConnectivityRepo) getEvents(ctx context.Context, source common.Address, subject cloudevent.NFTDID, after, before time.Time, limit int) ([]cloudevent.CloudEvent[json.RawMessage], error) {
-	opts := &indexrepo.SearchOptions{
+	opts := &eventrepo.SearchOptions{
 		Subject: ref(subject.String()),
 		Type:    &cloudEventStatus,
 		Source:  ref(source.String()),
@@ -131,7 +131,7 @@ func (r *ConnectivityRepo) getEvents(ctx context.Context, source common.Address,
 }
 
 func (r *ConnectivityRepo) getLegacyEvents(ctx context.Context, bucketName string, dataType string, subject string, after, before time.Time, limit int) ([]cloudevent.CloudEvent[json.RawMessage], error) {
-	opts := &indexrepo.SearchOptions{
+	opts := &eventrepo.SearchOptions{
 		Subject:     &subject,
 		DataVersion: &dataType,
 		After:       after,

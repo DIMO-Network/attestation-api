@@ -9,23 +9,23 @@ import (
 	"github.com/ClickHouse/clickhouse-go/v2"
 	"github.com/DIMO-Network/attestation-api/internal/sources"
 	"github.com/DIMO-Network/attestation-api/pkg/verifiable"
-	"github.com/DIMO-Network/model-garage/pkg/cloudevent"
-	"github.com/DIMO-Network/nameindexer/pkg/clickhouse/indexrepo"
+	"github.com/DIMO-Network/cloudevent"
+	"github.com/DIMO-Network/cloudevent/pkg/clickhouse/eventrepo"
 	"github.com/segmentio/ksuid"
 )
 
 // Repo manages storing and retrieving VCs.
 type Repo struct {
-	indexService   *indexrepo.Service
+	indexService   *eventrepo.Service
 	vinDataVersion string
 	pomDataVersion string
 	vcBucketName   string
 }
 
 // New creates a new instance of VCRepo.
-func New(chConn clickhouse.Conn, objGetter indexrepo.ObjectGetter, vcBucketName, vinVCDataVersion, pomVCDataversion string) *Repo {
+func New(chConn clickhouse.Conn, objGetter eventrepo.ObjectGetter, vcBucketName, vinVCDataVersion, pomVCDataversion string) *Repo {
 	return &Repo{
-		indexService:   indexrepo.New(chConn, objGetter),
+		indexService:   eventrepo.New(chConn, objGetter),
 		vinDataVersion: vinVCDataVersion,
 		pomDataVersion: pomVCDataversion,
 		vcBucketName:   vcBucketName,
@@ -34,7 +34,7 @@ func New(chConn clickhouse.Conn, objGetter indexrepo.ObjectGetter, vcBucketName,
 
 // GetLatestVINVC fetches the latest vinvc from S3.
 func (r *Repo) GetLatestVINVC(ctx context.Context, vehicleDID cloudevent.NFTDID) (*verifiable.Credential, error) {
-	opts := &indexrepo.SearchOptions{
+	opts := &eventrepo.SearchOptions{
 		Subject:     ref(vehicleDID.String()),
 		DataVersion: &r.vinDataVersion,
 	}

@@ -1,7 +1,7 @@
 package models
 
 import (
-	"github.com/DIMO-Network/model-garage/pkg/cloudevent"
+	"github.com/DIMO-Network/cloudevent"
 )
 
 // DeviceType represents the type of device.
