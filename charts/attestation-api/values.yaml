@@ -45,7 +45,7 @@ env:
   HASHDOG_BUCKET_NAME: dimo-network-connectivity-dev
   STATUS_DATA_TYPE: Status_1.0
   STATUS_BUCKET_NAME: dimo-network-status-dev
-  VC_BUCKET: dimo-network-vc-dev
+  VC_BUCKET: dimo-ingest-cloudevent-dev
   VINVC_DATA_TYPE: VINVCv1.0
   POMVC_DATA_TYPE: POMVCv1.0
   CLOUDEVENT_BUCKET: dimo-ingest-cloudevent-dev
