@@ -167,6 +167,21 @@ func (mr *MockConnectivityRepoMockRecorder) GetHashDogEvents(ctx, pairedDevice, 
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetHashDogEvents", reflect.TypeOf((*MockConnectivityRepo)(nil).GetHashDogEvents), ctx, pairedDevice, after, before, limit)
 }
 
+// GetMotorqStatusEvents mocks base method.
+func (m *MockConnectivityRepo) GetMotorqStatusEvents(ctx context.Context, vehicleDID cloudevent.NFTDID, after, before time.Time, limit int) ([]cloudevent.CloudEvent[json.RawMessage], error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetMotorqStatusEvents", ctx, vehicleDID, after, before, limit)
+	ret0, _ := ret[0].([]cloudevent.CloudEvent[json.RawMessage])
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetMotorqStatusEvents indicates an expected call of GetMotorqStatusEvents.
+func (mr *MockConnectivityRepoMockRecorder) GetMotorqStatusEvents(ctx, vehicleDID, after, before, limit any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetMotorqStatusEvents", reflect.TypeOf((*MockConnectivityRepo)(nil).GetMotorqStatusEvents), ctx, vehicleDID, after, before, limit)
+}
+
 // GetRuptelaStatusEvents mocks base method.
 func (m *MockConnectivityRepo) GetRuptelaStatusEvents(ctx context.Context, vehicleDID cloudevent.NFTDID, after, before time.Time, limit int) ([]cloudevent.CloudEvent[json.RawMessage], error) {
 	m.ctrl.T.Helper()

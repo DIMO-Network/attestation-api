@@ -121,6 +121,22 @@ func TestDecodeFingerprintMessage(t *testing.T) {
 			},
 		},
 		{
+			name: "Valid VIN from Motorq",
+			data: []byte(motorqStatusPayload),
+			expectedData: models.DecodedFingerprintData{
+				CloudEventHeader: cloudevent.CloudEventHeader{
+					SpecVersion: "1.0",
+					Subject:     "did:nft:1:0x0051C7656EC7ab88B098DeFB751b7401B5F6d897_123456",
+					ID:          "2wSNJB8rE71kJUD7HthDgPJIEIB",
+					Producer:    "did:nft:1:0x71C7656EC7ab88b098defB751B7401B5f6d8976F_789012",
+					Source:      sources.MotorqSource.String(),
+					Type:        cloudevent.TypeFingerprint,
+					DataVersion: "v2",
+				},
+				VIN: "1C4SJSBP8RS133747",
+			},
+		},
+		{
 			name: "Valid VIN from Hashdog",
 			data: []byte(hashdogFPPayload),
 			expectedData: models.DecodedFingerprintData{
@@ -289,6 +305,41 @@ var compassStatusPayload = `{
       "nanos": 326690000
     }
   }
+}`
+
+var motorqStatusPayload = `{
+   "id":"2wSNJB8rE71kJUD7HthDgPJIEIB",
+   "source":"0x5879B43D88Fa93CE8072d6612cBc8dE93E98CE5d",
+   "producer":"did:nft:1:0x71C7656EC7ab88b098defB751B7401B5f6d8976F_789012",
+   "specversion":"1.0",
+   "subject":"did:nft:1:0x0051C7656EC7ab88B098DeFB751b7401B5F6d897_123456",
+   "type":"dimo.fingerprint",
+   "dataversion":"v2",
+   "data":{
+	"vin": "1C4SJSBP8RS133747",      
+	"signals":[
+         {
+            "timestamp":"2025-04-21T11:58:00.619Z",
+            "name":"speed",
+            "value":0
+         },
+         {
+            "timestamp":"2025-04-21T11:58:00.619Z",
+            "name":"powertrainTransmissionTravelledDistance",
+            "value":43567.59749760001
+         },
+         {
+            "timestamp":"2025-04-21T11:58:00.619Z",
+            "name":"currentLocationLongitude",
+            "value":-79.43646179999999
+         },
+         {
+            "timestamp":"2025-04-21T11:58:00.619Z",
+            "name":"currentLocationLatitude",
+            "value":36.5810399
+         }
+      ]
+   }
 }`
 
 var hashdogFPPayload = `{

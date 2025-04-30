@@ -152,6 +152,11 @@ func (s *Service) decodeFingerprintMessage(msg cloudevent.CloudEvent[json.RawMes
 			return nil, fmt.Errorf("failed to decode fingerprint: %w", err)
 		}
 		vin = fpEvent.VIN
+	case sources.AddrEqualString(sources.MotorqSource, msg.Source):
+		vin, err = decodeVINFromData(msg.Data)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	if vin == "" {

@@ -1,11 +1,20 @@
 definitions:
-  github_com_DIMO-Network_attestation-api_pkg_verifiable.Credential:
+  httphandlers.getVCResponse:
+    properties:
+      message:
+        type: string
+      vcQuery:
+        type: string
+      vcUrl:
+        type: string
+    type: object
+  verifiable.Credential:
     properties:
       '@context':
         items: {}
         type: array
       credentialStatus:
-        $ref: '#/definitions/github_com_DIMO-Network_attestation-api_pkg_verifiable.CredentialStatus'
+        $ref: '#/definitions/verifiable.CredentialStatus'
       credentialSubject:
         items:
           type: integer
@@ -15,7 +24,7 @@ definitions:
       issuer:
         type: string
       proof:
-        $ref: '#/definitions/github_com_DIMO-Network_attestation-api_pkg_verifiable.Proof'
+        $ref: '#/definitions/verifiable.Proof'
       type:
         items:
           type: string
@@ -25,7 +34,7 @@ definitions:
       validTo:
         type: string
     type: object
-  github_com_DIMO-Network_attestation-api_pkg_verifiable.CredentialStatus:
+  verifiable.CredentialStatus:
     properties:
       id:
         type: string
@@ -38,7 +47,7 @@ definitions:
       type:
         type: string
     type: object
-  github_com_DIMO-Network_attestation-api_pkg_verifiable.MultiKey:
+  verifiable.MultiKey:
     properties:
       controller:
         type: string
@@ -49,7 +58,7 @@ definitions:
       type:
         type: string
     type: object
-  github_com_DIMO-Network_attestation-api_pkg_verifiable.Proof:
+  verifiable.Proof:
     properties:
       created:
         type: string
@@ -64,7 +73,7 @@ definitions:
       verificationMethod:
         type: string
     type: object
-  github_com_DIMO-Network_attestation-api_pkg_verifiable.VerificationControlDocument:
+  verifiable.VerificationControlDocument:
     properties:
       '@context':
         items:
@@ -90,17 +99,8 @@ definitions:
         type: string
       verificationMethod:
         items:
-          $ref: '#/definitions/github_com_DIMO-Network_attestation-api_pkg_verifiable.MultiKey'
+          $ref: '#/definitions/verifiable.MultiKey'
         type: array
-    type: object
-  internal_controllers_httphandlers.getVCResponse:
-    properties:
-      message:
-        type: string
-      vcQuery:
-        type: string
-      vcUrl:
-        type: string
     type: object
 info:
   contact: {}
@@ -166,7 +166,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/github_com_DIMO-Network_attestation-api_pkg_verifiable.VerificationControlDocument'
+            $ref: '#/definitions/verifiable.VerificationControlDocument'
       summary: Get verification control document
       tags:
       - VINVC
@@ -188,7 +188,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/internal_controllers_httphandlers.getVCResponse'
+            $ref: '#/definitions/httphandlers.getVCResponse'
       security:
       - BearerAuth: []
       summary: Create POM VC
@@ -212,7 +212,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/github_com_DIMO-Network_attestation-api_pkg_verifiable.Credential'
+            $ref: '#/definitions/verifiable.Credential'
       summary: Get VC Status
       tags:
       - VINVC
@@ -238,7 +238,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/internal_controllers_httphandlers.getVCResponse'
+            $ref: '#/definitions/httphandlers.getVCResponse'
       security:
       - BearerAuth: []
       summary: Get VIN VC

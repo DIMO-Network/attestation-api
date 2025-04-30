@@ -96,7 +96,7 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/github_com_DIMO-Network_attestation-api_pkg_verifiable.VerificationControlDocument"
+                            "$ref": "#/definitions/verifiable.VerificationControlDocument"
                         }
                     }
                 }
@@ -133,7 +133,7 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_controllers_httphandlers.getVCResponse"
+                            "$ref": "#/definitions/httphandlers.getVCResponse"
                         }
                     }
                 }
@@ -165,7 +165,7 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/github_com_DIMO-Network_attestation-api_pkg_verifiable.Credential"
+                            "$ref": "#/definitions/verifiable.Credential"
                         }
                     }
                 }
@@ -208,7 +208,7 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_controllers_httphandlers.getVCResponse"
+                            "$ref": "#/definitions/httphandlers.getVCResponse"
                         }
                     }
                 }
@@ -216,7 +216,21 @@
         }
     },
     "definitions": {
-        "github_com_DIMO-Network_attestation-api_pkg_verifiable.Credential": {
+        "httphandlers.getVCResponse": {
+            "type": "object",
+            "properties": {
+                "message": {
+                    "type": "string"
+                },
+                "vcQuery": {
+                    "type": "string"
+                },
+                "vcUrl": {
+                    "type": "string"
+                }
+            }
+        },
+        "verifiable.Credential": {
             "type": "object",
             "properties": {
                 "@context": {
@@ -224,7 +238,7 @@
                     "items": {}
                 },
                 "credentialStatus": {
-                    "$ref": "#/definitions/github_com_DIMO-Network_attestation-api_pkg_verifiable.CredentialStatus"
+                    "$ref": "#/definitions/verifiable.CredentialStatus"
                 },
                 "credentialSubject": {
                     "type": "array",
@@ -239,7 +253,7 @@
                     "type": "string"
                 },
                 "proof": {
-                    "$ref": "#/definitions/github_com_DIMO-Network_attestation-api_pkg_verifiable.Proof"
+                    "$ref": "#/definitions/verifiable.Proof"
                 },
                 "type": {
                     "type": "array",
@@ -255,7 +269,7 @@
                 }
             }
         },
-        "github_com_DIMO-Network_attestation-api_pkg_verifiable.CredentialStatus": {
+        "verifiable.CredentialStatus": {
             "type": "object",
             "properties": {
                 "id": {
@@ -275,7 +289,7 @@
                 }
             }
         },
-        "github_com_DIMO-Network_attestation-api_pkg_verifiable.MultiKey": {
+        "verifiable.MultiKey": {
             "type": "object",
             "properties": {
                 "controller": {
@@ -292,7 +306,7 @@
                 }
             }
         },
-        "github_com_DIMO-Network_attestation-api_pkg_verifiable.Proof": {
+        "verifiable.Proof": {
             "type": "object",
             "properties": {
                 "created": {
@@ -315,7 +329,7 @@
                 }
             }
         },
-        "github_com_DIMO-Network_attestation-api_pkg_verifiable.VerificationControlDocument": {
+        "verifiable.VerificationControlDocument": {
             "type": "object",
             "properties": {
                 "@context": {
@@ -354,22 +368,8 @@
                 "verificationMethod": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/github_com_DIMO-Network_attestation-api_pkg_verifiable.MultiKey"
+                        "$ref": "#/definitions/verifiable.MultiKey"
                     }
-                }
-            }
-        },
-        "internal_controllers_httphandlers.getVCResponse": {
-            "type": "object",
-            "properties": {
-                "message": {
-                    "type": "string"
-                },
-                "vcQuery": {
-                    "type": "string"
-                },
-                "vcUrl": {
-                    "type": "string"
                 }
             }
         }
