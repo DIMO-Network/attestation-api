@@ -129,7 +129,7 @@ func TestDecodeFingerprintMessage(t *testing.T) {
 					Subject:     "did:nft:1:0x0051C7656EC7ab88B098DeFB751b7401B5F6d897_123456",
 					ID:          "2wSNJB8rE71kJUD7HthDgPJIEIB",
 					Producer:    "did:nft:1:0x71C7656EC7ab88b098defB751B7401B5f6d8976F_789012",
-					Source:      sources.MotorqSource.String(),
+					Source:      "0x5879B43D88Fa93CE8072d6612cBc8dE93E98CE5d",
 					Type:        cloudevent.TypeFingerprint,
 					DataVersion: "v2",
 				},

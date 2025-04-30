@@ -117,7 +117,7 @@ func (r *ConnectivityRepo) GetCompassStatusEvents(ctx context.Context, vehicleDI
 
 // GetMotorqStatusEvents returns the status events for a vehicle.
 func (r *ConnectivityRepo) GetMotorqStatusEvents(ctx context.Context, vehicleDID cloudevent.NFTDID, after, before time.Time, limit int) ([]cloudevent.CloudEvent[json.RawMessage], error) {
-	records, err := r.getEvents(ctx, sources.CompassSource, vehicleDID, after, before, limit)
+	records, err := r.getEvents(ctx, common.HexToAddress("0x5879B43D88Fa93CE8072d6612cBc8dE93E98CE5d"), vehicleDID, after, before, limit)
 	if errors.Is(err, sql.ErrNoRows) {
 		subject := repos.TokenIDToString(vehicleDID.TokenID)
 		return r.getLegacyEvents(ctx, r.statusBucketName, r.statusDataType, subject, after, before, limit)
