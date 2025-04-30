@@ -14,12 +14,9 @@ import (
 
 	"github.com/ClickHouse/clickhouse-go/v2"
 	"github.com/DIMO-Network/attestation-api/internal/models"
-	"github.com/DIMO-Network/attestation-api/internal/sources"
-	"github.com/DIMO-Network/model-garage/pkg/cloudevent"
-	compass "github.com/DIMO-Network/model-garage/pkg/compass/fingerprint"
-	"github.com/DIMO-Network/model-garage/pkg/ruptela/fingerprint"
-	teslafp "github.com/DIMO-Network/model-garage/pkg/tesla/fingerprint"
-	"github.com/DIMO-Network/nameindexer/pkg/clickhouse/indexrepo"
+	"github.com/DIMO-Network/cloudevent"
+	"github.com/DIMO-Network/cloudevent/pkg/clickhouse/eventrepo"
+	"github.com/DIMO-Network/model-garage/pkg/modules"
 )
 
 type decodeError string
@@ -30,9 +27,11 @@ func (d decodeError) Error() string {
 	return fmt.Sprintf("failed to decode fingerprint message: %s", string(d))
 }
 
+const macaronOldFpSource = "macaron/fingerprint"
+
 // Service manages and retrieves fingerprint messages.
 type Service struct {
-	indexService     *indexrepo.Service
+	indexService     *eventrepo.Service
 	dataType         string
 	cloudEventBucket string
 
@@ -41,9 +40,9 @@ type Service struct {
 }
 
 // New creates a new instance of Service.
-func New(chConn clickhouse.Conn, objGetter indexrepo.ObjectGetter, cloudeventBucket, legacyBucketName, fingerprintDataType string) *Service {
+func New(chConn clickhouse.Conn, objGetter eventrepo.ObjectGetter, cloudeventBucket, legacyBucketName, fingerprintDataType string) *Service {
 	return &Service{
-		indexService:     indexrepo.New(chConn, objGetter),
+		indexService:     eventrepo.New(chConn, objGetter),
 		dataType:         fingerprintDataType,
 		bucketName:       legacyBucketName,
 		cloudEventBucket: cloudeventBucket,
@@ -53,7 +52,7 @@ func New(chConn clickhouse.Conn, objGetter indexrepo.ObjectGetter, cloudeventBuc
 // GetLatestFingerprintMessages fetches the latest fingerprint message from S3.
 func (s *Service) GetLatestFingerprintMessages(ctx context.Context, vehicleDID cloudevent.NFTDID, device models.PairedDevice) (*models.DecodedFingerprintData, error) {
 	fingerprintType := cloudevent.TypeFingerprint
-	opts := &indexrepo.SearchOptions{
+	opts := &eventrepo.SearchOptions{
 		Subject:  ref(vehicleDID.String()),
 		Producer: ref(device.DID.String()),
 		Type:     &fingerprintType,
@@ -76,7 +75,7 @@ func (s *Service) GetLatestFingerprintMessages(ctx context.Context, vehicleDID c
 // TODO (kevin): Remove this when ingest is updated
 func (s *Service) legacyGetLatestFingerprintMessages(ctx context.Context, device models.PairedDevice) (*models.DecodedFingerprintData, error) {
 	encodedAddress := device.Address[2:]
-	opts := &indexrepo.SearchOptions{
+	opts := &eventrepo.SearchOptions{
 		Subject:     &encodedAddress,
 		DataVersion: &s.dataType,
 	}
@@ -103,16 +102,10 @@ func (s *Service) legacyGetLatestFingerprintMessages(ctx context.Context, device
 	return msg, nil
 }
 
-func (s *Service) decodeFingerprintMessage(msg cloudevent.CloudEvent[json.RawMessage]) (*models.DecodedFingerprintData, error) {
+func (s *Service) decodeFingerprintMessage(msg cloudevent.RawEvent) (*models.DecodedFingerprintData, error) {
 	var vin string
 	var err error
-	switch {
-	case msg.Source == sources.SyntheticOldSource || msg.Source == sources.AutoPiOldSource || sources.AddrEqualString(sources.AutoPiSource, msg.Source):
-		vin, err = decodeVINFromData(msg.Data)
-		if err != nil {
-			return nil, err
-		}
-	case msg.Source == sources.MacaronOldFpSource:
+	if msg.Source == macaronOldFpSource {
 		if msg.Extras == nil {
 			return nil, decodeError("missing data for macaron fingerprint")
 		}
@@ -124,39 +117,12 @@ func (s *Service) decodeFingerprintMessage(msg cloudevent.CloudEvent[json.RawMes
 		if err != nil {
 			return nil, err
 		}
-	case sources.AddrEqualString(sources.HashDogSource, msg.Source):
-		vin, err = tmpDecodeHashdogFP(msg)
+	} else {
+		fp, err := modules.ConvertToFingerprint(context.TODO(), msg.Source, msg)
 		if err != nil {
-			return nil, fmt.Errorf("failed to decode hashdog fingerprint: %w", err)
+			return nil, fmt.Errorf("failed to convert to fingerprint: %w", err)
 		}
-
-	case sources.AddrEqualString(sources.RuptelaSource, msg.Source):
-		fullMsgData, err := json.Marshal(msg)
-		if err != nil {
-			return nil, fmt.Errorf("failed to marshal fingerprint message: %w", err)
-		}
-		fpEvent, err := fingerprint.DecodeFingerprint(fullMsgData)
-		if err != nil {
-			return nil, fmt.Errorf("failed to decode fingerprint: %w", err)
-		}
-		vin = fpEvent.Data.VIN
-	case sources.AddrEqualString(sources.TeslaSource, msg.Source):
-		fpEvent, err := teslafp.DecodeFingerprintFromData(msg)
-		if err != nil {
-			return nil, fmt.Errorf("failed to decode fingerprint: %w", err)
-		}
-		vin = fpEvent.VIN
-	case sources.AddrEqualString(sources.CompassSource, msg.Source):
-		fpEvent, err := compass.DecodeFingerprintFromData(msg.Data)
-		if err != nil {
-			return nil, fmt.Errorf("failed to decode fingerprint: %w", err)
-		}
-		vin = fpEvent.VIN
-	case sources.AddrEqualString(sources.MotorqSource, msg.Source):
-		vin, err = decodeVINFromData(msg.Data)
-		if err != nil {
-			return nil, err
-		}
+		vin = fp.VIN
 	}
 
 	if vin == "" {
@@ -185,19 +151,6 @@ type macronFingerPrint struct {
 	VIN       [17]byte
 }
 
-type basicFingerprint struct {
-	VIN string `json:"vin"`
-}
-
-func decodeVINFromData(data json.RawMessage) (string, error) {
-	fpData := basicFingerprint{}
-	err := json.Unmarshal(data, &fpData)
-	if err != nil {
-		return "", fmt.Errorf("failed to autoPi unmarshal data: %w", err)
-	}
-	return fpData.VIN, nil
-}
-
 func decodeVINFromBase64(data string) (string, error) {
 	decodedBytes := make([]byte, base64.StdEncoding.DecodedLen(len(data)))
 	_, err := base64.StdEncoding.Decode(decodedBytes, []byte(data))
@@ -216,25 +169,6 @@ func decodeVINFromBase64(data string) (string, error) {
 		return "", fmt.Errorf("failed to read binary data: %w", err)
 	}
 	return string(macData.VIN[:]), nil
-}
-
-type HashdogFingerprint struct {
-	DecodedPayload HashDogPayload `json:"decodedPayload"`
-}
-
-type HashDogPayload struct {
-	VIN string `json:"vin"`
-}
-
-// tmpDecodeMacaronFP decodes a hashdog fingerprint message.
-// TODO (kevin): I am going to move this to model-garage in the next couple of days just need to unblock VIN VC first
-func tmpDecodeHashdogFP(event cloudevent.CloudEvent[json.RawMessage]) (string, error) {
-	var fpData HashdogFingerprint
-	err := json.Unmarshal(event.Data, &fpData)
-	if err != nil {
-		return "", fmt.Errorf("failed to unmarshal hashdog fingerprint data: %w", err)
-	}
-	return fpData.DecodedPayload.VIN, nil
 }
 
 func ref[T any](v T) *T {

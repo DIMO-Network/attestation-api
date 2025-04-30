@@ -4,10 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"time"
 
 	"github.com/DIMO-Network/attestation-api/pkg/grpc"
 	"github.com/DIMO-Network/attestation-api/pkg/verifiable"
-	"github.com/DIMO-Network/model-garage/pkg/cloudevent"
+	"github.com/DIMO-Network/cloudevent"
 	"github.com/ethereum/go-ethereum/common"
 )
 
@@ -31,7 +32,7 @@ func NewServer(ctrl vinCtrl, repo vinRepo, vehicleNFTAddr common.Address, chainI
 }
 
 type vinCtrl interface {
-	GetOrCreateVC(ctx context.Context, tokenID uint32, force bool) (json.RawMessage, error)
+	GetOrCreateVC(ctx context.Context, tokenID uint32, before time.Time, force bool) (json.RawMessage, error)
 	GenerateVINVC(ctx context.Context, tokenID uint32) (json.RawMessage, error)
 	GenerateManualVC(ctx context.Context, tokenID uint32, vin string, countryCode string) (json.RawMessage, error)
 }
@@ -42,7 +43,7 @@ type vinRepo interface {
 
 // EnsureVinVc ensures that a VC exists for the given token ID.
 func (s *Server) EnsureVinVc(ctx context.Context, req *grpc.EnsureVinVcRequest) (*grpc.EnsureVinVcResponse, error) {
-	rawVC, err := s.ctrl.GetOrCreateVC(ctx, req.GetTokenId(), req.GetForce())
+	rawVC, err := s.ctrl.GetOrCreateVC(ctx, req.GetTokenId(), req.GetBefore().AsTime(), req.GetForce())
 	if err != nil {
 		return nil, err
 	}

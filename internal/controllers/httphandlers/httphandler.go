@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/url"
 	"strconv"
+	"time"
 
 	//  import verifable for swagger docs
 	_ "github.com/DIMO-Network/attestation-api/pkg/verifiable"
@@ -41,7 +42,7 @@ type HTTPController struct {
 
 // VINVCService defines the interface for VIN VC operations.
 type VINVCService interface {
-	GetOrCreateVC(ctx context.Context, tokenID uint32, force bool) (json.RawMessage, error)
+	GetOrCreateVC(ctx context.Context, tokenID uint32, before time.Time, force bool) (json.RawMessage, error)
 	GenerateStatusVC(tokenID uint32) (json.RawMessage, error)
 	GenerateKeyControlDocument() (json.RawMessage, error)
 	GenerateJSONLDDocument() (json.RawMessage, error)
@@ -91,6 +92,7 @@ func NewVCController(vinService VINVCService, pomService POMVCService, telemetry
 // @Produce json
 // @Param  tokenId path int true "token Id of the vehicle NFT"
 // @Param  force query bool false "force generation of a new VC even if an unexpired VC exists"
+// @Param  before query string false "get the VC before the given time (RFC3339 format)"
 // @Success 200 {object} getVCResponse
 // @Security     BearerAuth
 // @Router /v1/vc/vin/{tokenId} [post]
@@ -106,9 +108,17 @@ func (v *HTTPController) GetVINVC(fiberCtx *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusBadRequest, "invalid token_id format")
 	}
 	force := fiberCtx.Query("force") == "true"
+	beforeStr := fiberCtx.Query("before")
+	var before time.Time
+	if beforeStr != "" {
+		before, err = time.Parse(time.RFC3339, beforeStr)
+		if err != nil {
+			return fiber.NewError(fiber.StatusBadRequest, "invalid before time format")
+		}
+	}
 
 	tokenID := uint32(tokenID64)
-	_, err = v.vinService.GetOrCreateVC(ctx, tokenID, force)
+	_, err = v.vinService.GetOrCreateVC(ctx, tokenID, before, force)
 	if err != nil {
 		return fmt.Errorf("failed to get or create VC: %w", err)
 	}

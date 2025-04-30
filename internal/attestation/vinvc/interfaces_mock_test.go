@@ -17,7 +17,7 @@ import (
 
 	models "github.com/DIMO-Network/attestation-api/internal/models"
 	verifiable "github.com/DIMO-Network/attestation-api/pkg/verifiable"
-	cloudevent "github.com/DIMO-Network/model-garage/pkg/cloudevent"
+	cloudevent "github.com/DIMO-Network/cloudevent"
 	gomock "go.uber.org/mock/gomock"
 )
 

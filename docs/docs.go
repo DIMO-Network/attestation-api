@@ -211,6 +211,12 @@ const docTemplate = `{
                         "description": "force generation of a new VC even if an unexpired VC exists",
                         "name": "force",
                         "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "get the VC before the given time (RFC3339 format)",
+                        "name": "before",
+                        "in": "query"
                     }
                 ],
                 "responses": {

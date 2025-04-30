@@ -15,7 +15,7 @@ import (
 	"github.com/DIMO-Network/attestation-api/internal/attestation/vinvc"
 	"github.com/DIMO-Network/attestation-api/internal/models"
 	"github.com/DIMO-Network/attestation-api/pkg/verifiable"
-	"github.com/DIMO-Network/model-garage/pkg/cloudevent"
+	"github.com/DIMO-Network/cloudevent"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/rs/zerolog"
@@ -50,6 +50,7 @@ func TestVCController_GetVINVC(t *testing.T) {
 	tests := []struct {
 		name           string
 		tokenID        uint32
+		before         time.Time
 		setupMocks     func(mocks Mocks)
 		expectedErrror bool
 	}{
@@ -374,8 +375,15 @@ func TestVCController_GetVINVC(t *testing.T) {
 						ContractAddress: common.HexToAddress(defaultNFTAddress),
 					},
 				}
+				vinSubject := verifiable.VINSubject{
+					RecordedAt:             time.Now(),
+					VehicleContractAddress: "eth:" + defaultNFTAddress,
+				}
+				subjectBytes, err := json.Marshal(vinSubject)
+				require.NoError(t, err)
 				mocks.vcRepo.EXPECT().GetLatestVINVC(ctxType, vehicleInfo.DID).Return(&verifiable.Credential{
-					ValidFrom: time.Now().Add(time.Hour).Format(time.RFC3339),
+					ValidFrom:         time.Now().Add(time.Hour).Format(time.RFC3339),
+					CredentialSubject: subjectBytes,
 				}, nil)
 			},
 		},
@@ -455,7 +463,7 @@ func TestVCController_GetVINVC(t *testing.T) {
 				polygonChainID,
 			)
 
-			_, err := vcController.GetOrCreateVC(context.Background(), tt.tokenID, false)
+			_, err := vcController.GetOrCreateVC(context.Background(), tt.tokenID, tt.before, false)
 			if tt.expectedErrror {
 				require.Error(t, err)
 				return

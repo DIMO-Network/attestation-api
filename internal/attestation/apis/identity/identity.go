@@ -14,7 +14,7 @@ import (
 	"time"
 
 	"github.com/DIMO-Network/attestation-api/internal/models"
-	"github.com/DIMO-Network/model-garage/pkg/cloudevent"
+	"github.com/DIMO-Network/cloudevent"
 	"github.com/ethereum/go-ethereum/common"
 )
 

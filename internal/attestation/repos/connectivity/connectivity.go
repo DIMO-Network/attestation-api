@@ -11,18 +11,20 @@ import (
 	"github.com/ClickHouse/clickhouse-go/v2"
 	"github.com/DIMO-Network/attestation-api/internal/attestation/repos"
 	"github.com/DIMO-Network/attestation-api/internal/models"
-	"github.com/DIMO-Network/attestation-api/internal/sources"
-	"github.com/DIMO-Network/model-garage/pkg/cloudevent"
-	"github.com/DIMO-Network/nameindexer/pkg/clickhouse/indexrepo"
+	"github.com/DIMO-Network/cloudevent"
+	"github.com/DIMO-Network/cloudevent/pkg/clickhouse/eventrepo"
+	"github.com/DIMO-Network/model-garage/pkg/modules"
 	"github.com/ethereum/go-ethereum/common"
 )
 
-var cloudEventStatus = cloudevent.TypeStatus
-var todoSource = common.HexToAddress("0x00")
+var (
+	cloudEventStatus = cloudevent.TypeStatus
+	todoSource       = common.HexToAddress("0x00")
+)
 
 // ConnectivityRepo is a repository for retrieving connectivity events.
 type ConnectivityRepo struct {
-	indexService      *indexrepo.Service
+	indexService      *eventrepo.Service
 	autoPiDataType    string
 	autoPiBucketName  string
 	hashDogDataType   string
@@ -33,9 +35,9 @@ type ConnectivityRepo struct {
 }
 
 // NewConnectivityRepo creates a new instance of ConnectivityRepoImpl.
-func NewConnectivityRepo(chConn clickhouse.Conn, objGetter indexrepo.ObjectGetter, autoPiDataType, autoPiBucketName, hashDogDataType, hashDogBucketName, statusDataType, statusBucketName, cloudEventBucketName string) *ConnectivityRepo {
+func NewConnectivityRepo(chConn clickhouse.Conn, objGetter eventrepo.ObjectGetter, autoPiDataType, autoPiBucketName, hashDogDataType, hashDogBucketName, statusDataType, statusBucketName, cloudEventBucketName string) *ConnectivityRepo {
 	return &ConnectivityRepo{
-		indexService:     indexrepo.New(chConn, objGetter),
+		indexService:     eventrepo.New(chConn, objGetter),
 		cloudEventBucket: cloudEventBucketName,
 
 		// These can go away when we switch storage
@@ -63,7 +65,7 @@ func (r *ConnectivityRepo) GetAutoPiEvents(ctx context.Context, device *models.P
 
 // GetHashDogEvents returns the lorawan events for a hashdog device.
 func (r *ConnectivityRepo) GetHashDogEvents(ctx context.Context, device *models.PairedDevice, after, before time.Time, limit int) ([]cloudevent.CloudEvent[json.RawMessage], error) {
-	records, err := r.getEvents(ctx, sources.HashDogSource, device.DID, after, before, limit)
+	records, err := r.getEvents(ctx, modules.HashDogSource, device.DID, after, before, limit)
 	if errors.Is(err, sql.ErrNoRows) {
 		subject := device.Address[2:]
 		return r.getLegacyEvents(ctx, r.hashDogBucketName, r.hashDogDataType, subject, after, before, limit)
@@ -89,7 +91,7 @@ func (r *ConnectivityRepo) GetSyntheticstatusEvents(ctx context.Context, vehicle
 
 // GetRuptelaStatusEvents returns the status events for a vehicle.
 func (r *ConnectivityRepo) GetRuptelaStatusEvents(ctx context.Context, vehicleDID cloudevent.NFTDID, after, before time.Time, limit int) ([]cloudevent.CloudEvent[json.RawMessage], error) {
-	records, err := r.getEvents(ctx, sources.RuptelaSource, vehicleDID, after, before, limit)
+	records, err := r.getEvents(ctx, modules.RuptelaSource, vehicleDID, after, before, limit)
 	if errors.Is(err, sql.ErrNoRows) {
 		subject := repos.TokenIDToString(vehicleDID.TokenID)
 		return r.getLegacyEvents(ctx, r.statusBucketName, r.statusDataType, subject, after, before, limit)
@@ -102,7 +104,7 @@ func (r *ConnectivityRepo) GetRuptelaStatusEvents(ctx context.Context, vehicleDI
 
 // GetCompassStatusEvents returns the status events for a vehicle.
 func (r *ConnectivityRepo) GetCompassStatusEvents(ctx context.Context, vehicleDID cloudevent.NFTDID, after, before time.Time, limit int) ([]cloudevent.CloudEvent[json.RawMessage], error) {
-	records, err := r.getEvents(ctx, sources.CompassSource, vehicleDID, after, before, limit)
+	records, err := r.getEvents(ctx, modules.CompassSource, vehicleDID, after, before, limit)
 	if errors.Is(err, sql.ErrNoRows) {
 		subject := repos.TokenIDToString(vehicleDID.TokenID)
 		return r.getLegacyEvents(ctx, r.statusBucketName, r.statusDataType, subject, after, before, limit)
@@ -127,7 +129,7 @@ func (r *ConnectivityRepo) GetMotorqStatusEvents(ctx context.Context, vehicleDID
 }
 
 func (r *ConnectivityRepo) getEvents(ctx context.Context, source common.Address, subject cloudevent.NFTDID, after, before time.Time, limit int) ([]cloudevent.CloudEvent[json.RawMessage], error) {
-	opts := &indexrepo.SearchOptions{
+	opts := &eventrepo.SearchOptions{
 		Subject: ref(subject.String()),
 		Type:    &cloudEventStatus,
 		Source:  ref(source.String()),
@@ -142,7 +144,7 @@ func (r *ConnectivityRepo) getEvents(ctx context.Context, source common.Address,
 }
 
 func (r *ConnectivityRepo) getLegacyEvents(ctx context.Context, bucketName string, dataType string, subject string, after, before time.Time, limit int) ([]cloudevent.CloudEvent[json.RawMessage], error) {
-	opts := &indexrepo.SearchOptions{
+	opts := &eventrepo.SearchOptions{
 		Subject:     &subject,
 		DataVersion: &dataType,
 		After:       after,

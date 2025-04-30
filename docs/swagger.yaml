@@ -232,6 +232,10 @@ paths:
         in: query
         name: force
         type: boolean
+      - description: get the VC before the given time (RFC3339 format)
+        in: query
+        name: before
+        type: string
       produces:
       - application/json
       responses:

@@ -2,7 +2,7 @@ replicaCount: 2
 image:
   repository: dimozone/attestation-api
   pullPolicy: IfNotPresent
-  tag: 0.0.20
+  tag: 0.0.21
 cronJob:
   enabled: false
   schedule: 0 0 * * 0
@@ -21,7 +21,7 @@ env:
   AUTOPI_BUCKET_NAME: dimo-network-connectivity-prod
   HASHDOG_BUCKET_NAME: dimo-network-connectivity-prod
   STATUS_BUCKET_NAME: dimo-network-status-prod
-  VC_BUCKET: dimo-network-vc-prod
+  VC_BUCKET: dimo-ingest-cloudevent-prod
   CLOUDEVENT_BUCKET: dimo-ingest-cloudevent-prod
   DIMO_REGISTRY_CHAIN_ID: 137
 ingress:
