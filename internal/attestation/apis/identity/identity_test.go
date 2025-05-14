@@ -5,6 +5,7 @@ import (
 	"crypto/x509"
 	"fmt"
 	"io"
+	"math/big"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -23,20 +24,20 @@ func TestService_GetPairedDevices(t *testing.T) {
 	vehicleAddr := randAddress()
 	aftermarketAddr := randAddress()
 	syntheticAddr := randAddress()
-	deviceDID1 := cloudevent.NFTDID{
+	deviceDID1 := cloudevent.ERC721DID{
 		ChainID:         137,
-		TokenID:         123,
+		TokenID:         new(big.Int).SetInt64(123),
 		ContractAddress: aftermarketAddr,
 	}
-	deviceDID2 := cloudevent.NFTDID{
+	deviceDID2 := cloudevent.ERC721DID{
 		ChainID:         137,
-		TokenID:         789,
+		TokenID:         new(big.Int).SetInt64(789),
 		ContractAddress: syntheticAddr,
 	}
 	ctx := context.Background()
 	tests := []struct {
 		name             string
-		vehicleTokenID   uint32
+		vehicleTokenID   *big.Int
 		mockResponseBody string
 		mockStatusCode   int
 		expectedInfo     *models.VehicleInfo
@@ -44,7 +45,7 @@ func TestService_GetPairedDevices(t *testing.T) {
 	}{
 		{
 			name:           "successful response with devices",
-			vehicleTokenID: 123,
+			vehicleTokenID: new(big.Int).SetInt64(123),
 			mockResponseBody: fmt.Sprintf(`
 			{
 				"data": {
@@ -63,7 +64,7 @@ func TestService_GetPairedDevices(t *testing.T) {
 			}`, deviceDID1.TokenID, deviceDID2.TokenID),
 			mockStatusCode: http.StatusOK,
 			expectedInfo: &models.VehicleInfo{
-				DID:      cloudevent.NFTDID{TokenID: 123, ChainID: 137, ContractAddress: vehicleAddr},
+				DID:      cloudevent.ERC721DID{TokenID: new(big.Int).SetInt64(123), ChainID: 137, ContractAddress: vehicleAddr},
 				NameSlug: testSlug,
 				PairedDevices: []models.PairedDevice{
 					{DID: deviceDID1, Type: models.DeviceTypeAftermarket},
@@ -74,7 +75,7 @@ func TestService_GetPairedDevices(t *testing.T) {
 		},
 		{
 			name:           "successful response with no devices",
-			vehicleTokenID: 125,
+			vehicleTokenID: new(big.Int).SetInt64(125),
 			mockResponseBody: `
 			{
 				"data": {
@@ -87,14 +88,14 @@ func TestService_GetPairedDevices(t *testing.T) {
 			}`,
 			mockStatusCode: http.StatusOK,
 			expectedInfo: &models.VehicleInfo{
-				DID:      cloudevent.NFTDID{TokenID: 125, ChainID: 137, ContractAddress: vehicleAddr},
+				DID:      cloudevent.ERC721DID{TokenID: new(big.Int).SetInt64(125), ChainID: 137, ContractAddress: vehicleAddr},
 				NameSlug: testSlug,
 			},
 			expectedError: false,
 		},
 		{
 			name:           "GraphQL API error",
-			vehicleTokenID: 126,
+			vehicleTokenID: new(big.Int).SetInt64(126),
 			mockResponseBody: `
 			{
 				"errors": [
@@ -107,7 +108,7 @@ func TestService_GetPairedDevices(t *testing.T) {
 		},
 		{
 			name:             "non-200 response",
-			vehicleTokenID:   127,
+			vehicleTokenID:   new(big.Int).SetInt64(127),
 			mockResponseBody: "",
 			mockStatusCode:   http.StatusInternalServerError,
 			expectedInfo:     nil,
@@ -115,7 +116,7 @@ func TestService_GetPairedDevices(t *testing.T) {
 		},
 		{
 			name:           "successful response with only aftermarket device",
-			vehicleTokenID: 128,
+			vehicleTokenID: new(big.Int).SetInt64(128),
 			mockResponseBody: fmt.Sprintf(`
 			{
 				"data": {
@@ -131,7 +132,7 @@ func TestService_GetPairedDevices(t *testing.T) {
 			}`, deviceDID1.TokenID),
 			mockStatusCode: http.StatusOK,
 			expectedInfo: &models.VehicleInfo{
-				DID:      cloudevent.NFTDID{TokenID: 128, ChainID: 137, ContractAddress: vehicleAddr},
+				DID:      cloudevent.ERC721DID{TokenID: new(big.Int).SetInt64(128), ChainID: 137, ContractAddress: vehicleAddr},
 				NameSlug: testSlug,
 				PairedDevices: []models.PairedDevice{
 					{DID: deviceDID1, Type: models.DeviceTypeAftermarket},
@@ -141,7 +142,7 @@ func TestService_GetPairedDevices(t *testing.T) {
 		},
 		{
 			name:           "successful response with only synthetic device",
-			vehicleTokenID: 129,
+			vehicleTokenID: new(big.Int).SetInt64(129),
 			mockResponseBody: fmt.Sprintf(`
 			{
 				"data": {
@@ -157,7 +158,7 @@ func TestService_GetPairedDevices(t *testing.T) {
 			}`, deviceDID2.TokenID),
 			mockStatusCode: http.StatusOK,
 			expectedInfo: &models.VehicleInfo{
-				DID:      cloudevent.NFTDID{TokenID: 129, ChainID: 137, ContractAddress: vehicleAddr},
+				DID:      cloudevent.ERC721DID{TokenID: new(big.Int).SetInt64(129), ChainID: 137, ContractAddress: vehicleAddr},
 				NameSlug: testSlug,
 				PairedDevices: []models.PairedDevice{
 					{DID: deviceDID2, Type: models.DeviceTypeSynthetic},
@@ -167,7 +168,7 @@ func TestService_GetPairedDevices(t *testing.T) {
 		},
 		{
 			name:           "successful response with no definition ID",
-			vehicleTokenID: 130,
+			vehicleTokenID: new(big.Int).SetInt64(130),
 			mockResponseBody: fmt.Sprintf(`
 			{
 				"data": {
@@ -210,7 +211,7 @@ func TestService_GetPairedDevices(t *testing.T) {
 			require.NoError(t, err)
 
 			// Run the test.
-			vehicleDID := cloudevent.NFTDID{TokenID: tt.vehicleTokenID, ChainID: 137, ContractAddress: vehicleAddr}
+			vehicleDID := cloudevent.ERC721DID{TokenID: tt.vehicleTokenID, ChainID: 137, ContractAddress: vehicleAddr}
 			devices, err := service.GetVehicleInfo(ctx, vehicleDID)
 			if tt.expectedError {
 				require.Error(t, err)

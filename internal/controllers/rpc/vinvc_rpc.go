@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"math/big"
 	"time"
 
 	"github.com/DIMO-Network/attestation-api/pkg/grpc"
@@ -38,7 +39,7 @@ type vinCtrl interface {
 }
 
 type vinRepo interface {
-	GetLatestVINVC(ctx context.Context, vehicleNFTDID cloudevent.NFTDID) (*verifiable.Credential, error)
+	GetLatestVINVC(ctx context.Context, vehicleNFTDID cloudevent.ERC721DID) (*verifiable.Credential, error)
 }
 
 // EnsureVinVc ensures that a VC exists for the given token ID.
@@ -54,10 +55,10 @@ func (s *Server) EnsureVinVc(ctx context.Context, req *grpc.EnsureVinVcRequest) 
 
 // GetVinVcLatest retrieves the latest VIN VC for the given token ID.
 func (s *Server) GetVinVcLatest(ctx context.Context, req *grpc.GetLatestVinVcRequest) (*grpc.GetLatestVinVcResponse, error) {
-	vehicleDID := cloudevent.NFTDID{
+	vehicleDID := cloudevent.ERC721DID{
 		ChainID:         s.chainID,
 		ContractAddress: s.vehicleNFTAddress,
-		TokenID:         req.GetTokenId(),
+		TokenID:         big.NewInt(int64(req.GetTokenId())),
 	}
 	cred, err := s.repo.GetLatestVINVC(ctx, vehicleDID)
 	if err != nil {

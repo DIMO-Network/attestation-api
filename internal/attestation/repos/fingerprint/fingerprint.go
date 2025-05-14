@@ -50,7 +50,7 @@ func New(chConn clickhouse.Conn, objGetter eventrepo.ObjectGetter, cloudeventBuc
 }
 
 // GetLatestFingerprintMessages fetches the latest fingerprint message from S3.
-func (s *Service) GetLatestFingerprintMessages(ctx context.Context, vehicleDID cloudevent.NFTDID, device models.PairedDevice) (*models.DecodedFingerprintData, error) {
+func (s *Service) GetLatestFingerprintMessages(ctx context.Context, vehicleDID cloudevent.ERC721DID, device models.PairedDevice) (*models.DecodedFingerprintData, error) {
 	fingerprintType := cloudevent.TypeFingerprint
 	opts := &eventrepo.SearchOptions{
 		Subject:  ref(vehicleDID.String()),

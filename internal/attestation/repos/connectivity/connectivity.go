@@ -77,10 +77,10 @@ func (r *ConnectivityRepo) GetHashDogEvents(ctx context.Context, device *models.
 }
 
 // GetSyntheticstatusEvents returns the status events for a vehicle.
-func (r *ConnectivityRepo) GetSyntheticstatusEvents(ctx context.Context, vehicleDID cloudevent.NFTDID, after, before time.Time, limit int) ([]cloudevent.CloudEvent[json.RawMessage], error) {
+func (r *ConnectivityRepo) GetSyntheticstatusEvents(ctx context.Context, vehicleDID cloudevent.ERC721DID, after, before time.Time, limit int) ([]cloudevent.CloudEvent[json.RawMessage], error) {
 	records, err := r.getEvents(ctx, todoSource, vehicleDID, after, before, limit)
 	if errors.Is(err, sql.ErrNoRows) {
-		subject := repos.TokenIDToString(vehicleDID.TokenID)
+		subject := repos.TokenIDToString(uint32(vehicleDID.TokenID.Uint64()))
 		return r.getLegacyEvents(ctx, r.statusBucketName, r.statusDataType, subject, after, before, limit)
 	}
 	if err != nil {
@@ -90,10 +90,10 @@ func (r *ConnectivityRepo) GetSyntheticstatusEvents(ctx context.Context, vehicle
 }
 
 // GetRuptelaStatusEvents returns the status events for a vehicle.
-func (r *ConnectivityRepo) GetRuptelaStatusEvents(ctx context.Context, vehicleDID cloudevent.NFTDID, after, before time.Time, limit int) ([]cloudevent.CloudEvent[json.RawMessage], error) {
+func (r *ConnectivityRepo) GetRuptelaStatusEvents(ctx context.Context, vehicleDID cloudevent.ERC721DID, after, before time.Time, limit int) ([]cloudevent.CloudEvent[json.RawMessage], error) {
 	records, err := r.getEvents(ctx, modules.RuptelaSource, vehicleDID, after, before, limit)
 	if errors.Is(err, sql.ErrNoRows) {
-		subject := repos.TokenIDToString(vehicleDID.TokenID)
+		subject := repos.TokenIDToString(uint32(vehicleDID.TokenID.Uint64()))
 		return r.getLegacyEvents(ctx, r.statusBucketName, r.statusDataType, subject, after, before, limit)
 	}
 	if err != nil {
@@ -103,10 +103,10 @@ func (r *ConnectivityRepo) GetRuptelaStatusEvents(ctx context.Context, vehicleDI
 }
 
 // GetRuptelaStatusEvents returns the status events for a vehicle.
-func (r *ConnectivityRepo) GetCompassStatusEvents(ctx context.Context, vehicleDID cloudevent.NFTDID, after, before time.Time, limit int) ([]cloudevent.CloudEvent[json.RawMessage], error) {
+func (r *ConnectivityRepo) GetCompassStatusEvents(ctx context.Context, vehicleDID cloudevent.ERC721DID, after, before time.Time, limit int) ([]cloudevent.CloudEvent[json.RawMessage], error) {
 	records, err := r.getEvents(ctx, modules.CompassSource, vehicleDID, after, before, limit)
 	if errors.Is(err, sql.ErrNoRows) {
-		subject := repos.TokenIDToString(vehicleDID.TokenID)
+		subject := repos.TokenIDToString(uint32(vehicleDID.TokenID.Uint64()))
 		return r.getLegacyEvents(ctx, r.statusBucketName, r.statusDataType, subject, after, before, limit)
 	}
 	if err != nil {
@@ -115,7 +115,7 @@ func (r *ConnectivityRepo) GetCompassStatusEvents(ctx context.Context, vehicleDI
 	return records, nil
 }
 
-func (r *ConnectivityRepo) getEvents(ctx context.Context, source common.Address, subject cloudevent.NFTDID, after, before time.Time, limit int) ([]cloudevent.CloudEvent[json.RawMessage], error) {
+func (r *ConnectivityRepo) getEvents(ctx context.Context, source common.Address, subject cloudevent.ERC721DID, after, before time.Time, limit int) ([]cloudevent.CloudEvent[json.RawMessage], error) {
 	opts := &eventrepo.SearchOptions{
 		Subject: ref(subject.String()),
 		Type:    &cloudEventStatus,

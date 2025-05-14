@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"math/big"
 	"net/http/httptest"
 	"reflect"
 	"testing"
@@ -47,6 +48,7 @@ func TestVCController_GetVINVC(t *testing.T) {
 	logger := zerolog.New(httptest.NewRecorder())
 	ctx := reflect.TypeOf((*context.Context)(nil)).Elem()
 	ctxType := gomock.AssignableToTypeOf(ctx)
+	tokenID10 := new(big.Int).SetInt64(10)
 	tests := []struct {
 		name           string
 		tokenID        uint32
@@ -58,9 +60,9 @@ func TestVCController_GetVINVC(t *testing.T) {
 			name:    "valid request with no paired devices",
 			tokenID: 123,
 			setupMocks: func(mocks Mocks) {
-				tokenID := uint32(123)
+				tokenID := big.NewInt(123)
 				vehicleInfo := &models.VehicleInfo{
-					DID: cloudevent.NFTDID{
+					DID: cloudevent.ERC721DID{
 						ChainID:         polygonChainID,
 						TokenID:         tokenID,
 						ContractAddress: common.HexToAddress(defaultNFTAddress),
@@ -76,13 +78,13 @@ func TestVCController_GetVINVC(t *testing.T) {
 			tokenID: 124,
 			setupMocks: func(mocks Mocks) {
 				pairedAddr := randAddress()
-				tokenID := uint32(124)
+				tokenID := big.NewInt(124)
 				pariedDevice := models.PairedDevice{
 					Address: pairedAddr.String(),
 					Type:    models.DeviceTypeAftermarket,
-					DID: cloudevent.NFTDID{
+					DID: cloudevent.ERC721DID{
 						ChainID:         polygonChainID,
-						TokenID:         10,
+						TokenID:         tokenID10,
 						ContractAddress: common.HexToAddress(defaultNFTAddress),
 					},
 				}
@@ -90,7 +92,7 @@ func TestVCController_GetVINVC(t *testing.T) {
 				vehicleInfo := &models.VehicleInfo{
 					PairedDevices: []models.PairedDevice{pariedDevice},
 					NameSlug:      defaultNameSlug,
-					DID: cloudevent.NFTDID{
+					DID: cloudevent.ERC721DID{
 						ChainID:         polygonChainID,
 						TokenID:         tokenID,
 						ContractAddress: common.HexToAddress(defaultNFTAddress),
@@ -110,7 +112,7 @@ func TestVCController_GetVINVC(t *testing.T) {
 				mocks.vinAPI.EXPECT().DecodeVIN(ctxType, validFP.VIN, "").Return(vehicleInfo.NameSlug, nil)
 				vinSubject := verifiable.VINSubject{
 					VehicleIdentificationNumber: validFP.VIN,
-					VehicleTokenID:              tokenID,
+					VehicleTokenID:              uint32(tokenID.Uint64()),
 					CountryCode:                 "",
 					RecordedBy:                  validFP.Producer,
 					RecordedAt:                  validFP.Time,
@@ -124,9 +126,9 @@ func TestVCController_GetVINVC(t *testing.T) {
 			name:    "error fetching paired devices",
 			tokenID: 125,
 			setupMocks: func(mocks Mocks) {
-				tokenID := uint32(125)
+				tokenID := big.NewInt(125)
 				vehicleInfo := &models.VehicleInfo{
-					DID: cloudevent.NFTDID{
+					DID: cloudevent.ERC721DID{
 						ChainID:         polygonChainID,
 						TokenID:         tokenID,
 						ContractAddress: common.HexToAddress(defaultNFTAddress),
@@ -141,21 +143,21 @@ func TestVCController_GetVINVC(t *testing.T) {
 			name:    "no fingerprint messages",
 			tokenID: 127,
 			setupMocks: func(mocks Mocks) {
-				tokenID := uint32(127)
+				tokenID := big.NewInt(127)
 				pairedAddr := randAddress()
 				pariedDevice := models.PairedDevice{
 					Address: pairedAddr.String(),
 					Type:    models.DeviceTypeAftermarket,
-					DID: cloudevent.NFTDID{
+					DID: cloudevent.ERC721DID{
 						ChainID:         polygonChainID,
-						TokenID:         10,
+						TokenID:         tokenID10,
 						ContractAddress: common.HexToAddress(defaultNFTAddress),
 					},
 				}
 				vehicleInfo := &models.VehicleInfo{
 					PairedDevices: []models.PairedDevice{pariedDevice},
 					NameSlug:      defaultNameSlug,
-					DID: cloudevent.NFTDID{
+					DID: cloudevent.ERC721DID{
 						ChainID:         polygonChainID,
 						TokenID:         tokenID,
 						ContractAddress: common.HexToAddress(defaultNFTAddress),
@@ -173,29 +175,29 @@ func TestVCController_GetVINVC(t *testing.T) {
 			setupMocks: func(mocks Mocks) {
 				pairedAddr := randAddress()
 				pairedAddr2 := randAddress()
-				tokenID := uint32(128)
+				tokenID := big.NewInt(128)
 				device1 := models.PairedDevice{
 					Address: pairedAddr.String(),
 					Type:    models.DeviceTypeAftermarket,
-					DID: cloudevent.NFTDID{
+					DID: cloudevent.ERC721DID{
 						ChainID:         polygonChainID,
-						TokenID:         10,
+						TokenID:         tokenID10,
 						ContractAddress: common.HexToAddress(defaultNFTAddress),
 					},
 				}
 				device2 := models.PairedDevice{
 					Address: pairedAddr2.String(),
 					Type:    models.DeviceTypeSynthetic,
-					DID: cloudevent.NFTDID{
+					DID: cloudevent.ERC721DID{
 						ChainID:         polygonChainID,
-						TokenID:         11,
+						TokenID:         big.NewInt(11),
 						ContractAddress: common.HexToAddress(defaultNFTAddress),
 					},
 				}
 				vehicleInfo := &models.VehicleInfo{
 					PairedDevices: []models.PairedDevice{device1, device2},
 					NameSlug:      defaultNameSlug,
-					DID: cloudevent.NFTDID{
+					DID: cloudevent.ERC721DID{
 						ChainID:         polygonChainID,
 						TokenID:         tokenID,
 						ContractAddress: common.HexToAddress(defaultNFTAddress),
@@ -227,7 +229,7 @@ func TestVCController_GetVINVC(t *testing.T) {
 
 				vinSubject := verifiable.VINSubject{
 					VehicleIdentificationNumber: validFPLatest.VIN,
-					VehicleTokenID:              tokenID,
+					VehicleTokenID:              uint32(tokenID.Uint64()),
 					CountryCode:                 "",
 					RecordedBy:                  validFPLatest.Producer,
 					RecordedAt:                  validFPLatest.Time,
@@ -242,20 +244,20 @@ func TestVCController_GetVINVC(t *testing.T) {
 			tokenID: 129,
 			setupMocks: func(mocks Mocks) {
 				pairedAddr := randAddress()
-				tokenID := uint32(129)
+				tokenID := new(big.Int).SetInt64(129)
 				pariedDevice := models.PairedDevice{
 					Address: pairedAddr.String(),
 					Type:    models.DeviceTypeAftermarket,
-					DID: cloudevent.NFTDID{
+					DID: cloudevent.ERC721DID{
 						ChainID:         polygonChainID,
-						TokenID:         10,
+						TokenID:         tokenID10,
 						ContractAddress: common.HexToAddress(defaultNFTAddress),
 					},
 				}
 				vehicleInfo := &models.VehicleInfo{
 					PairedDevices: []models.PairedDevice{pariedDevice},
 					NameSlug:      defaultNameSlug,
-					DID: cloudevent.NFTDID{
+					DID: cloudevent.ERC721DID{
 						ChainID:         polygonChainID,
 						TokenID:         tokenID,
 						ContractAddress: common.HexToAddress(defaultNFTAddress),
@@ -281,20 +283,20 @@ func TestVCController_GetVINVC(t *testing.T) {
 			tokenID: 130,
 			setupMocks: func(mocks Mocks) {
 				pairedAddr := randAddress()
-				tokenID := uint32(130)
+				tokenID := big.NewInt(130)
 				pariedDevice := models.PairedDevice{
 					Address: pairedAddr.String(),
 					Type:    models.DeviceTypeAftermarket,
-					DID: cloudevent.NFTDID{
+					DID: cloudevent.ERC721DID{
 						ChainID:         polygonChainID,
-						TokenID:         10,
+						TokenID:         tokenID10,
 						ContractAddress: common.HexToAddress(defaultNFTAddress),
 					},
 				}
 				vehicleInfo := &models.VehicleInfo{
 					PairedDevices: []models.PairedDevice{pariedDevice},
 					NameSlug:      defaultNameSlug,
-					DID: cloudevent.NFTDID{
+					DID: cloudevent.ERC721DID{
 						ChainID:         polygonChainID,
 						TokenID:         tokenID,
 						ContractAddress: common.HexToAddress(defaultNFTAddress),
@@ -320,20 +322,20 @@ func TestVCController_GetVINVC(t *testing.T) {
 			tokenID: 131,
 			setupMocks: func(mocks Mocks) {
 				pairedAddr := randAddress()
-				tokenID := uint32(131)
+				tokenID := big.NewInt(131)
 				pariedDevice := models.PairedDevice{
 					Address: pairedAddr.String(),
 					Type:    models.DeviceTypeAftermarket,
-					DID: cloudevent.NFTDID{
+					DID: cloudevent.ERC721DID{
 						ChainID:         polygonChainID,
-						TokenID:         10,
+						TokenID:         tokenID10,
 						ContractAddress: common.HexToAddress(defaultNFTAddress),
 					},
 				}
 				vehicleInfo := &models.VehicleInfo{
 					PairedDevices: []models.PairedDevice{pariedDevice},
 					NameSlug:      defaultNameSlug,
-					DID: cloudevent.NFTDID{
+					DID: cloudevent.ERC721DID{
 						ChainID:         polygonChainID,
 						TokenID:         tokenID,
 						ContractAddress: common.HexToAddress(defaultNFTAddress),
@@ -353,7 +355,7 @@ func TestVCController_GetVINVC(t *testing.T) {
 				mocks.vinAPI.EXPECT().DecodeVIN(ctxType, validFP.VIN, "").Return(vehicleInfo.NameSlug, nil)
 				vinSubject := verifiable.VINSubject{
 					VehicleIdentificationNumber: validFP.VIN,
-					VehicleTokenID:              tokenID,
+					VehicleTokenID:              uint32(tokenID.Uint64()),
 					CountryCode:                 "",
 					RecordedBy:                  validFP.Producer,
 					RecordedAt:                  validFP.Time,
@@ -367,9 +369,9 @@ func TestVCController_GetVINVC(t *testing.T) {
 			name:    "VC already exists",
 			tokenID: 132,
 			setupMocks: func(mocks Mocks) {
-				tokenID := uint32(132)
+				tokenID := big.NewInt(132)
 				vehicleInfo := &models.VehicleInfo{
-					DID: cloudevent.NFTDID{
+					DID: cloudevent.ERC721DID{
 						ChainID:         polygonChainID,
 						TokenID:         tokenID,
 						ContractAddress: common.HexToAddress(defaultNFTAddress),
@@ -391,21 +393,21 @@ func TestVCController_GetVINVC(t *testing.T) {
 			name:    "VC is expired",
 			tokenID: 133,
 			setupMocks: func(mocks Mocks) {
-				tokenID := uint32(133)
+				tokenID := big.NewInt(133)
 				pairedAddr := randAddress()
 				pariedDevice := models.PairedDevice{
 					Address: pairedAddr.String(),
 					Type:    models.DeviceTypeAftermarket,
-					DID: cloudevent.NFTDID{
+					DID: cloudevent.ERC721DID{
 						ChainID:         polygonChainID,
-						TokenID:         10,
+						TokenID:         tokenID10,
 						ContractAddress: common.HexToAddress(defaultNFTAddress),
 					},
 				}
 				vehicleInfo := &models.VehicleInfo{
 					PairedDevices: []models.PairedDevice{pariedDevice},
 					NameSlug:      defaultNameSlug,
-					DID: cloudevent.NFTDID{
+					DID: cloudevent.ERC721DID{
 						ChainID:         polygonChainID,
 						TokenID:         tokenID,
 						ContractAddress: common.HexToAddress(defaultNFTAddress),
@@ -427,7 +429,7 @@ func TestVCController_GetVINVC(t *testing.T) {
 				mocks.vinAPI.EXPECT().DecodeVIN(ctxType, validFP.VIN, "").Return(vehicleInfo.NameSlug, nil)
 				vinSubject := verifiable.VINSubject{
 					VehicleIdentificationNumber: validFP.VIN,
-					VehicleTokenID:              tokenID,
+					VehicleTokenID:              uint32(tokenID.Uint64()),
 					CountryCode:                 "",
 					RecordedBy:                  validFP.Producer,
 					RecordedAt:                  validFP.Time,

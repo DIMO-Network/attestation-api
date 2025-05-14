@@ -46,7 +46,7 @@ func (m *MockVCRepo) EXPECT() *MockVCRepoMockRecorder {
 }
 
 // GetLatestVINVC mocks base method.
-func (m *MockVCRepo) GetLatestVINVC(ctx context.Context, vehicleDID cloudevent.NFTDID) (*verifiable.Credential, error) {
+func (m *MockVCRepo) GetLatestVINVC(ctx context.Context, vehicleDID cloudevent.ERC721DID) (*verifiable.Credential, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetLatestVINVC", ctx, vehicleDID)
 	ret0, _ := ret[0].(*verifiable.Credential)
@@ -99,7 +99,7 @@ func (m *MockIdentityAPI) EXPECT() *MockIdentityAPIMockRecorder {
 }
 
 // GetVehicleInfo mocks base method.
-func (m *MockIdentityAPI) GetVehicleInfo(ctx context.Context, vehicleDID cloudevent.NFTDID) (*models.VehicleInfo, error) {
+func (m *MockIdentityAPI) GetVehicleInfo(ctx context.Context, vehicleDID cloudevent.ERC721DID) (*models.VehicleInfo, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetVehicleInfo", ctx, vehicleDID)
 	ret0, _ := ret[0].(*models.VehicleInfo)
@@ -138,7 +138,7 @@ func (m *MockFingerprintRepo) EXPECT() *MockFingerprintRepoMockRecorder {
 }
 
 // GetLatestFingerprintMessages mocks base method.
-func (m *MockFingerprintRepo) GetLatestFingerprintMessages(ctx context.Context, vehicle cloudevent.NFTDID, pairedDeviceAddr models.PairedDevice) (*models.DecodedFingerprintData, error) {
+func (m *MockFingerprintRepo) GetLatestFingerprintMessages(ctx context.Context, vehicle cloudevent.ERC721DID, pairedDeviceAddr models.PairedDevice) (*models.DecodedFingerprintData, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetLatestFingerprintMessages", ctx, vehicle, pairedDeviceAddr)
 	ret0, _ := ret[0].(*models.DecodedFingerprintData)

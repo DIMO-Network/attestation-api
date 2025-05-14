@@ -84,7 +84,7 @@ func (m *MockIdentityAPI) EXPECT() *MockIdentityAPIMockRecorder {
 }
 
 // GetVehicleInfo mocks base method.
-func (m *MockIdentityAPI) GetVehicleInfo(ctx context.Context, vehicleDID cloudevent.NFTDID) (*models.VehicleInfo, error) {
+func (m *MockIdentityAPI) GetVehicleInfo(ctx context.Context, vehicleDID cloudevent.ERC721DID) (*models.VehicleInfo, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetVehicleInfo", ctx, vehicleDID)
 	ret0, _ := ret[0].(*models.VehicleInfo)
@@ -138,7 +138,7 @@ func (mr *MockConnectivityRepoMockRecorder) GetAutoPiEvents(ctx, pairedDevice, a
 }
 
 // GetCompassStatusEvents mocks base method.
-func (m *MockConnectivityRepo) GetCompassStatusEvents(ctx context.Context, vehicleDID cloudevent.NFTDID, after, before time.Time, limit int) ([]cloudevent.CloudEvent[json.RawMessage], error) {
+func (m *MockConnectivityRepo) GetCompassStatusEvents(ctx context.Context, vehicleDID cloudevent.ERC721DID, after, before time.Time, limit int) ([]cloudevent.CloudEvent[json.RawMessage], error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetCompassStatusEvents", ctx, vehicleDID, after, before, limit)
 	ret0, _ := ret[0].([]cloudevent.CloudEvent[json.RawMessage])
@@ -168,7 +168,7 @@ func (mr *MockConnectivityRepoMockRecorder) GetHashDogEvents(ctx, pairedDevice, 
 }
 
 // GetRuptelaStatusEvents mocks base method.
-func (m *MockConnectivityRepo) GetRuptelaStatusEvents(ctx context.Context, vehicleDID cloudevent.NFTDID, after, before time.Time, limit int) ([]cloudevent.CloudEvent[json.RawMessage], error) {
+func (m *MockConnectivityRepo) GetRuptelaStatusEvents(ctx context.Context, vehicleDID cloudevent.ERC721DID, after, before time.Time, limit int) ([]cloudevent.CloudEvent[json.RawMessage], error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetRuptelaStatusEvents", ctx, vehicleDID, after, before, limit)
 	ret0, _ := ret[0].([]cloudevent.CloudEvent[json.RawMessage])
@@ -183,7 +183,7 @@ func (mr *MockConnectivityRepoMockRecorder) GetRuptelaStatusEvents(ctx, vehicleD
 }
 
 // GetSyntheticstatusEvents mocks base method.
-func (m *MockConnectivityRepo) GetSyntheticstatusEvents(ctx context.Context, vehicleDID cloudevent.NFTDID, after, before time.Time, limit int) ([]cloudevent.CloudEvent[json.RawMessage], error) {
+func (m *MockConnectivityRepo) GetSyntheticstatusEvents(ctx context.Context, vehicleDID cloudevent.ERC721DID, after, before time.Time, limit int) ([]cloudevent.CloudEvent[json.RawMessage], error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetSyntheticstatusEvents", ctx, vehicleDID, after, before, limit)
 	ret0, _ := ret[0].([]cloudevent.CloudEvent[json.RawMessage])

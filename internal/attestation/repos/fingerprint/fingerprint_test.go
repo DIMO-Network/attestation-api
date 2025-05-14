@@ -80,7 +80,7 @@ func TestDecodeFingerprintMessage(t *testing.T) {
 			expectedData: models.DecodedFingerprintData{
 				CloudEventHeader: cloudevent.CloudEventHeader{
 					SpecVersion: "1.0",
-					Subject:     "did:nft:1:0xbA5738a18d83D41847dfFbDC6101d37C69c9B0cF_33",
+					Subject:     "did:erc721:1:0xbA5738a18d83D41847dfFbDC6101d37C69c9B0cF:33",
 					Time:        time.Date(2024, 9, 27, 8, 33, 26, 0, time.UTC),
 					Source:      "0xF26421509Efe92861a587482100c6d728aBf1CD0",
 					Extras: map[string]interface{}{
@@ -96,9 +96,9 @@ func TestDecodeFingerprintMessage(t *testing.T) {
 			expectedData: models.DecodedFingerprintData{
 				CloudEventHeader: cloudevent.CloudEventHeader{
 					SpecVersion: "1.0",
-					Subject:     "did:nft:80003:0x45fbCD3ef7361d156e8b16F5538AE36DEdf61Da8_15",
+					Subject:     "did:erc721:80003:0x45fbCD3ef7361d156e8b16F5538AE36DEdf61Da8:15",
 					ID:          "2pcYwspbaBFJ7NPGZ2kivkuJ12a",
-					Producer:    "did:nft:80003:0x78513c8CB4D6B6079f813850376bc9c7fc8aE67f_12",
+					Producer:    "did:erc721:80003:0x78513c8CB4D6B6079f813850376bc9c7fc8aE67f:12",
 					Source:      common.HexToAddress("0xc4035Fecb1cc906130423EF05f9C20977F643722").String(), // tesla sources
 					Type:        cloudevent.TypeFingerprint,
 				},
@@ -111,9 +111,9 @@ func TestDecodeFingerprintMessage(t *testing.T) {
 			expectedData: models.DecodedFingerprintData{
 				CloudEventHeader: cloudevent.CloudEventHeader{
 					SpecVersion: "1.0",
-					Subject:     "did:nft:80003:0x45fbCD3ef7361d156e8b16F5538AE36DEdf61Da8_15",
+					Subject:     "did:erc721:80003:0x45fbCD3ef7361d156e8b16F5538AE36DEdf61Da8:15",
 					ID:          "2pcYwspbaBFJ7NPGZ2kivkuJ12a",
-					Producer:    "did:nft:80003:0x78513c8CB4D6B6079f813850376bc9c7fc8aE67f_12",
+					Producer:    "did:erc721:80003:0x78513c8CB4D6B6079f813850376bc9c7fc8aE67f:12",
 					Source:      common.HexToAddress("0x55BF1c27d468314Ea119CF74979E2b59F962295c").String(), // compass source
 					Type:        cloudevent.TypeFingerprint,
 				},
@@ -126,9 +126,9 @@ func TestDecodeFingerprintMessage(t *testing.T) {
 			expectedData: models.DecodedFingerprintData{
 				CloudEventHeader: cloudevent.CloudEventHeader{
 					SpecVersion: "1.0",
-					Subject:     "did:nft:137:0xAb12Cd34Ef56Gh78Ij90Kl12Mn34Op56Qr78St_12345",
+					Subject:     "did:erc721:137:0xAb12Cd34Ef56Gh78Ij90Kl12Mn34Op56Qr78St:12345",
 					ID:          "9xYzA8bCdEf2GhIj3KlMnOpQ7rS",
-					Producer:    "did:nft:137:0x8a92B34cDeFg1H2i3J4k5L6m7N8o9P0qRsTuV_45678",
+					Producer:    "did:erc721:137:0x8a92B34cDeFg1H2i3J4k5L6m7N8o9P0qRsTuV:45678",
 					Source:      common.HexToAddress("0x4c674ddE8189aEF6e3b58F5a36d7438b2b1f6Bc2").String(), // hashdog source
 					Type:        cloudevent.TypeFingerprint,
 				},
@@ -239,16 +239,16 @@ var ruptelaStatusPayload = `
 		"trigger": 7
 	},
 	"ds": "r/v0/s",
-	"subject": "did:nft:1:0xbA5738a18d83D41847dfFbDC6101d37C69c9B0cF_33",
+	"subject": "did:erc721:1:0xbA5738a18d83D41847dfFbDC6101d37C69c9B0cF:33",
 	"time": "2024-09-27T08:33:26Z"
 }`
 
 var teslaStatusPayload = `{
 	"id": "2pcYwspbaBFJ7NPGZ2kivkuJ12a",
 	"source": "0xc4035Fecb1cc906130423EF05f9C20977F643722",
-	"producer": "did:nft:80003:0x78513c8CB4D6B6079f813850376bc9c7fc8aE67f_12",
+	"producer": "did:erc721:80003:0x78513c8CB4D6B6079f813850376bc9c7fc8aE67f:12",
 	"specversion": "1.0",
-	"subject": "did:nft:80003:0x45fbCD3ef7361d156e8b16F5538AE36DEdf61Da8_15",
+	"subject": "did:erc721:80003:0x45fbCD3ef7361d156e8b16F5538AE36DEdf61Da8:15",
 	"type": "dimo.fingerprint",
 	"data": {
 		"id": 234234,
@@ -266,9 +266,9 @@ var teslaStatusPayload = `{
 var compassStatusPayload = `{
   "id": "2pcYwspbaBFJ7NPGZ2kivkuJ12a",
   "source": "0x55BF1c27d468314Ea119CF74979E2b59F962295c",
-  "producer": "did:nft:80003:0x78513c8CB4D6B6079f813850376bc9c7fc8aE67f_12",
+  "producer": "did:erc721:80003:0x78513c8CB4D6B6079f813850376bc9c7fc8aE67f:12",
   "specversion": "1.0",
-  "subject": "did:nft:80003:0x45fbCD3ef7361d156e8b16F5538AE36DEdf61Da8_15",
+  "subject": "did:erc721:80003:0x45fbCD3ef7361d156e8b16F5538AE36DEdf61Da8:15",
   "type": "dimo.fingerprint",
   "data": {
     "id": "S76960rsT8SYlrvlTfMWoQ==",
@@ -294,9 +294,9 @@ var compassStatusPayload = `{
 var hashdogFPPayload = `{
   "id": "9xYzA8bCdEf2GhIj3KlMnOpQ7rS",
   "source": "0x4c674ddE8189aEF6e3b58F5a36d7438b2b1f6Bc2",
-  "producer": "did:nft:137:0x8a92B34cDeFg1H2i3J4k5L6m7N8o9P0qRsTuV_45678",
+  "producer": "did:erc721:137:0x8a92B34cDeFg1H2i3J4k5L6m7N8o9P0qRsTuV:45678",
   "specversion": "1.0",
-  "subject": "did:nft:137:0xAb12Cd34Ef56Gh78Ij90Kl12Mn34Op56Qr78St_12345",
+  "subject": "did:erc721:137:0xAb12Cd34Ef56Gh78Ij90Kl12Mn34Op56Qr78St:12345",
   "type": "dimo.fingerprint",
   "data": {
     "decodedPayload": {

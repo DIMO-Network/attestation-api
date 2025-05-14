@@ -33,7 +33,7 @@ func New(chConn clickhouse.Conn, objGetter eventrepo.ObjectGetter, vcBucketName,
 }
 
 // GetLatestVINVC fetches the latest vinvc from S3.
-func (r *Repo) GetLatestVINVC(ctx context.Context, vehicleDID cloudevent.NFTDID) (*verifiable.Credential, error) {
+func (r *Repo) GetLatestVINVC(ctx context.Context, vehicleDID cloudevent.ERC721DID) (*verifiable.Credential, error) {
 	opts := &eventrepo.SearchOptions{
 		Subject:     ref(vehicleDID.String()),
 		DataVersion: &r.vinDataVersion,

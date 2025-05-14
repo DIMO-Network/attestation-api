@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"math/big"
 	"net/http"
 	"net/url"
 	"time"
@@ -57,7 +58,7 @@ func NewService(apiBaseURL string, aftermarketAddr, SyntheticAddr string, certPo
 }
 
 // GetVehicleInfo fetches vehicle information from the identity API.
-func (s *Service) GetVehicleInfo(ctx context.Context, vehicleDID cloudevent.NFTDID) (*models.VehicleInfo, error) {
+func (s *Service) GetVehicleInfo(ctx context.Context, vehicleDID cloudevent.ERC721DID) (*models.VehicleInfo, error) {
 	requestBody := map[string]any{
 		"query": query,
 		"variables": map[string]any{
@@ -103,9 +104,9 @@ func (s *Service) GetVehicleInfo(ctx context.Context, vehicleDID cloudevent.NFTD
 	var pairedDevices []models.PairedDevice
 	if respBody.Data.Vehicle.AftermarketDevice != nil {
 		tokenId := respBody.Data.Vehicle.AftermarketDevice.TokenID
-		did := cloudevent.NFTDID{
+		did := cloudevent.ERC721DID{
 			ChainID:         vehicleDID.ChainID,
-			TokenID:         uint32(tokenId),
+			TokenID:         big.NewInt(int64(tokenId)),
 			ContractAddress: s.aftermarketAddr,
 		}
 		pairedDevices = append(pairedDevices, models.PairedDevice{
@@ -118,9 +119,9 @@ func (s *Service) GetVehicleInfo(ctx context.Context, vehicleDID cloudevent.NFTD
 	}
 	if respBody.Data.Vehicle.SyntheticDevice != nil {
 		tokenID := respBody.Data.Vehicle.SyntheticDevice.TokenID
-		did := cloudevent.NFTDID{
+		did := cloudevent.ERC721DID{
 			ChainID:         vehicleDID.ChainID,
-			TokenID:         uint32(tokenID),
+			TokenID:         big.NewInt(int64(tokenID)),
 			ContractAddress: s.SyntheticAddr,
 		}
 		pairedDevices = append(pairedDevices, models.PairedDevice{
