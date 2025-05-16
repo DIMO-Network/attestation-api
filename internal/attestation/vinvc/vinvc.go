@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math/big"
 	"time"
 
 	"github.com/DIMO-Network/attestation-api/internal/controllers/ctrlerrors"
@@ -83,10 +84,10 @@ func (v *Service) GetOrCreateVC(ctx context.Context, tokenID uint32, before time
 
 // getValidVC checks if an unexpired VC exists for the given token ID.
 func (v *Service) getValidVC(ctx context.Context, tokenID uint32, before time.Time) (json.RawMessage, error) {
-	vehicleDID := cloudevent.NFTDID{
+	vehicleDID := cloudevent.ERC721DID{
 		ChainID:         v.chainID,
 		ContractAddress: common.HexToAddress(v.vehicleNFTAddress),
-		TokenID:         tokenID,
+		TokenID:         big.NewInt(int64(tokenID)),
 	}
 	prevVC, err := v.vcRepo.GetLatestVINVC(ctx, vehicleDID)
 	if err != nil {
@@ -136,7 +137,7 @@ func (v *Service) GenerateVINVCAndStore(ctx context.Context, tokenID uint32) (js
 	if err != nil {
 		return nil, err
 	}
-	producerDID, err := cloudevent.DecodeNFTDID(producer)
+	producerDID, err := cloudevent.DecodeERC721DID(producer)
 	if err != nil {
 		return nil, ctrlerrors.Error{InternalError: err, ExternalMsg: "Failed to decode producer DID"}
 	}
@@ -147,22 +148,22 @@ func (v *Service) GenerateVINVCAndStore(ctx context.Context, tokenID uint32) (js
 	return rawVC, nil
 }
 
-func (v *Service) generateVINVC(ctx context.Context, tokenID uint32) (cloudevent.NFTDID, string, json.RawMessage, error) {
+func (v *Service) generateVINVC(ctx context.Context, tokenID uint32) (cloudevent.ERC721DID, string, json.RawMessage, error) {
 	// get meta data about the vehilce
-	vehicleDID := cloudevent.NFTDID{
+	vehicleDID := cloudevent.ERC721DID{
 		ChainID:         v.chainID,
 		ContractAddress: common.HexToAddress(v.vehicleNFTAddress),
-		TokenID:         tokenID,
+		TokenID:         big.NewInt(int64(tokenID)),
 	}
 	vehicleInfo, err := v.identityAPI.GetVehicleInfo(ctx, vehicleDID)
 	if err != nil {
-		return cloudevent.NFTDID{}, "", nil, ctrlerrors.Error{InternalError: err, ExternalMsg: "Failed to get vehicle info"}
+		return cloudevent.ERC721DID{}, "", nil, ctrlerrors.Error{InternalError: err, ExternalMsg: "Failed to get vehicle info"}
 	}
 
 	// get a valid VIN for the vehilce
 	validFP, err := v.getValidFingerPrint(ctx, vehicleInfo, "")
 	if err != nil {
-		return cloudevent.NFTDID{}, "", nil, err
+		return cloudevent.ERC721DID{}, "", nil, err
 	}
 
 	// creatae the subject for the VC
@@ -179,7 +180,7 @@ func (v *Service) generateVINVC(ctx context.Context, tokenID uint32) (cloudevent
 	expTime := time.Now().AddDate(0, 0, daysInWeek-int(time.Now().Weekday())).UTC().Truncate(time.Hour * 24)
 	rawVC, err := v.issuer.CreateVINVC(vinSubject, expTime)
 	if err != nil {
-		return cloudevent.NFTDID{}, "", nil, ctrlerrors.Error{InternalError: err, ExternalMsg: "Failed to create VC"}
+		return cloudevent.ERC721DID{}, "", nil, ctrlerrors.Error{InternalError: err, ExternalMsg: "Failed to create VC"}
 	}
 
 	return vehicleDID, validFP.Producer, rawVC, nil
@@ -240,10 +241,10 @@ func (v *Service) GenerateManualVC(ctx context.Context, tokenID uint32, vin stri
 		RecordedAt:                  time.Now(),
 	}
 
-	vehicleDID := cloudevent.NFTDID{
+	vehicleDID := cloudevent.ERC721DID{
 		ChainID:         v.chainID,
 		ContractAddress: common.HexToAddress(v.vehicleNFTAddress),
-		TokenID:         tokenID,
+		TokenID:         big.NewInt(int64(tokenID)),
 	}
 
 	// expire in 10 years

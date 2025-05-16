@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"math/big"
 	"testing"
 	"time"
 
@@ -33,7 +34,7 @@ func TestService_CreatePOMVC(t *testing.T) {
 	require.NoError(t, err)
 
 	ctx := context.TODO()
-	tokenID := uint32(1234)
+	tokenID := big.NewInt(1234)
 	inputStatusv1 := cloudevent.CloudEvent[json.RawMessage]{}
 	err = json.Unmarshal([]byte(inputStatusv1Bytes), &inputStatusv1)
 	require.NoError(t, err)
@@ -60,7 +61,7 @@ func TestService_CreatePOMVC(t *testing.T) {
 					IMEI:             "123456789012345",
 				}
 				vehicleInfo := &models.VehicleInfo{
-					DID: cloudevent.NFTDID{
+					DID: cloudevent.ERC721DID{
 						ChainID:         137,
 						TokenID:         tokenID,
 						ContractAddress: common.HexToAddress("0xbA5738a18d83D41847dfFbDC6101d37C69c9B0cF"),
@@ -109,7 +110,7 @@ func TestService_CreatePOMVC(t *testing.T) {
 					Address: "0xf5c0337B31464D4f2232FEb2E71b4c7A175e7c52",
 				}
 				vehicleInfo := &models.VehicleInfo{
-					DID: cloudevent.NFTDID{
+					DID: cloudevent.ERC721DID{
 						ChainID:         137,
 						TokenID:         tokenID,
 						ContractAddress: common.HexToAddress("0xbA5738a18d83D41847dfFbDC6101d37C69c9B0cF"),
@@ -142,7 +143,7 @@ func TestService_CreatePOMVC(t *testing.T) {
 					Address:          "0xf5c0337B31464D4f2232FEb2E71b4c7A175e7c52",
 				}
 				vehicleInfo := &models.VehicleInfo{
-					DID: cloudevent.NFTDID{
+					DID: cloudevent.ERC721DID{
 						ChainID:         137,
 						TokenID:         tokenID,
 						ContractAddress: common.HexToAddress("0xbA5738a18d83D41847dfFbDC6101d37C69c9B0cF"),
@@ -203,7 +204,7 @@ func TestService_CreatePOMVC(t *testing.T) {
 					Address:          "0xf5c0337B31464D4f2232FEb2E71b4c7A175e7c52",
 				}
 				vehicleInfo := &models.VehicleInfo{
-					DID: cloudevent.NFTDID{
+					DID: cloudevent.ERC721DID{
 						ChainID:         137,
 						TokenID:         tokenID,
 						ContractAddress: common.HexToAddress("0xbA5738a18d83D41847dfFbDC6101d37C69c9B0cF"),
@@ -238,7 +239,7 @@ func TestService_CreatePOMVC(t *testing.T) {
 					Address: "0xf5c0337B31464D4f2232FEb2E71b4c7A175e7c52",
 				}
 				vehicleInfo := &models.VehicleInfo{
-					DID: cloudevent.NFTDID{
+					DID: cloudevent.ERC721DID{
 						ChainID:         137,
 						TokenID:         tokenID,
 						ContractAddress: common.HexToAddress("0xbA5738a18d83D41847dfFbDC6101d37C69c9B0cF"),
@@ -293,7 +294,7 @@ func TestService_CreatePOMVC(t *testing.T) {
 					Address: "0xf5c0337B31464D4f2232FEb2E71b4c7A175e7c52",
 				}
 				vehicleInfo := &models.VehicleInfo{
-					DID: cloudevent.NFTDID{
+					DID: cloudevent.ERC721DID{
 						ChainID:         137,
 						TokenID:         tokenID,
 						ContractAddress: common.HexToAddress("0xbA5738a18d83D41847dfFbDC6101d37C69c9B0cF"),
@@ -322,7 +323,7 @@ func TestService_CreatePOMVC(t *testing.T) {
 		{
 			name: "Error getting vehicle info",
 			mockSetup: func() {
-				vehicleInfo := cloudevent.NFTDID{
+				vehicleInfo := cloudevent.ERC721DID{
 					ChainID:         137,
 					TokenID:         tokenID,
 					ContractAddress: common.HexToAddress("0xbA5738a18d83D41847dfFbDC6101d37C69c9B0cF"),
@@ -340,7 +341,7 @@ func TestService_CreatePOMVC(t *testing.T) {
 					Address: "0xf5c0337B31464D4f2232FEb2E71b4c7A175e7c52",
 				}
 				vehicleInfo := &models.VehicleInfo{
-					DID: cloudevent.NFTDID{
+					DID: cloudevent.ERC721DID{
 						ChainID:         137,
 						TokenID:         tokenID,
 						ContractAddress: common.HexToAddress("0xbA5738a18d83D41847dfFbDC6101d37C69c9B0cF"),
@@ -370,7 +371,7 @@ func TestService_CreatePOMVC(t *testing.T) {
 			if tt.mockSetup != nil {
 				tt.mockSetup()
 			}
-			err := service.CreatePOMVC(ctx, tokenID)
+			err := service.CreatePOMVC(ctx, uint32(tokenID.Uint64()))
 			if tt.expectError {
 				assert.Error(t, err)
 			} else {
@@ -439,9 +440,9 @@ var (
 	{
     "id": "2ntM3FpVxTqkjJNeixHzyOyB3mz",
     "source": "0x4Dc84a226102c08e911A5159e165e616e3A877A8",
-    "producer": "did:nft:137:0x325b45949C833986bC98e98a49F3CA5C5c4643B5_14",
+    "producer": "did:erc721:137:0x325b45949C833986bC98e98a49F3CA5C5c4643B5:14",
     "specversion": "1.0",
-    "subject": "did:nft:137:0x45fbCD3ef7361d156e8b16F5538AE36DEdf61Da8_431",
+    "subject": "did:erc721:137:0x45fbCD3ef7361d156e8b16F5538AE36DEdf61Da8:431",
     "time": "2024-10-24T16:35:14Z",
     "type": "dimo.status",
     "datacontenttype": "application/json",

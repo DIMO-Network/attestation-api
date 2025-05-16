@@ -16,9 +16,9 @@ const (
 
 // PairedDevice represents a device paired with a token.
 type PairedDevice struct {
-	DID              cloudevent.NFTDID `json:"nftDid"`
-	Type             DeviceType        `json:"type"`
-	ManufacturerName string            `json:"manufacturerName"`
+	DID              cloudevent.ERC721DID `json:"erc721Did"`
+	Type             DeviceType           `json:"type"`
+	ManufacturerName string               `json:"manufacturerName"`
 
 	// TODO remove legacy lookup fields once ingest is updated
 	Address string `json:"address"`
@@ -33,7 +33,7 @@ type DecodedFingerprintData struct {
 
 // VehicleInfo contains information about a vehicle NFT.
 type VehicleInfo struct {
-	DID           cloudevent.NFTDID
+	DID           cloudevent.ERC721DID
 	PairedDevices []PairedDevice
 	NameSlug      string
 }

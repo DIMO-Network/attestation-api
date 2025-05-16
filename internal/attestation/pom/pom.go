@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"math/big"
 	"reflect"
 	"slices"
 	"time"
@@ -71,9 +72,9 @@ func NewService(logger *zerolog.Logger, identityAPI IdentityAPI, connectivityRep
 
 // CreatePOMVC generates a Proof of Movement VC.
 func (s *Service) CreatePOMVC(ctx context.Context, tokenID uint32) error {
-	vehicleDID := cloudevent.NFTDID{
+	vehicleDID := cloudevent.ERC721DID{
 		ChainID:         s.chainID,
-		TokenID:         tokenID,
+		TokenID:         big.NewInt(int64(tokenID)),
 		ContractAddress: s.vehicleContractAddress,
 	}
 	logger := s.logger.With().Uint32("vehicleTokenId", tokenID).Logger()
@@ -157,7 +158,7 @@ func (s *Service) pullMacaronEvents(ctx context.Context, device *models.PairedDe
 }
 
 // pullStatusEvents retrieves synthetic events and extracts locations.
-func (s *Service) pullStatusEvents(ctx context.Context, vehicleDID cloudevent.NFTDID) ([]verifiable.Location, error) {
+func (s *Service) pullStatusEvents(ctx context.Context, vehicleDID cloudevent.ERC721DID) ([]verifiable.Location, error) {
 	fetchEvents := func(after, before time.Time, limit int) ([]cloudevent.CloudEvent[json.RawMessage], error) {
 		return s.connectivityRepo.GetSyntheticstatusEvents(ctx, vehicleDID, after, before, limit)
 	}
@@ -165,7 +166,7 @@ func (s *Service) pullStatusEvents(ctx context.Context, vehicleDID cloudevent.NF
 }
 
 // pullRuptelaEvents retrieves Ruptela Status events and extracts locations.
-func (s *Service) pullRuptelaEvents(ctx context.Context, vehicleDID cloudevent.NFTDID) ([]verifiable.Location, error) {
+func (s *Service) pullRuptelaEvents(ctx context.Context, vehicleDID cloudevent.ERC721DID) ([]verifiable.Location, error) {
 	fetchEvents := func(after, before time.Time, limit int) ([]cloudevent.CloudEvent[json.RawMessage], error) {
 		return s.connectivityRepo.GetRuptelaStatusEvents(ctx, vehicleDID, after, before, limit)
 	}
