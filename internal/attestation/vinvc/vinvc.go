@@ -3,6 +3,7 @@ package vinvc
 
 import (
 	"context"
+	"crypto/ecdsa"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -10,13 +11,14 @@ import (
 	"time"
 
 	"github.com/DIMO-Network/attestation-api/internal/controllers/ctrlerrors"
+	"github.com/DIMO-Network/attestation-api/internal/erc191"
 	"github.com/DIMO-Network/attestation-api/internal/models"
 	"github.com/DIMO-Network/attestation-api/internal/sources"
-	"github.com/DIMO-Network/attestation-api/pkg/verifiable"
 	"github.com/DIMO-Network/cloudevent"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/gofiber/fiber/v2"
 	"github.com/rs/zerolog"
+	"github.com/segmentio/ksuid"
 )
 
 const (
@@ -30,10 +32,9 @@ type Service struct {
 	identityAPI       IdentityAPI
 	fingerprintRepo   FingerprintRepo
 	vinAPI            VINAPI
-	issuer            Issuer
-	revokedMap        map[uint32]struct{}
 	vehicleNFTAddress string
 	chainID           uint64
+	privateKey        *ecdsa.PrivateKey
 }
 
 // NewService creates a new Service for VIN VC operations.
@@ -43,88 +44,26 @@ func NewService(
 	identityService IdentityAPI,
 	fingerprintService FingerprintRepo,
 	vinService VINAPI,
-	issuer Issuer,
-	revokedList []uint32,
 	vehicleNFTAddress string,
 	chainID int64,
+	privateKey *ecdsa.PrivateKey,
 ) *Service {
-	revokeMap := make(map[uint32]struct{}, len(revokedList))
-	for _, id := range revokedList {
-		revokeMap[id] = struct{}{}
-	}
+
 	return &Service{
 		logger:            logger,
 		vcRepo:            vcRepo,
 		identityAPI:       identityService,
 		fingerprintRepo:   fingerprintService,
 		vinAPI:            vinService,
-		issuer:            issuer,
-		revokedMap:        revokeMap,
 		vehicleNFTAddress: vehicleNFTAddress,
 		chainID:           uint64(chainID),
+		privateKey:        privateKey,
 	}
-}
-
-// GetOrCreateVC retrieves or generates a VC for the given token ID.
-// if force is true, a new VC is generated regardless of the existing VC.
-func (v *Service) GetOrCreateVC(ctx context.Context, tokenID uint32, before time.Time, force bool) (json.RawMessage, error) {
-	logger := v.logger.With().Uint32("vehicleTokenId", tokenID).Logger()
-
-	if !force {
-		// check if a valid VC already exists and return it instead of generating a new one
-		rawVC, err := v.getValidVC(ctx, tokenID, before)
-		if err == nil {
-			logger.Debug().Msg("Valid VC already exists skipping generation")
-			return rawVC, nil
-		}
-	}
-
-	return v.GenerateVINVCAndStore(ctx, tokenID)
-}
-
-// getValidVC checks if an unexpired VC exists for the given token ID.
-func (v *Service) getValidVC(ctx context.Context, tokenID uint32, before time.Time) (json.RawMessage, error) {
-	vehicleDID := cloudevent.ERC721DID{
-		ChainID:         v.chainID,
-		ContractAddress: common.HexToAddress(v.vehicleNFTAddress),
-		TokenID:         big.NewInt(int64(tokenID)),
-	}
-	prevVC, err := v.vcRepo.GetLatestVINVC(ctx, vehicleDID)
-	if err != nil {
-		return nil, ctrlerrors.Error{InternalError: err, ExternalMsg: "Failed to get VC"}
-	}
-	if vcIsExpired(prevVC) {
-		return nil, ctrlerrors.Error{ExternalMsg: "VC is expired"}
-	}
-	var vinSubject verifiable.VINSubject
-	err = json.Unmarshal(prevVC.CredentialSubject, &vinSubject)
-	if err != nil {
-		return nil, ctrlerrors.Error{InternalError: err, ExternalMsg: "Failed to unmarshal VIN VC Subject"}
-	}
-
-	if !before.IsZero() && vinSubject.RecordedAt.After(before) {
-		return nil, ctrlerrors.Error{ExternalMsg: "VC is too new"}
-	}
-
-	rawVC, err := json.Marshal(prevVC)
-	if err != nil {
-		return nil, ctrlerrors.Error{InternalError: err, ExternalMsg: "Failed to marshal VC"}
-	}
-
-	return rawVC, nil
-}
-
-func vcIsExpired(vc *verifiable.Credential) bool {
-	expireDate, err := time.Parse(time.RFC3339, vc.ValidFrom)
-	if err != nil {
-		return true
-	}
-	return time.Now().After(expireDate)
 }
 
 // GenerateVINVC generates a new VIN VC and returns it.
-func (v *Service) GenerateVINVC(ctx context.Context, tokenID uint32) (json.RawMessage, error) {
-	_, _, rawVC, err := v.generateVINVC(ctx, tokenID)
+func (v *Service) CreateVINAttestation(ctx context.Context, tokenID uint32) (*cloudevent.RawEvent, error) {
+	rawVC, err := v.createVINAttestation(ctx, tokenID)
 	if err != nil {
 		return nil, err
 	}
@@ -132,23 +71,19 @@ func (v *Service) GenerateVINVC(ctx context.Context, tokenID uint32) (json.RawMe
 }
 
 // GenerateVINVCAndStore generates a new VIN VC and stores it in Object Storage.
-func (v *Service) GenerateVINVCAndStore(ctx context.Context, tokenID uint32) (json.RawMessage, error) {
-	vehicleDID, producer, rawVC, err := v.generateVINVC(ctx, tokenID)
+func (v *Service) CreateAndStoreVINAttestation(ctx context.Context, tokenID uint32) (*cloudevent.RawEvent, error) {
+	rawVC, err := v.createVINAttestation(ctx, tokenID)
 	if err != nil {
 		return nil, err
 	}
-	producerDID, err := cloudevent.DecodeERC721DID(producer)
-	if err != nil {
-		return nil, ctrlerrors.Error{InternalError: err, ExternalMsg: "Failed to decode producer DID"}
-	}
-	err = v.vcRepo.StoreVINVC(ctx, vehicleDID.String(), producerDID.String(), rawVC)
+	err = v.vcRepo.UploadAttestation(ctx, rawVC)
 	if err != nil {
 		return nil, ctrlerrors.Error{InternalError: err, ExternalMsg: "Failed to store VC"}
 	}
 	return rawVC, nil
 }
 
-func (v *Service) generateVINVC(ctx context.Context, tokenID uint32) (cloudevent.ERC721DID, string, json.RawMessage, error) {
+func (v *Service) createVINAttestation(ctx context.Context, tokenID uint32) (*cloudevent.RawEvent, error) {
 	// get meta data about the vehilce
 	vehicleDID := cloudevent.ERC721DID{
 		ChainID:         v.chainID,
@@ -157,17 +92,18 @@ func (v *Service) generateVINVC(ctx context.Context, tokenID uint32) (cloudevent
 	}
 	vehicleInfo, err := v.identityAPI.GetVehicleInfo(ctx, vehicleDID)
 	if err != nil {
-		return cloudevent.ERC721DID{}, "", nil, ctrlerrors.Error{InternalError: err, ExternalMsg: "Failed to get vehicle info"}
+		return nil, ctrlerrors.Error{InternalError: err, ExternalMsg: "Failed to get vehicle info"}
 	}
 
 	// get a valid VIN for the vehilce
 	validFP, err := v.getValidFingerPrint(ctx, vehicleInfo, "")
 	if err != nil {
-		return cloudevent.ERC721DID{}, "", nil, err
+		return nil, err
 	}
 
 	// creatae the subject for the VC
-	vinSubject := verifiable.VINSubject{
+	vinSubject := models.VINSubject{
+		VehicleDID:                  vehicleDID.String(),
 		VehicleIdentificationNumber: validFP.VIN,
 		VehicleTokenID:              tokenID,
 		CountryCode:                 "",
@@ -178,12 +114,12 @@ func (v *Service) generateVINVC(ctx context.Context, tokenID uint32) (cloudevent
 
 	// create the new VC
 	expTime := time.Now().AddDate(0, 0, daysInWeek-int(time.Now().Weekday())).UTC().Truncate(time.Hour * 24)
-	rawVC, err := v.issuer.CreateVINVC(vinSubject, expTime)
+	rawVC, err := v.compileVINAttestation(vinSubject, expTime)
 	if err != nil {
-		return cloudevent.ERC721DID{}, "", nil, ctrlerrors.Error{InternalError: err, ExternalMsg: "Failed to create VC"}
+		return nil, ctrlerrors.Error{InternalError: err, ExternalMsg: "Failed to create VC"}
 	}
 
-	return vehicleDID, validFP.Producer, rawVC, nil
+	return rawVC, nil
 }
 
 // getValidFingerPrint validates and reconciles VINs from the paired devices.
@@ -226,14 +162,19 @@ func (v *Service) getValidFingerPrint(ctx context.Context, vehicleInfo *models.V
 	return latestFP, nil
 }
 
-func (v *Service) GenerateManualVC(ctx context.Context, tokenID uint32, vin string, countryCode string) (json.RawMessage, error) {
+func (v *Service) CreateManualVINAttestation(ctx context.Context, tokenID uint32, vin string, countryCode string) (*cloudevent.RawEvent, error) {
 	producer := cloudevent.EthrDID{
 		ChainID:         v.chainID,
 		ContractAddress: sources.DINCSource,
 	}.String()
 
 	// create the subject for the Manually created VC
-	vinSubject := verifiable.VINSubject{
+	vinSubject := models.VINSubject{
+		VehicleDID: cloudevent.ERC721DID{
+			ChainID:         v.chainID,
+			ContractAddress: common.HexToAddress(v.vehicleNFTAddress),
+			TokenID:         big.NewInt(int64(tokenID)),
+		}.String(),
 		VehicleIdentificationNumber: vin,
 		VehicleTokenID:              tokenID,
 		CountryCode:                 countryCode,
@@ -241,60 +182,59 @@ func (v *Service) GenerateManualVC(ctx context.Context, tokenID uint32, vin stri
 		RecordedAt:                  time.Now(),
 	}
 
-	vehicleDID := cloudevent.ERC721DID{
-		ChainID:         v.chainID,
-		ContractAddress: common.HexToAddress(v.vehicleNFTAddress),
-		TokenID:         big.NewInt(int64(tokenID)),
-	}
-
 	// expire in 10 years
 	expTime := time.Now().AddDate(10, 0, 0).UTC().Truncate(time.Hour * 24)
-	rawVC, err := v.issuer.CreateVINVC(vinSubject, expTime)
+	rawVC, err := v.compileVINAttestation(vinSubject, expTime)
 	if err != nil {
 		return nil, ctrlerrors.Error{InternalError: err, ExternalMsg: "Failed to create VC"}
 	}
 
-	err = v.vcRepo.StoreVINVC(ctx, vehicleDID.String(), producer, rawVC)
+	err = v.vcRepo.UploadAttestation(ctx, rawVC)
 	if err != nil {
 		return nil, ctrlerrors.Error{InternalError: err, ExternalMsg: "Failed to store VC"}
 	}
 	return rawVC, nil
 }
 
-// GenerateKeyControlDocument generates a new control document for sharing public keys.
-func (v *Service) GenerateKeyControlDocument() (json.RawMessage, error) {
-	keyDoc, err := v.issuer.CreateKeyControlDoc()
-	if err != nil {
-		return nil, fmt.Errorf("failed to create key control document: %w", err)
-	}
-	return keyDoc, nil
-}
+func (v *Service) compileVINAttestation(subject models.VINSubject, expirationDate time.Time) (*cloudevent.RawEvent, error) {
+	issuanceDate := time.Now().UTC()
 
-func (v *Service) GenerateJSONLDDocument() (json.RawMessage, error) {
-	jsonLDDoc, err := v.issuer.CreateJSONLDDoc()
-	if err != nil {
-		return nil, fmt.Errorf("failed to create JSON-LD document: %w", err)
+	credential := models.Credential{
+		ValidFrom: issuanceDate,
+		ValidTo:   expirationDate.UTC(),
 	}
-	return jsonLDDoc, nil
-}
 
-func (v *Service) GenerateVocabDocument() (json.RawMessage, error) {
-	vocabDoc, err := v.issuer.CreateVocabWebpage()
+	rawSubject, err := json.Marshal(subject)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create vocabulary document: %w", err)
+		return nil, fmt.Errorf("failed to marshal credential subject: %w", err)
 	}
-	return vocabDoc, nil
-}
+	credential.CredentialSubject = rawSubject
 
-// GenerateStatusVC generates a new status VC.
-func (v *Service) GenerateStatusVC(tokenID uint32) (json.RawMessage, error) {
-	revoked := false
-	if _, ok := v.revokedMap[tokenID]; ok {
-		revoked = true
-	}
-	vcData, err := v.issuer.CreateBitstringStatusListVC(tokenID, revoked)
+	marshaledCreds, err := json.Marshal(credential)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create VC: %w", err)
+		return nil, fmt.Errorf("failed to marshal credential: %w", err)
 	}
-	return vcData, nil
+
+	signature, err := erc191.SignMessage(marshaledCreds, v.privateKey)
+	if err != nil {
+		return nil, fmt.Errorf("failed to sign credential: %w", err)
+	}
+
+	cloudEvent := cloudevent.CloudEvent[json.RawMessage]{
+		CloudEventHeader: cloudevent.CloudEventHeader{
+			SpecVersion:     "1.0",
+			ID:              ksuid.New().String(),
+			Time:            issuanceDate,
+			Source:          sources.DINCSource.String(),
+			Subject:         subject.VehicleDID,
+			Producer:        subject.RecordedBy,
+			Type:            cloudevent.TypeAttestation,
+			DataContentType: "application/json",
+			DataVersion:     "vinvc/2.0",
+			Signature:       signature,
+		},
+		Data: marshaledCreds,
+	}
+
+	return &cloudEvent, nil
 }

@@ -27,8 +27,6 @@ env:
   PORT: 8080
   MON_PORT: 8888
   GRPC_PORT: 8086
-  CLICKHOUSE_TCP_PORT: 9440
-  CLICKHOUSE_DATABASE: file_index
   DEFINITIONS_GRPC_ADDR: device-definitions-api-dev:8086
   TOKEN_EXCHANGE_JWK_KEY_SET_URL: http://dex-roles-rights.dev.svc.cluster.local:5556/keys
   TOKEN_EXCHANGE_ISSUER_URL: https://auth-roles-rights.dev.dimo.zone
@@ -37,8 +35,6 @@ env:
   SYNTHETIC_NFT_ADDRESS: '0x78513c8CB4D6B6079f813850376bc9c7fc8aE67f'
   TELEMETRY_URL: https://telemetry-api.dev.dimo.zone
   IDENTITY_API_URL: http://identity-api-dev:8080
-  FINGERPRINT_BUCKET: dimo-network-fingerprint-dev
-  FINGERPRINT_DATA_TYPE: FP_v0.0.1
   AUTOPI_DATA_TYPE: Twilio_1.0
   AUTOPI_BUCKET_NAME: dimo-network-connectivity-dev
   HASHDOG_DATA_TYPE: Lora_1.0
@@ -49,8 +45,16 @@ env:
   VINVC_DATA_TYPE: VINVCv1.0
   POMVC_DATA_TYPE: POMVCv1.0
   CLOUDEVENT_BUCKET: dimo-ingest-cloudevent-dev
-  S3_AWS_REGION: us-east-2
   DIMO_REGISTRY_CHAIN_ID: 80002
+  FETCH_GRPC_ADDR: fetch-api-dev:8086
+  
+  # TODO (kevin): Remove with smartcar deprecation
+  CLICKHOUSE_TCP_PORT: 9440
+  CLICKHOUSE_DATABASE: file_index
+  S3_AWS_REGION: us-east-2
+  FINGERPRINT_BUCKET: dimo-network-fingerprint-dev
+  FINGERPRINT_DATA_TYPE: FP_v0.0.1
+
 service:
   type: ClusterIP
   ports:

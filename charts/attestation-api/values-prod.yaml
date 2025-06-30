@@ -24,6 +24,7 @@ env:
   VC_BUCKET: dimo-ingest-cloudevent-prod
   CLOUDEVENT_BUCKET: dimo-ingest-cloudevent-prod
   DIMO_REGISTRY_CHAIN_ID: 137
+  FETCH_GRPC_ADDR: fetch-api-prod:8086
 ingress:
   enabled: true
   className: nginx
