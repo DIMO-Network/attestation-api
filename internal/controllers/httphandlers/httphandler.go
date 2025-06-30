@@ -115,22 +115,22 @@ func sanitizeTelemetryURL(telemetryURL string) (*url.URL, error) {
 // @Success 200 {object} getVCResponse
 // @Security     BearerAuth
 // @Router /v1/vc/pom/{tokenId} [post]
-func (v *HTTPController) GetPOMVC(fiberCtx *fiber.Ctx) error {
-	ctx := fiberCtx.Context()
-	tokenIDStr := fiberCtx.Params(TokenIDParam)
-	if tokenIDStr == "" {
-		return fiber.NewError(fiber.StatusBadRequest, "token_id query parameter is required")
-	}
+// func (v *HTTPController) GetPOMVC(fiberCtx *fiber.Ctx) error {
+// 	ctx := fiberCtx.Context()
+// 	tokenIDStr := fiberCtx.Params(TokenIDParam)
+// 	if tokenIDStr == "" {
+// 		return fiber.NewError(fiber.StatusBadRequest, "token_id query parameter is required")
+// 	}
 
-	tokenID64, err := strconv.ParseUint(tokenIDStr, 10, 32)
-	if err != nil {
-		return fiber.NewError(fiber.StatusBadRequest, "invalid token_id format")
-	}
+// 	tokenID64, err := strconv.ParseUint(tokenIDStr, 10, 32)
+// 	if err != nil {
+// 		return fiber.NewError(fiber.StatusBadRequest, "invalid token_id format")
+// 	}
 
-	tokenID := uint32(tokenID64)
-	err = v.pomService.CreatePOMVC(ctx, tokenID)
-	if err != nil {
-		return fmt.Errorf("failed to get or create VC: %w", err)
-	}
-	return fiberCtx.Status(fiber.StatusOK).JSON(v.successResponse(tokenID, pomQuery))
-}
+// 	tokenID := uint32(tokenID64)
+// 	err = v.pomService.CreatePOMVC(ctx, tokenID)
+// 	if err != nil {
+// 		return fmt.Errorf("failed to get or create VC: %w", err)
+// 	}
+// 	return fiberCtx.Status(fiber.StatusOK).JSON(v.successResponse(tokenID, pomQuery))
+// }

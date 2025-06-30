@@ -7,8 +7,6 @@ import (
 
 	"github.com/DIMO-Network/attestation-api/internal/attestation/apis/identity"
 	"github.com/DIMO-Network/attestation-api/internal/attestation/apis/vinvalidator"
-	"github.com/DIMO-Network/attestation-api/internal/attestation/pom"
-	"github.com/DIMO-Network/attestation-api/internal/attestation/repos/connectivity"
 	"github.com/DIMO-Network/attestation-api/internal/attestation/repos/fingerprint"
 	"github.com/DIMO-Network/attestation-api/internal/attestation/repos/vcrepo"
 	"github.com/DIMO-Network/attestation-api/internal/attestation/vinvc"
@@ -46,10 +44,7 @@ func createControllers(logger *zerolog.Logger, settings *config.Settings, status
 	// Initialize S3 client
 	s3Client := s3ClientFromSettings(settings)
 
-	fetchAPIClient, err := fetchapi.New(settings)
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to create fetch API service: %w", err)
-	}
+	fetchAPIClient := fetchapi.New(settings)
 
 	privateKey, err := crypto.HexToECDSA(settings.VINVCPrivateKey)
 	if err != nil {
@@ -92,14 +87,14 @@ func createControllers(logger *zerolog.Logger, settings *config.Settings, status
 	// Initialize VC service using the initialized services
 	vinvcService := vinvc.NewService(logger, vcRepo, identityAPI, fingerprintRepo, vinValidateSerivce, settings.VehicleNFTAddress, settings.DIMORegistryChainID, privateKey)
 
-	conRepo := connectivity.NewConnectivityRepo(chConn, s3Client, settings.AutoPiDataType, settings.AutoPiBucketName, settings.HashDogDataType, settings.HashDogBucketName, settings.StatusDataType, settings.StatusBucketName, settings.CloudEventBucket)
+	// conRepo := connectivity.NewConnectivityRepo(chConn, s3Client, settings.AutoPiDataType, settings.AutoPiBucketName, settings.HashDogDataType, settings.HashDogBucketName, settings.StatusDataType, settings.StatusBucketName, settings.CloudEventBucket)
 
-	pomService, err := pom.NewService(logger, identityAPI, conRepo, vcRepo, settings.VehicleNFTAddress, settings.DIMORegistryChainID)
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to create POM service: %w", err)
-	}
+	// pomService, err := pom.NewService(logger, identityAPI, conRepo, vcRepo, settings.VehicleNFTAddress, settings.DIMORegistryChainID)
+	// if err != nil {
+	// 	return nil, nil, fmt.Errorf("failed to create POM service: %w", err)
+	// }
 
-	ctrl, err := httphandlers.NewVCController(vinvcService, pomService, settings.TelemetryURL)
+	ctrl, err := httphandlers.NewVCController(vinvcService, nil, settings.TelemetryURL)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to create VC controller: %w", err)
 	}

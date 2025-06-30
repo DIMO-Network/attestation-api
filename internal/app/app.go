@@ -78,8 +78,8 @@ func setupHttpServer(logger *zerolog.Logger, settings *config.Settings, httpCtrl
 	}))
 	app.Post("/v2/attestation/vin/:"+httphandlers.TokenIDParam, jwtAuth, vinMiddleware, httpCtrl.CreateVINAttestation)
 
-	pomMiddleware := auth.AllOf(vehicleAddr, "tokenId", []privileges.Privilege{privileges.VehicleAllTimeLocation})
-	app.Post("/v1/vc/pom/:"+httphandlers.TokenIDParam, jwtAuth, pomMiddleware, httpCtrl.GetPOMVC)
+	// pomMiddleware := auth.AllOf(vehicleAddr, "tokenId", []privileges.Privilege{privileges.VehicleAllTimeLocation})
+	// app.Post("/v1/vc/pom/:"+httphandlers.TokenIDParam, jwtAuth, pomMiddleware, httpCtrl.GetPOMVC)
 
 	return app
 }
