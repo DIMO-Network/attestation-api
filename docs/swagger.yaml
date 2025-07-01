@@ -29,30 +29,6 @@ paths:
       summary: Show the status of server.
       tags:
       - root
-  /v1/vc/pom/{tokenId}:
-    post:
-      consumes:
-      - application/json
-      description: Create a Proof of Movement VC for a given token Id of a vehicle
-        NFT.
-      parameters:
-      - description: token Id of the vehicle NFT
-        in: path
-        name: tokenId
-        required: true
-        type: integer
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/internal_controllers_httphandlers.getVCResponse'
-      security:
-      - BearerAuth: []
-      summary: Create POM VC
-      tags:
-      - VINVC
   /v2/attestation/vin/{tokenId}:
     post:
       consumes:

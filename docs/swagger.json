@@ -30,43 +30,6 @@
                 }
             }
         },
-        "/v1/vc/pom/{tokenId}": {
-            "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Create a Proof of Movement VC for a given token Id of a vehicle NFT.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "VINVC"
-                ],
-                "summary": "Create POM VC",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "token Id of the vehicle NFT",
-                        "name": "tokenId",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/internal_controllers_httphandlers.getVCResponse"
-                        }
-                    }
-                }
-            }
-        },
         "/v2/attestation/vin/{tokenId}": {
             "post": {
                 "security": [
