@@ -15,7 +15,6 @@ import (
 // this middleware also checks if the token is for the correct contract and token ID
 func AllOf(contract common.Address, tokenIDParam string, privilegeIDs []privileges.Privilege) fiber.Handler {
 	return func(c *fiber.Ctx) error {
-		return c.Next()
 		return checkAllPrivileges(c, contract, tokenIDParam, privilegeIDs)
 	}
 }

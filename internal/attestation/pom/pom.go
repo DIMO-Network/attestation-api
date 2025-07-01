@@ -258,7 +258,7 @@ func compareLocations(firstEvent, curEvent cloudevent.CloudEvent[any]) []Locatio
 			}
 		}
 	case hashdog.Data:
-		if firstEvent.CloudEventHeader.Equals(curEvent.CloudEventHeader) {
+		if firstEvent.Equals(curEvent.CloudEventHeader) {
 			// gatway differences must be from different events
 			return nil
 		}
@@ -388,11 +388,12 @@ func getH3Cells(signals []vss.Signal) ([]h3.Cell, bool) {
 	latLongPairs := map[int64]LatLng{}
 	for _, signal := range signals {
 		timeInSecs := signal.Timestamp.Unix()
-		if signal.Name == vss.FieldCurrentLocationLatitude {
+		switch signal.Name {
+		case vss.FieldCurrentLocationLatitude:
 			latLng := latLongPairs[timeInSecs]
 			latLng.Latitude = &signal.ValueNumber
 			latLongPairs[timeInSecs] = latLng
-		} else if signal.Name == vss.FieldCurrentLocationLongitude {
+		case vss.FieldCurrentLocationLongitude:
 			latLng := latLongPairs[timeInSecs]
 			latLng.Longitude = &signal.ValueNumber
 			latLongPairs[timeInSecs] = latLng

@@ -33,14 +33,6 @@ const (
 	polygonChainID    = 137
 )
 
-var testVCPayload = &cloudevent.RawEvent{
-	CloudEventHeader: cloudevent.CloudEventHeader{
-		Source: "0x123",
-		Time:   time.Now(),
-	},
-	Data: json.RawMessage(`{"test": "payload"}`),
-}
-
 type Mocks struct {
 	vcRepo          *MockVCRepo
 	identityAPI     *MockIdentityAPI

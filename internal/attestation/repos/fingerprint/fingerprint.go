@@ -127,7 +127,3 @@ func (s *Service) decodeFingerprintMessage(msg cloudevent.RawEvent) (*models.Dec
 		VIN:              vin,
 	}, nil
 }
-
-func ref[T any](v T) *T {
-	return &v
-}
