@@ -2,9 +2,7 @@ package fingerprint
 
 import (
 	"context"
-	"database/sql"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"regexp"
 	"strings"
@@ -16,6 +14,8 @@ import (
 	"github.com/DIMO-Network/cloudevent/pkg/clickhouse/eventrepo"
 	"github.com/DIMO-Network/fetch-api/pkg/grpc"
 	"github.com/DIMO-Network/model-garage/pkg/modules"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
@@ -61,7 +61,7 @@ func (s *Service) GetLatestFingerprintMessages(ctx context.Context, vehicleDID c
 	dataObj, err := s.fetchService.GetLatestCloudEvent(ctx, opts)
 	if err != nil {
 		// if we can't find a fingerprint message in the new bucket, try the old bucket
-		if errors.Is(err, sql.ErrNoRows) {
+		if status.Code(err) == codes.NotFound {
 			return s.legacyGetLatestFingerprintMessages(ctx, device)
 		}
 		return nil, fmt.Errorf("failed to get fingerprint message: %w", err)

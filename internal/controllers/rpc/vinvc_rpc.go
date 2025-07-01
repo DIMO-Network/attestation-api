@@ -25,7 +25,7 @@ type Server struct {
 func NewServer(ctrl vinCtrl, settings *config.Settings) *Server {
 	return &Server{
 		ctrl:              ctrl,
-		vehicleNFTAddress: settings.VehicleNFTAddress,
+		vehicleNFTAddress: common.HexToAddress(settings.VehicleNFTAddress),
 		chainID:           uint64(settings.DIMORegistryChainID),
 	}
 }

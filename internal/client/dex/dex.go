@@ -41,6 +41,10 @@ type Client struct {
 
 // NewClient creates a new Dex client.
 func NewClient(settings *config.Settings) (*Client, error) {
+	if settings == nil {
+		return nil, fmt.Errorf("settings is nil")
+	}
+	// convert private key to ECDSA
 	privateKey, err := crypto.HexToECDSA(settings.SignerPrivateKey)
 	if err != nil {
 		return nil, fmt.Errorf("error converting private key to ECDSA: %w", err)
@@ -70,7 +74,7 @@ func (c *Client) GetToken(ctx context.Context, devLicense string) (string, error
 	initParams.Set("address", devLicense)
 
 	// Create challenge endpoint URL
-	challengeURL, err := url.Parse(c.dexURL.String() + generateChallengeURI)
+	challengeURL, err := url.Parse(c.dexURL.JoinPath(generateChallengeURI).String())
 	if err != nil {
 		return "", fmt.Errorf("error creating challenge URL: %w", err)
 	}
@@ -120,7 +124,7 @@ func (c *Client) GetToken(ctx context.Context, devLicense string) (string, error
 	submitParams.Set("signature", signedChallenge)
 
 	// Create submit endpoint URL
-	submitURL, err := url.Parse(c.dexURL.String() + submitChallengeURI)
+	submitURL, err := url.Parse(c.dexURL.JoinPath(submitChallengeURI).String())
 	if err != nil {
 		return "", fmt.Errorf("error creating submit URL: %w", err)
 	}

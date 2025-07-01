@@ -1,7 +1,6 @@
 package app
 
 import (
-	"context"
 	"fmt"
 	"time"
 
@@ -35,18 +34,18 @@ func createControllers(logger *zerolog.Logger, settings *config.Settings, status
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to create ClickHouse connection: %w", err)
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
-	defer cancel()
-	err = chConn.Ping(ctx)
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to ping ClickHouse: %w", err)
-	}
+	// ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
+	// defer cancel()
+	// err = chConn.Ping(ctx)
+	// if err != nil {
+	// 	return nil, nil, fmt.Errorf("failed to ping ClickHouse: %w", err)
+	// }
 	// Initialize S3 client
 	s3Client := s3ClientFromSettings(settings)
 
 	fetchAPIClient := fetchapi.New(settings)
 
-	privateKey, err := crypto.HexToECDSA(settings.VINVCPrivateKey)
+	privateKey, err := crypto.HexToECDSA(settings.SignerPrivateKey)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to decode private key: %w", err)
 	}
@@ -61,7 +60,7 @@ func createControllers(logger *zerolog.Logger, settings *config.Settings, status
 	// Initialize fingerprint repository
 	fingerprintRepo := fingerprint.New(fetchAPIClient, settings.FingerprintBucket, settings.FingerprintDataType, chConn, s3Client)
 
-	dexClient, err := dex.NewClient(nil)
+	dexClient, err := dex.NewClient(settings)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to create dex client: %w", err)
 	}

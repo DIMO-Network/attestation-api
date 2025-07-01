@@ -47,9 +47,6 @@ func TestDecodeFingerprintMessage(t *testing.T) {
 					Time:        time.Date(2024, 5, 30, 15, 4, 5, 0, time.UTC),
 					Source:      "0x5e31bBc786D7bEd95216383787deA1ab0f1c1897",
 					Signature:   "0x8f4a67281978a93fafc9231e10c6a3489b5c732239ffc72b02e3603608c7375516f876e9ac33aa3b5a2b475521dbca4e1e68d85a797ea7b07f7d9b6369b805751c",
-					// Extras: map[string]any{
-					// 	"signature": "0x8f4a67281978a93fafc9231e10c6a3489b5c732239ffc72b02e3603608c7375516f876e9ac33aa3b5a2b475521dbca4e1e68d85a797ea7b07f7d9b6369b805751c",
-					// },
 				},
 				VIN: "1HGCM82633A123456",
 			},

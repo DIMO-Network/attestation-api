@@ -73,7 +73,7 @@ func setupHttpServer(logger *zerolog.Logger, settings *config.Settings, httpCtrl
 	// redirect v1 to v2
 	app.Use(redirect.New(redirect.Config{
 		Rules: map[string]string{
-			"/v1/vc/vin/:" + httphandlers.TokenIDParam: "/v2/attestation/vin/:" + httphandlers.TokenIDParam,
+			"/v1/vc/vin/*": "/v2/attestation/vin/$1",
 		},
 	}))
 	app.Post("/v2/attestation/vin/:"+httphandlers.TokenIDParam, jwtAuth, vinMiddleware, httpCtrl.CreateVINAttestation)

@@ -18,6 +18,7 @@ import (
 
 	"github.com/DIMO-Network/attestation-api/internal/attestation/vinvc"
 	"github.com/DIMO-Network/attestation-api/internal/models"
+	"github.com/DIMO-Network/attestation-api/pkg/types"
 	"github.com/DIMO-Network/cloudevent"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -117,7 +118,7 @@ func TestVCController_GetVINVC(t *testing.T) {
 				mocks.vinAPI.EXPECT().DecodeVIN(ctxType, validFP.VIN, "").Return(vehicleInfo.NameSlug, nil)
 
 				// Create a matcher to verify the expected VIN subject
-				expectedVINSubject := models.VINSubject{
+				expectedVINSubject := types.VINSubject{
 					VehicleDID:                  vehicleInfo.DID.String(),
 					VehicleIdentificationNumber: validFP.VIN,
 					VehicleTokenID:              uint32(tokenID.Uint64()),
@@ -232,7 +233,7 @@ func TestVCController_GetVINVC(t *testing.T) {
 				mocks.vinAPI.EXPECT().DecodeVIN(ctxType, validFPLatest.VIN, "").Return(vehicleInfo.NameSlug, nil)
 
 				// Create a matcher to verify the expected VIN subject (should use the latest fingerprint)
-				expectedVINSubject := models.VINSubject{
+				expectedVINSubject := types.VINSubject{
 					VehicleDID:                  vehicleInfo.DID.String(),
 					VehicleIdentificationNumber: validFPLatest.VIN,
 					VehicleTokenID:              uint32(tokenID.Uint64()),
@@ -357,7 +358,7 @@ func TestVCController_GetVINVC(t *testing.T) {
 				mocks.vinAPI.EXPECT().DecodeVIN(ctxType, validFP.VIN, "").Return(vehicleInfo.NameSlug, nil)
 
 				// Create a matcher to verify the expected VIN subject
-				expectedVINSubject := models.VINSubject{
+				expectedVINSubject := types.VINSubject{
 					VehicleDID:                  vehicleInfo.DID.String(),
 					VehicleIdentificationNumber: validFP.VIN,
 					VehicleTokenID:              uint32(tokenID.Uint64()),
@@ -407,7 +408,7 @@ func TestVCController_GetVINVC(t *testing.T) {
 				mocks.vinAPI.EXPECT().DecodeVIN(ctxType, validFP.VIN, "").Return(vehicleInfo.NameSlug, nil)
 
 				// Create a matcher to verify the expected VIN subject
-				expectedVINSubject := models.VINSubject{
+				expectedVINSubject := types.VINSubject{
 					VehicleDID:                  vehicleInfo.DID.String(),
 					VehicleIdentificationNumber: validFP.VIN,
 					VehicleTokenID:              uint32(tokenID.Uint64()),
@@ -466,7 +467,7 @@ func randAddress() common.Address {
 
 // matchVINSubject creates a gomock matcher that verifies the VIN subject content
 type vinSubjectMatcher struct {
-	expected models.VINSubject
+	expected types.VINSubject
 }
 
 func (m *vinSubjectMatcher) Matches(x interface{}) bool {
@@ -475,12 +476,12 @@ func (m *vinSubjectMatcher) Matches(x interface{}) bool {
 		return false
 	}
 
-	var credential models.Credential
+	var credential types.Credential
 	if err := json.Unmarshal(rawEvent.Data, &credential); err != nil {
 		return false
 	}
 
-	var actual models.VINSubject
+	var actual types.VINSubject
 	if err := json.Unmarshal(credential.CredentialSubject, &actual); err != nil {
 		return false
 	}
@@ -497,6 +498,6 @@ func (m *vinSubjectMatcher) String() string {
 		m.expected.VehicleDID, m.expected.VehicleIdentificationNumber, m.expected.VehicleTokenID)
 }
 
-func matchVINSubject(expected models.VINSubject) gomock.Matcher {
+func matchVINSubject(expected types.VINSubject) gomock.Matcher {
 	return &vinSubjectMatcher{expected: expected}
 }

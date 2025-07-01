@@ -14,6 +14,7 @@ import (
 	"github.com/DIMO-Network/attestation-api/internal/erc191"
 	"github.com/DIMO-Network/attestation-api/internal/models"
 	"github.com/DIMO-Network/attestation-api/internal/sources"
+	"github.com/DIMO-Network/attestation-api/pkg/types"
 	"github.com/DIMO-Network/cloudevent"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/gofiber/fiber/v2"
@@ -102,7 +103,7 @@ func (v *Service) createVINAttestation(ctx context.Context, tokenID uint32) (*cl
 	}
 
 	// creatae the subject for the VC
-	vinSubject := models.VINSubject{
+	vinSubject := types.VINSubject{
 		VehicleDID:                  vehicleDID.String(),
 		VehicleIdentificationNumber: validFP.VIN,
 		VehicleTokenID:              tokenID,
@@ -169,7 +170,7 @@ func (v *Service) CreateManualVINAttestation(ctx context.Context, tokenID uint32
 	}.String()
 
 	// create the subject for the Manually created VC
-	vinSubject := models.VINSubject{
+	vinSubject := types.VINSubject{
 		VehicleDID: cloudevent.ERC721DID{
 			ChainID:         v.chainID,
 			ContractAddress: common.HexToAddress(v.vehicleNFTAddress),
@@ -196,10 +197,10 @@ func (v *Service) CreateManualVINAttestation(ctx context.Context, tokenID uint32
 	return rawVC, nil
 }
 
-func (v *Service) compileVINAttestation(subject models.VINSubject, expirationDate time.Time) (*cloudevent.RawEvent, error) {
+func (v *Service) compileVINAttestation(subject types.VINSubject, expirationDate time.Time) (*cloudevent.RawEvent, error) {
 	issuanceDate := time.Now().UTC()
 
-	credential := models.Credential{
+	credential := types.Credential{
 		ValidFrom: issuanceDate,
 		ValidTo:   expirationDate.UTC(),
 	}
