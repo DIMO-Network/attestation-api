@@ -35,18 +35,20 @@ env:
   SYNTHETIC_NFT_ADDRESS: '0x78513c8CB4D6B6079f813850376bc9c7fc8aE67f'
   TELEMETRY_URL: https://telemetry-api.dev.dimo.zone
   IDENTITY_API_URL: http://identity-api-dev:8080
+  DIS_URL: https://attest.dev.dimo.zone
+  DEX_URL: https://auth.dev.dimo.zone
+  DEV_LICENSE: "0x52fD9Dc294066792785CcD85eFB9A0Bd48DE01E4"
+  FETCH_GRPC_ADDR: fetch-api-dev:8086
+  DIMO_REGISTRY_CHAIN_ID: 80002
+
   AUTOPI_DATA_TYPE: Twilio_1.0
   AUTOPI_BUCKET_NAME: dimo-network-connectivity-dev
   HASHDOG_DATA_TYPE: Lora_1.0
   HASHDOG_BUCKET_NAME: dimo-network-connectivity-dev
   STATUS_DATA_TYPE: Status_1.0
   STATUS_BUCKET_NAME: dimo-network-status-dev
-  VC_BUCKET: dimo-ingest-cloudevent-dev
   VINVC_DATA_TYPE: VINVCv1.0
   POMVC_DATA_TYPE: POMVCv1.0
-  CLOUDEVENT_BUCKET: dimo-ingest-cloudevent-dev
-  DIMO_REGISTRY_CHAIN_ID: 80002
-  FETCH_GRPC_ADDR: fetch-api-dev:8086
   
   # TODO (kevin): Remove with smartcar deprecation
   CLICKHOUSE_TCP_PORT: 9440
@@ -54,6 +56,8 @@ env:
   S3_AWS_REGION: us-east-2
   FINGERPRINT_BUCKET: dimo-network-fingerprint-dev
   FINGERPRINT_DATA_TYPE: FP_v0.0.1
+  VC_BUCKET: dimo-ingest-cloudevent-dev
+  CLOUDEVENT_BUCKET: dimo-ingest-cloudevent-dev
 
 service:
   type: ClusterIP
