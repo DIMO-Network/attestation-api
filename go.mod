@@ -10,7 +10,7 @@ require (
 	github.com/DIMO-Network/fetch-api v0.0.12
 	github.com/DIMO-Network/model-garage v0.6.0
 	github.com/DIMO-Network/shared v0.12.9
-	github.com/aws/aws-sdk-go v1.44.278
+	github.com/aws/aws-sdk-go-v2 v1.36.3
 	github.com/aws/aws-sdk-go-v2/credentials v1.17.62
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.79.4
 	github.com/ethereum/go-ethereum v1.15.11
@@ -41,7 +41,6 @@ require (
 	github.com/MicahParks/keyfunc/v2 v2.1.0 // indirect
 	github.com/andybalholm/brotli v1.1.1 // indirect
 	github.com/avast/retry-go/v4 v4.6.0 // indirect
-	github.com/aws/aws-sdk-go-v2 v1.36.3 // indirect
 	github.com/aws/aws-sdk-go-v2/aws/protocol/eventstream v1.6.10 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/configsources v1.3.34 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.6.34 // indirect
