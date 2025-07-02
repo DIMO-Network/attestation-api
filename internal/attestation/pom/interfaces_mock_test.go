@@ -15,8 +15,8 @@ import (
 	reflect "reflect"
 	time "time"
 
-	pom "github.com/DIMO-Network/attestation-api/internal/attestation/pom"
 	models "github.com/DIMO-Network/attestation-api/internal/models"
+	types "github.com/DIMO-Network/attestation-api/pkg/types"
 	cloudevent "github.com/DIMO-Network/cloudevent"
 	gomock "go.uber.org/mock/gomock"
 )
@@ -222,7 +222,7 @@ func (m *MockIssuer) EXPECT() *MockIssuerMockRecorder {
 }
 
 // CreatePOMVC mocks base method.
-func (m *MockIssuer) CreatePOMVC(vinSubject pom.POMSubject) ([]byte, error) {
+func (m *MockIssuer) CreatePOMVC(vinSubject types.POMSubject) ([]byte, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreatePOMVC", vinSubject)
 	ret0, _ := ret[0].([]byte)

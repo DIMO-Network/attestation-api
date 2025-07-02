@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/DIMO-Network/attestation-api/internal/models"
+	"github.com/DIMO-Network/attestation-api/pkg/types"
 	"github.com/DIMO-Network/cloudevent"
 )
 
@@ -31,5 +32,5 @@ type ConnectivityRepo interface {
 
 // Issuer defines the interface for creating control documents.
 type Issuer interface {
-	CreatePOMVC(vinSubject POMSubject) ([]byte, error)
+	CreatePOMVC(vinSubject types.POMSubject) ([]byte, error)
 }
