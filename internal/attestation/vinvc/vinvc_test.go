@@ -1,8 +1,11 @@
+//go:generate go tool mockgen -source=interfaces.go -destination=interfaces_mock_test.go -package=vinvc_test
 package vinvc_test
 
 import (
 	"context"
-	"database/sql"
+	"crypto/ecdsa"
+	"crypto/elliptic"
+	"crypto/rand"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -14,8 +17,9 @@ import (
 	"time"
 
 	"github.com/DIMO-Network/attestation-api/internal/attestation/vinvc"
+	"github.com/DIMO-Network/attestation-api/internal/config"
 	"github.com/DIMO-Network/attestation-api/internal/models"
-	"github.com/DIMO-Network/attestation-api/pkg/verifiable"
+	"github.com/DIMO-Network/attestation-api/pkg/types"
 	"github.com/DIMO-Network/cloudevent"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -30,10 +34,7 @@ const (
 	polygonChainID    = 137
 )
 
-var testVCPayload = json.RawMessage(`{"test": "payload"}`)
-
 type Mocks struct {
-	issuer          *MockIssuer
 	vcRepo          *MockVCRepo
 	identityAPI     *MockIdentityAPI
 	fingerprintRepo *MockFingerprintRepo
@@ -68,7 +69,6 @@ func TestVCController_GetVINVC(t *testing.T) {
 						ContractAddress: common.HexToAddress(defaultNFTAddress),
 					},
 				}
-				mocks.vcRepo.EXPECT().GetLatestVINVC(ctxType, vehicleInfo.DID).Return(nil, sql.ErrNoRows)
 				mocks.identityAPI.EXPECT().GetVehicleInfo(ctxType, vehicleInfo.DID).Return(vehicleInfo, nil)
 			},
 			expectedErrror: true,
@@ -98,7 +98,6 @@ func TestVCController_GetVINVC(t *testing.T) {
 						ContractAddress: common.HexToAddress(defaultNFTAddress),
 					},
 				}
-				mocks.vcRepo.EXPECT().GetLatestVINVC(ctxType, vehicleInfo.DID).Return(nil, sql.ErrNoRows)
 				mocks.identityAPI.EXPECT().GetVehicleInfo(ctxType, vehicleInfo.DID).Return(vehicleInfo, nil)
 				validFP := models.DecodedFingerprintData{
 					CloudEventHeader: cloudevent.CloudEventHeader{
@@ -110,7 +109,10 @@ func TestVCController_GetVINVC(t *testing.T) {
 				}
 				mocks.fingerprintRepo.EXPECT().GetLatestFingerprintMessages(ctxType, vehicleInfo.DID, pariedDevice).Return(&validFP, nil)
 				mocks.vinAPI.EXPECT().DecodeVIN(ctxType, validFP.VIN, "").Return(vehicleInfo.NameSlug, nil)
-				vinSubject := verifiable.VINSubject{
+
+				// Create a matcher to verify the expected VIN subject
+				expectedVINSubject := types.VINSubject{
+					VehicleDID:                  vehicleInfo.DID.String(),
 					VehicleIdentificationNumber: validFP.VIN,
 					VehicleTokenID:              uint32(tokenID.Uint64()),
 					CountryCode:                 "",
@@ -118,8 +120,7 @@ func TestVCController_GetVINVC(t *testing.T) {
 					RecordedAt:                  validFP.Time,
 					VehicleContractAddress:      "eth:" + defaultNFTAddress,
 				}
-				mocks.issuer.EXPECT().CreateVINVC(vinSubject, gomock.Any()).Return(testVCPayload, nil)
-				mocks.vcRepo.EXPECT().StoreVINVC(ctxType, vehicleInfo.DID.String(), pariedDevice.DID.String(), testVCPayload).Return(nil)
+				mocks.vcRepo.EXPECT().UploadAttestation(ctxType, matchVINSubject(expectedVINSubject)).Return(nil)
 			},
 		},
 		{
@@ -134,7 +135,6 @@ func TestVCController_GetVINVC(t *testing.T) {
 						ContractAddress: common.HexToAddress(defaultNFTAddress),
 					},
 				}
-				mocks.vcRepo.EXPECT().GetLatestVINVC(ctxType, vehicleInfo.DID).Return(nil, sql.ErrNoRows)
 				mocks.identityAPI.EXPECT().GetVehicleInfo(ctxType, vehicleInfo.DID).Return(nil, errors.New("error"))
 			},
 			expectedErrror: true,
@@ -163,7 +163,6 @@ func TestVCController_GetVINVC(t *testing.T) {
 						ContractAddress: common.HexToAddress(defaultNFTAddress),
 					},
 				}
-				mocks.vcRepo.EXPECT().GetLatestVINVC(ctxType, vehicleInfo.DID).Return(nil, sql.ErrNoRows)
 				mocks.identityAPI.EXPECT().GetVehicleInfo(ctxType, vehicleInfo.DID).Return(vehicleInfo, nil)
 				mocks.fingerprintRepo.EXPECT().GetLatestFingerprintMessages(ctxType, vehicleInfo.DID, pariedDevice).Return(nil, fmt.Errorf("no fingerprint messages"))
 			},
@@ -203,7 +202,6 @@ func TestVCController_GetVINVC(t *testing.T) {
 						ContractAddress: common.HexToAddress(defaultNFTAddress),
 					},
 				}
-				mocks.vcRepo.EXPECT().GetLatestVINVC(ctxType, vehicleInfo.DID).Return(nil, sql.ErrNoRows)
 				mocks.identityAPI.EXPECT().GetVehicleInfo(ctxType, vehicleInfo.DID).Return(vehicleInfo, nil)
 
 				validFPEarliest := models.DecodedFingerprintData{
@@ -227,7 +225,9 @@ func TestVCController_GetVINVC(t *testing.T) {
 				mocks.fingerprintRepo.EXPECT().GetLatestFingerprintMessages(ctxType, vehicleInfo.DID, device2).Return(&validFPLatest, nil)
 				mocks.vinAPI.EXPECT().DecodeVIN(ctxType, validFPLatest.VIN, "").Return(vehicleInfo.NameSlug, nil)
 
-				vinSubject := verifiable.VINSubject{
+				// Create a matcher to verify the expected VIN subject (should use the latest fingerprint)
+				expectedVINSubject := types.VINSubject{
+					VehicleDID:                  vehicleInfo.DID.String(),
 					VehicleIdentificationNumber: validFPLatest.VIN,
 					VehicleTokenID:              uint32(tokenID.Uint64()),
 					CountryCode:                 "",
@@ -235,8 +235,7 @@ func TestVCController_GetVINVC(t *testing.T) {
 					RecordedAt:                  validFPLatest.Time,
 					VehicleContractAddress:      "eth:" + defaultNFTAddress,
 				}
-				mocks.issuer.EXPECT().CreateVINVC(vinSubject, gomock.Any()).Return(testVCPayload, nil)
-				mocks.vcRepo.EXPECT().StoreVINVC(ctxType, vehicleInfo.DID.String(), device2.DID.String(), testVCPayload).Return(nil)
+				mocks.vcRepo.EXPECT().UploadAttestation(ctxType, matchVINSubject(expectedVINSubject)).Return(nil)
 			},
 		},
 		{
@@ -263,7 +262,6 @@ func TestVCController_GetVINVC(t *testing.T) {
 						ContractAddress: common.HexToAddress(defaultNFTAddress),
 					},
 				}
-				mocks.vcRepo.EXPECT().GetLatestVINVC(ctxType, vehicleInfo.DID).Return(nil, sql.ErrNoRows)
 				mocks.identityAPI.EXPECT().GetVehicleInfo(ctxType, vehicleInfo.DID).Return(vehicleInfo, nil)
 				invalidFP := models.DecodedFingerprintData{
 					CloudEventHeader: cloudevent.CloudEventHeader{
@@ -302,7 +300,6 @@ func TestVCController_GetVINVC(t *testing.T) {
 						ContractAddress: common.HexToAddress(defaultNFTAddress),
 					},
 				}
-				mocks.vcRepo.EXPECT().GetLatestVINVC(ctxType, vehicleInfo.DID).Return(nil, sql.ErrNoRows)
 				mocks.identityAPI.EXPECT().GetVehicleInfo(ctxType, vehicleInfo.DID).Return(vehicleInfo, nil)
 				validFP := models.DecodedFingerprintData{
 					CloudEventHeader: cloudevent.CloudEventHeader{
@@ -341,7 +338,6 @@ func TestVCController_GetVINVC(t *testing.T) {
 						ContractAddress: common.HexToAddress(defaultNFTAddress),
 					},
 				}
-				mocks.vcRepo.EXPECT().GetLatestVINVC(ctxType, vehicleInfo.DID).Return(nil, sql.ErrNoRows)
 				mocks.identityAPI.EXPECT().GetVehicleInfo(ctxType, vehicleInfo.DID).Return(vehicleInfo, nil)
 				validFP := models.DecodedFingerprintData{
 					CloudEventHeader: cloudevent.CloudEventHeader{
@@ -353,7 +349,10 @@ func TestVCController_GetVINVC(t *testing.T) {
 				}
 				mocks.fingerprintRepo.EXPECT().GetLatestFingerprintMessages(ctxType, vehicleInfo.DID, pariedDevice).Return(&validFP, nil)
 				mocks.vinAPI.EXPECT().DecodeVIN(ctxType, validFP.VIN, "").Return(vehicleInfo.NameSlug, nil)
-				vinSubject := verifiable.VINSubject{
+
+				// Create a matcher to verify the expected VIN subject
+				expectedVINSubject := types.VINSubject{
+					VehicleDID:                  vehicleInfo.DID.String(),
 					VehicleIdentificationNumber: validFP.VIN,
 					VehicleTokenID:              uint32(tokenID.Uint64()),
 					CountryCode:                 "",
@@ -361,33 +360,9 @@ func TestVCController_GetVINVC(t *testing.T) {
 					RecordedAt:                  validFP.Time,
 					VehicleContractAddress:      "eth:" + defaultNFTAddress,
 				}
-				mocks.issuer.EXPECT().CreateVINVC(vinSubject, gomock.Any()).Return(nil, errors.New("store error"))
+				mocks.vcRepo.EXPECT().UploadAttestation(ctxType, matchVINSubject(expectedVINSubject)).Return(errors.New("store error"))
 			},
 			expectedErrror: true,
-		},
-		{
-			name:    "VC already exists",
-			tokenID: 132,
-			setupMocks: func(mocks Mocks) {
-				tokenID := big.NewInt(132)
-				vehicleInfo := &models.VehicleInfo{
-					DID: cloudevent.ERC721DID{
-						ChainID:         polygonChainID,
-						TokenID:         tokenID,
-						ContractAddress: common.HexToAddress(defaultNFTAddress),
-					},
-				}
-				vinSubject := verifiable.VINSubject{
-					RecordedAt:             time.Now(),
-					VehicleContractAddress: "eth:" + defaultNFTAddress,
-				}
-				subjectBytes, err := json.Marshal(vinSubject)
-				require.NoError(t, err)
-				mocks.vcRepo.EXPECT().GetLatestVINVC(ctxType, vehicleInfo.DID).Return(&verifiable.Credential{
-					ValidFrom:         time.Now().Add(time.Hour).Format(time.RFC3339),
-					CredentialSubject: subjectBytes,
-				}, nil)
-			},
 		},
 		{
 			name:    "VC is expired",
@@ -413,9 +388,6 @@ func TestVCController_GetVINVC(t *testing.T) {
 						ContractAddress: common.HexToAddress(defaultNFTAddress),
 					},
 				}
-				mocks.vcRepo.EXPECT().GetLatestVINVC(ctxType, vehicleInfo.DID).Return(&verifiable.Credential{
-					ValidFrom: time.Now().Add(-time.Hour).Format(time.RFC3339),
-				}, nil)
 				mocks.identityAPI.EXPECT().GetVehicleInfo(ctxType, vehicleInfo.DID).Return(vehicleInfo, nil)
 				validFP := models.DecodedFingerprintData{
 					CloudEventHeader: cloudevent.CloudEventHeader{
@@ -427,7 +399,10 @@ func TestVCController_GetVINVC(t *testing.T) {
 				}
 				mocks.fingerprintRepo.EXPECT().GetLatestFingerprintMessages(ctxType, vehicleInfo.DID, pariedDevice).Return(&validFP, nil)
 				mocks.vinAPI.EXPECT().DecodeVIN(ctxType, validFP.VIN, "").Return(vehicleInfo.NameSlug, nil)
-				vinSubject := verifiable.VINSubject{
+
+				// Create a matcher to verify the expected VIN subject
+				expectedVINSubject := types.VINSubject{
+					VehicleDID:                  vehicleInfo.DID.String(),
 					VehicleIdentificationNumber: validFP.VIN,
 					VehicleTokenID:              uint32(tokenID.Uint64()),
 					CountryCode:                 "",
@@ -435,8 +410,7 @@ func TestVCController_GetVINVC(t *testing.T) {
 					RecordedAt:                  validFP.Time,
 					VehicleContractAddress:      "eth:" + defaultNFTAddress,
 				}
-				mocks.issuer.EXPECT().CreateVINVC(vinSubject, gomock.Any()).Return(testVCPayload, nil)
-				mocks.vcRepo.EXPECT().StoreVINVC(ctxType, vehicleInfo.DID.String(), pariedDevice.DID.String(), testVCPayload).Return(nil)
+				mocks.vcRepo.EXPECT().UploadAttestation(ctxType, matchVINSubject(expectedVINSubject)).Return(nil)
 			},
 		},
 	}
@@ -447,7 +421,6 @@ func TestVCController_GetVINVC(t *testing.T) {
 			// t.Parallel()
 			// Initialize mocks for this specific test case
 			mocks := Mocks{
-				issuer:          NewMockIssuer(ctrl),
 				vcRepo:          NewMockVCRepo(ctrl),
 				identityAPI:     NewMockIdentityAPI(ctrl),
 				fingerprintRepo: NewMockFingerprintRepo(ctrl),
@@ -457,15 +430,23 @@ func TestVCController_GetVINVC(t *testing.T) {
 			// Set up the mocks as defined in the test case
 			tt.setupMocks(mocks)
 
+			pk, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+			require.NoError(t, err)
+
+			settings := &config.Settings{
+				VehicleNFTAddress:   defaultNFTAddress,
+				DIMORegistryChainID: polygonChainID,
+				VINDataVersion:      "vin/v1.0",
+			}
+
 			// Create a new VCController instance for this test
 			vcController := vinvc.NewService(&logger,
 				mocks.vcRepo, mocks.identityAPI,
 				mocks.fingerprintRepo, mocks.vinAPI,
-				mocks.issuer, nil, defaultNFTAddress,
-				polygonChainID,
+				settings, pk,
 			)
 
-			_, err := vcController.GetOrCreateVC(context.Background(), tt.tokenID, tt.before, false)
+			_, err = vcController.CreateAndStoreVINAttestation(context.Background(), tt.tokenID)
 			if tt.expectedErrror {
 				require.Error(t, err)
 				return
@@ -481,4 +462,41 @@ func randAddress() common.Address {
 		log.Fatalf("Failed to generate private key: %v", err)
 	}
 	return crypto.PubkeyToAddress(privateKey.PublicKey)
+}
+
+// matchVINSubject creates a gomock matcher that verifies the VIN subject content
+type vinSubjectMatcher struct {
+	expected types.VINSubject
+}
+
+func (m *vinSubjectMatcher) Matches(x interface{}) bool {
+	rawEvent, ok := x.(*cloudevent.RawEvent)
+	if !ok {
+		return false
+	}
+
+	var credential types.Credential
+	if err := json.Unmarshal(rawEvent.Data, &credential); err != nil {
+		return false
+	}
+
+	var actual types.VINSubject
+	if err := json.Unmarshal(credential.CredentialSubject, &actual); err != nil {
+		return false
+	}
+
+	return actual.VehicleDID == m.expected.VehicleDID &&
+		actual.VehicleIdentificationNumber == m.expected.VehicleIdentificationNumber &&
+		actual.VehicleTokenID == m.expected.VehicleTokenID &&
+		actual.RecordedBy == m.expected.RecordedBy &&
+		actual.VehicleContractAddress == m.expected.VehicleContractAddress
+}
+
+func (m *vinSubjectMatcher) String() string {
+	return fmt.Sprintf("VIN subject with VehicleDID: %s, VIN: %s, TokenID: %d",
+		m.expected.VehicleDID, m.expected.VehicleIdentificationNumber, m.expected.VehicleTokenID)
+}
+
+func matchVINSubject(expected types.VINSubject) gomock.Matcher {
+	return &vinSubjectMatcher{expected: expected}
 }

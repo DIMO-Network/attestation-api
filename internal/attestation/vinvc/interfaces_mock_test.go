@@ -11,12 +11,9 @@ package vinvc_test
 
 import (
 	context "context"
-	json "encoding/json"
 	reflect "reflect"
-	time "time"
 
 	models "github.com/DIMO-Network/attestation-api/internal/models"
-	verifiable "github.com/DIMO-Network/attestation-api/pkg/verifiable"
 	cloudevent "github.com/DIMO-Network/cloudevent"
 	gomock "go.uber.org/mock/gomock"
 )
@@ -45,33 +42,18 @@ func (m *MockVCRepo) EXPECT() *MockVCRepoMockRecorder {
 	return m.recorder
 }
 
-// GetLatestVINVC mocks base method.
-func (m *MockVCRepo) GetLatestVINVC(ctx context.Context, vehicleDID cloudevent.ERC721DID) (*verifiable.Credential, error) {
+// UploadAttestation mocks base method.
+func (m *MockVCRepo) UploadAttestation(ctx context.Context, attestation *cloudevent.RawEvent) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetLatestVINVC", ctx, vehicleDID)
-	ret0, _ := ret[0].(*verifiable.Credential)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// GetLatestVINVC indicates an expected call of GetLatestVINVC.
-func (mr *MockVCRepoMockRecorder) GetLatestVINVC(ctx, vehicleDID any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetLatestVINVC", reflect.TypeOf((*MockVCRepo)(nil).GetLatestVINVC), ctx, vehicleDID)
-}
-
-// StoreVINVC mocks base method.
-func (m *MockVCRepo) StoreVINVC(ctx context.Context, vehicleDID, producerDID string, vinvc json.RawMessage) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "StoreVINVC", ctx, vehicleDID, producerDID, vinvc)
+	ret := m.ctrl.Call(m, "UploadAttestation", ctx, attestation)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
-// StoreVINVC indicates an expected call of StoreVINVC.
-func (mr *MockVCRepoMockRecorder) StoreVINVC(ctx, vehicleDID, producerDID, vinvc any) *gomock.Call {
+// UploadAttestation indicates an expected call of UploadAttestation.
+func (mr *MockVCRepoMockRecorder) UploadAttestation(ctx, attestation any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StoreVINVC", reflect.TypeOf((*MockVCRepo)(nil).StoreVINVC), ctx, vehicleDID, producerDID, vinvc)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UploadAttestation", reflect.TypeOf((*MockVCRepo)(nil).UploadAttestation), ctx, attestation)
 }
 
 // MockIdentityAPI is a mock of IdentityAPI interface.
@@ -189,103 +171,4 @@ func (m *MockVINAPI) DecodeVIN(ctx context.Context, vin, countryCode string) (st
 func (mr *MockVINAPIMockRecorder) DecodeVIN(ctx, vin, countryCode any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DecodeVIN", reflect.TypeOf((*MockVINAPI)(nil).DecodeVIN), ctx, vin, countryCode)
-}
-
-// MockIssuer is a mock of Issuer interface.
-type MockIssuer struct {
-	ctrl     *gomock.Controller
-	recorder *MockIssuerMockRecorder
-	isgomock struct{}
-}
-
-// MockIssuerMockRecorder is the mock recorder for MockIssuer.
-type MockIssuerMockRecorder struct {
-	mock *MockIssuer
-}
-
-// NewMockIssuer creates a new mock instance.
-func NewMockIssuer(ctrl *gomock.Controller) *MockIssuer {
-	mock := &MockIssuer{ctrl: ctrl}
-	mock.recorder = &MockIssuerMockRecorder{mock}
-	return mock
-}
-
-// EXPECT returns an object that allows the caller to indicate expected use.
-func (m *MockIssuer) EXPECT() *MockIssuerMockRecorder {
-	return m.recorder
-}
-
-// CreateBitstringStatusListVC mocks base method.
-func (m *MockIssuer) CreateBitstringStatusListVC(tokenID uint32, revoked bool) ([]byte, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CreateBitstringStatusListVC", tokenID, revoked)
-	ret0, _ := ret[0].([]byte)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// CreateBitstringStatusListVC indicates an expected call of CreateBitstringStatusListVC.
-func (mr *MockIssuerMockRecorder) CreateBitstringStatusListVC(tokenID, revoked any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateBitstringStatusListVC", reflect.TypeOf((*MockIssuer)(nil).CreateBitstringStatusListVC), tokenID, revoked)
-}
-
-// CreateJSONLDDoc mocks base method.
-func (m *MockIssuer) CreateJSONLDDoc() ([]byte, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CreateJSONLDDoc")
-	ret0, _ := ret[0].([]byte)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// CreateJSONLDDoc indicates an expected call of CreateJSONLDDoc.
-func (mr *MockIssuerMockRecorder) CreateJSONLDDoc() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateJSONLDDoc", reflect.TypeOf((*MockIssuer)(nil).CreateJSONLDDoc))
-}
-
-// CreateKeyControlDoc mocks base method.
-func (m *MockIssuer) CreateKeyControlDoc() ([]byte, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CreateKeyControlDoc")
-	ret0, _ := ret[0].([]byte)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// CreateKeyControlDoc indicates an expected call of CreateKeyControlDoc.
-func (mr *MockIssuerMockRecorder) CreateKeyControlDoc() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateKeyControlDoc", reflect.TypeOf((*MockIssuer)(nil).CreateKeyControlDoc))
-}
-
-// CreateVINVC mocks base method.
-func (m *MockIssuer) CreateVINVC(vinSubject verifiable.VINSubject, expTime time.Time) ([]byte, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CreateVINVC", vinSubject, expTime)
-	ret0, _ := ret[0].([]byte)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// CreateVINVC indicates an expected call of CreateVINVC.
-func (mr *MockIssuerMockRecorder) CreateVINVC(vinSubject, expTime any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateVINVC", reflect.TypeOf((*MockIssuer)(nil).CreateVINVC), vinSubject, expTime)
-}
-
-// CreateVocabWebpage mocks base method.
-func (m *MockIssuer) CreateVocabWebpage() ([]byte, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CreateVocabWebpage")
-	ret0, _ := ret[0].([]byte)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// CreateVocabWebpage indicates an expected call of CreateVocabWebpage.
-func (mr *MockIssuerMockRecorder) CreateVocabWebpage() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateVocabWebpage", reflect.TypeOf((*MockIssuer)(nil).CreateVocabWebpage))
 }

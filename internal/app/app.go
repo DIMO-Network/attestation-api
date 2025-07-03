@@ -18,6 +18,7 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/gofiber/fiber/v2/middleware/recover"
+	"github.com/gofiber/fiber/v2/middleware/redirect"
 	"github.com/gofiber/swagger"
 	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
 	grpc_ctxtags "github.com/grpc-ecosystem/go-grpc-middleware/tags"
@@ -66,19 +67,19 @@ func setupHttpServer(logger *zerolog.Logger, settings *config.Settings, httpCtrl
 	app.Get("/v1/swagger/*", swagger.HandlerDefault)
 	app.Get("/swagger/*", swagger.HandlerDefault)
 
-	// unauthenticated routes for vc
-	app.Get(statusRoute+"/:"+httphandlers.StatusGroupParam, httpCtrl.GetVCStatus)
-	app.Get(keysRoute, httpCtrl.GetPublicKeyDoc)
-	app.Get(vocabRoute, httpCtrl.GetVocabDoc)
-	app.Get(jsonLDRoute, httpCtrl.GetJSONLDDoc)
-
 	vehicleAddr := common.HexToAddress(settings.VehicleNFTAddress)
 
 	vinMiddleware := auth.AllOf(vehicleAddr, "tokenId", []privileges.Privilege{privileges.VehicleVinCredential})
-	app.Post("/v1/vc/vin/:"+httphandlers.TokenIDParam, jwtAuth, vinMiddleware, httpCtrl.GetVINVC)
+	// redirect v1 to v2
+	app.Use(redirect.New(redirect.Config{
+		Rules: map[string]string{
+			"/v1/vc/vin/*": "/v2/attestation/vin/$1",
+		},
+	}))
+	app.Post("/v2/attestation/vin/:"+httphandlers.TokenIDParam, jwtAuth, vinMiddleware, httpCtrl.CreateVINAttestation)
 
-	pomMiddleware := auth.AllOf(vehicleAddr, "tokenId", []privileges.Privilege{privileges.VehicleAllTimeLocation})
-	app.Post("/v1/vc/pom/:"+httphandlers.TokenIDParam, jwtAuth, pomMiddleware, httpCtrl.GetPOMVC)
+	// pomMiddleware := auth.AllOf(vehicleAddr, "tokenId", []privileges.Privilege{privileges.VehicleAllTimeLocation})
+	// app.Post("/v1/vc/pom/:"+httphandlers.TokenIDParam, jwtAuth, pomMiddleware, httpCtrl.GetPOMVC)
 
 	return app
 }
