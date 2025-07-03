@@ -10,6 +10,7 @@ import (
 	"math/big"
 	"time"
 
+	"github.com/DIMO-Network/attestation-api/internal/config"
 	"github.com/DIMO-Network/attestation-api/internal/controllers/ctrlerrors"
 	"github.com/DIMO-Network/attestation-api/internal/erc191"
 	"github.com/DIMO-Network/attestation-api/internal/models"
@@ -35,6 +36,7 @@ type Service struct {
 	vinAPI            VINAPI
 	vehicleNFTAddress string
 	chainID           uint64
+	VINVCDataVersion  string
 	privateKey        *ecdsa.PrivateKey
 }
 
@@ -45,8 +47,7 @@ func NewService(
 	identityService IdentityAPI,
 	fingerprintService FingerprintRepo,
 	vinService VINAPI,
-	vehicleNFTAddress string,
-	chainID int64,
+	settings *config.Settings,
 	privateKey *ecdsa.PrivateKey,
 ) *Service {
 
@@ -56,9 +57,10 @@ func NewService(
 		identityAPI:       identityService,
 		fingerprintRepo:   fingerprintService,
 		vinAPI:            vinService,
-		vehicleNFTAddress: vehicleNFTAddress,
-		chainID:           uint64(chainID),
+		vehicleNFTAddress: settings.VehicleNFTAddress,
+		chainID:           uint64(settings.DIMORegistryChainID),
 		privateKey:        privateKey,
+		VINVCDataVersion:  settings.VINDataVersion,
 	}
 }
 
@@ -231,7 +233,7 @@ func (v *Service) compileVINAttestation(subject types.VINSubject, expirationDate
 			Producer:        subject.RecordedBy,
 			Type:            cloudevent.TypeAttestation,
 			DataContentType: "application/json",
-			DataVersion:     "vinvc/2.0",
+			DataVersion:     v.VINVCDataVersion,
 			Signature:       signature,
 		},
 		Data: marshaledCreds,

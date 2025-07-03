@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/DIMO-Network/attestation-api/internal/attestation/vinvc"
+	"github.com/DIMO-Network/attestation-api/internal/config"
 	"github.com/DIMO-Network/attestation-api/internal/models"
 	"github.com/DIMO-Network/attestation-api/pkg/types"
 	"github.com/DIMO-Network/cloudevent"
@@ -432,11 +433,17 @@ func TestVCController_GetVINVC(t *testing.T) {
 			pk, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 			require.NoError(t, err)
 
+			settings := &config.Settings{
+				VehicleNFTAddress:   defaultNFTAddress,
+				DIMORegistryChainID: polygonChainID,
+				VINDataVersion:      "vin/v1.0",
+			}
+
 			// Create a new VCController instance for this test
 			vcController := vinvc.NewService(&logger,
 				mocks.vcRepo, mocks.identityAPI,
 				mocks.fingerprintRepo, mocks.vinAPI,
-				defaultNFTAddress, polygonChainID, pk,
+				settings, pk,
 			)
 
 			_, err = vcController.CreateAndStoreVINAttestation(context.Background(), tt.tokenID)

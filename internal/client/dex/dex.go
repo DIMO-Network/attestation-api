@@ -18,7 +18,6 @@ import (
 const (
 	generateChallengeURI = "auth/web3/generate_challenge"
 	submitChallengeURI   = "auth/web3/submit_challenge"
-	domain               = "http://127.0.0.1:10000"
 )
 
 // ChallengeResponse represents the response from the generate challenge endpoint.
@@ -34,9 +33,10 @@ type TokenResponse struct {
 
 // Client is a client for interacting with the Dex JWT server.
 type Client struct {
-	dexURL     *url.URL
-	privateKey *ecdsa.PrivateKey
-	client     *http.Client
+	dexURL      *url.URL
+	redirectURL string
+	privateKey  *ecdsa.PrivateKey
+	client      *http.Client
 }
 
 // NewClient creates a new Dex client.
@@ -56,9 +56,10 @@ func NewClient(settings *config.Settings) (*Client, error) {
 	}
 
 	return &Client{
-		dexURL:     dexURL,
-		privateKey: privateKey,
-		client:     http.DefaultClient,
+		dexURL:      dexURL,
+		redirectURL: settings.RedirectURL,
+		privateKey:  privateKey,
+		client:      http.DefaultClient,
 	}, nil
 }
 
@@ -67,7 +68,7 @@ func (c *Client) GetToken(ctx context.Context, devLicense string) (string, error
 
 	// Init/generate challenge
 	initParams := url.Values{}
-	initParams.Set("domain", domain)
+	initParams.Set("domain", c.redirectURL)
 	initParams.Set("client_id", devLicense)
 	initParams.Set("response_type", "code")
 	initParams.Set("scope", "openid email")
@@ -118,7 +119,7 @@ func (c *Client) GetToken(ctx context.Context, devLicense string) (string, error
 	state := challengeResponse.State
 	submitParams := url.Values{}
 	submitParams.Set("client_id", devLicense)
-	submitParams.Set("domain", domain)
+	submitParams.Set("domain", c.redirectURL)
 	submitParams.Set("grant_type", "authorization_code")
 	submitParams.Set("state", state)
 	submitParams.Set("signature", signedChallenge)

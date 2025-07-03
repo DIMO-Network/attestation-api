@@ -84,7 +84,7 @@ func createControllers(logger *zerolog.Logger, settings *config.Settings, status
 	}
 
 	// Initialize VC service using the initialized services
-	vinvcService := vinvc.NewService(logger, vcRepo, identityAPI, fingerprintRepo, vinValidateSerivce, settings.VehicleNFTAddress, settings.DIMORegistryChainID, privateKey)
+	vinvcService := vinvc.NewService(logger, vcRepo, identityAPI, fingerprintRepo, vinValidateSerivce, settings, privateKey)
 
 	// conRepo := connectivity.NewConnectivityRepo(chConn, s3Client, settings.AutoPiDataType, settings.AutoPiBucketName, settings.HashDogDataType, settings.HashDogBucketName, settings.StatusDataType, settings.StatusBucketName, settings.CloudEventBucket)
 

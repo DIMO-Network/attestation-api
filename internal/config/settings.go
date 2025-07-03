@@ -15,7 +15,6 @@ type Settings struct {
 	SyntheticNFTAddress       string `yaml:"SYNTHETIC_NFT_ADDRESS"`
 	TelemetryURL              string `yaml:"TELEMETRY_URL"`
 	VCBucket                  string `yaml:"VC_BUCKET"`
-	VINVCDataType             string `yaml:"VINVC_DATA_TYPE"`
 	POMVCDataType             string `yaml:"POMVC_DATA_TYPE"`
 	CloudEventBucket          string `yaml:"CLOUDEVENT_BUCKET"`
 	AutoPiDataType            string `yaml:"AUTOPI_DATA_TYPE"`
@@ -32,6 +31,8 @@ type Settings struct {
 	DexURL                    string `yaml:"DEX_URL"`
 	DevLicense                string `yaml:"DEV_LICENSE"`
 	FetchGRPCAddr             string `yaml:"FETCH_GRPC_ADDR"`
+	RedirectURL               string `yaml:"DEV_LICENSE_REDIRECT_URL"`
+	VINDataVersion            string `yaml:"VIN_DATA_VERSION"`
 
 	// TODO (kevin): Remove with smartcar deprecation
 	Clickhouse           config.Settings `yaml:",inline"`
