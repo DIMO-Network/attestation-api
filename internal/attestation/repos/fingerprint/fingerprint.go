@@ -1,22 +1,22 @@
 package fingerprint
 
 import (
-	"bytes"
 	"context"
-	"database/sql"
-	"encoding/base64"
-	"encoding/binary"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"regexp"
 	"strings"
 
 	"github.com/ClickHouse/clickhouse-go/v2"
+	"github.com/DIMO-Network/attestation-api/internal/client/fetchapi"
 	"github.com/DIMO-Network/attestation-api/internal/models"
 	"github.com/DIMO-Network/cloudevent"
 	"github.com/DIMO-Network/cloudevent/pkg/clickhouse/eventrepo"
+	"github.com/DIMO-Network/fetch-api/pkg/grpc"
 	"github.com/DIMO-Network/model-garage/pkg/modules"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
 type decodeError string
@@ -27,40 +27,41 @@ func (d decodeError) Error() string {
 	return fmt.Sprintf("failed to decode fingerprint message: %s", string(d))
 }
 
-const macaronOldFpSource = "macaron/fingerprint"
-
 // Service manages and retrieves fingerprint messages.
 type Service struct {
-	indexService     *eventrepo.Service
-	dataType         string
-	cloudEventBucket string
+	fetchService *fetchapi.FetchAPIService
 
-	// TODO (kevin): Remove this when ingest is updated
-	bucketName string
+	// TODO (kevin): Remove with smartcar deprecation
+	bucketName   string
+	indexService *eventrepo.Service
+	dataType     string
 }
 
 // New creates a new instance of Service.
-func New(chConn clickhouse.Conn, objGetter eventrepo.ObjectGetter, cloudeventBucket, legacyBucketName, fingerprintDataType string) *Service {
+func New(fetchService *fetchapi.FetchAPIService, legacyBucketName, fingerprintDataType string,
+	chConn clickhouse.Conn, objGetter eventrepo.ObjectGetter) *Service {
 	return &Service{
-		indexService:     eventrepo.New(chConn, objGetter),
-		dataType:         fingerprintDataType,
-		bucketName:       legacyBucketName,
-		cloudEventBucket: cloudeventBucket,
+		fetchService: fetchService,
+
+		// TODO (kevin): Remove with smartcar deprecation
+		indexService: eventrepo.New(chConn, objGetter),
+		dataType:     fingerprintDataType,
+		bucketName:   legacyBucketName,
 	}
 }
 
 // GetLatestFingerprintMessages fetches the latest fingerprint message from S3.
 func (s *Service) GetLatestFingerprintMessages(ctx context.Context, vehicleDID cloudevent.ERC721DID, device models.PairedDevice) (*models.DecodedFingerprintData, error) {
 	fingerprintType := cloudevent.TypeFingerprint
-	opts := &eventrepo.SearchOptions{
-		Subject:  ref(vehicleDID.String()),
-		Producer: ref(device.DID.String()),
-		Type:     &fingerprintType,
+	opts := &grpc.SearchOptions{
+		Subject:  wrapperspb.String(vehicleDID.String()),
+		Producer: wrapperspb.String(device.DID.String()),
+		Type:     wrapperspb.String(fingerprintType),
 	}
-	dataObj, err := s.indexService.GetLatestCloudEvent(ctx, s.cloudEventBucket, opts)
+	dataObj, err := s.fetchService.GetLatestCloudEvent(ctx, opts)
 	if err != nil {
 		// if we can't find a fingerprint message in the new bucket, try the old bucket
-		if errors.Is(err, sql.ErrNoRows) {
+		if status.Code(err) == codes.NotFound {
 			return s.legacyGetLatestFingerprintMessages(ctx, device)
 		}
 		return nil, fmt.Errorf("failed to get fingerprint message: %w", err)
@@ -72,7 +73,7 @@ func (s *Service) GetLatestFingerprintMessages(ctx context.Context, vehicleDID c
 	return msg, nil
 }
 
-// TODO (kevin): Remove this when ingest is updated
+// TODO (kevin): Remove with smartcar deprecation
 func (s *Service) legacyGetLatestFingerprintMessages(ctx context.Context, device models.PairedDevice) (*models.DecodedFingerprintData, error) {
 	encodedAddress := device.Address[2:]
 	opts := &eventrepo.SearchOptions{
@@ -105,25 +106,11 @@ func (s *Service) legacyGetLatestFingerprintMessages(ctx context.Context, device
 func (s *Service) decodeFingerprintMessage(msg cloudevent.RawEvent) (*models.DecodedFingerprintData, error) {
 	var vin string
 	var err error
-	if msg.Source == macaronOldFpSource {
-		if msg.Extras == nil {
-			return nil, decodeError("missing data for macaron fingerprint")
-		}
-		base64Data, ok := msg.Extras["data_base64"].(string)
-		if !ok {
-			return nil, decodeError("missing data for macaron fingerprint")
-		}
-		vin, err = decodeVINFromBase64(base64Data)
-		if err != nil {
-			return nil, err
-		}
-	} else {
-		fp, err := modules.ConvertToFingerprint(context.TODO(), msg.Source, msg)
-		if err != nil {
-			return nil, fmt.Errorf("failed to convert to fingerprint: %w", err)
-		}
-		vin = fp.VIN
+	fp, err := modules.ConvertToFingerprint(context.TODO(), msg.Source, msg)
+	if err != nil {
+		return nil, fmt.Errorf("failed to convert to fingerprint: %w", err)
 	}
+	vin = fp.VIN
 
 	if vin == "" {
 		return nil, decodeError("missing vin")
@@ -139,38 +126,4 @@ func (s *Service) decodeFingerprintMessage(msg cloudevent.RawEvent) (*models.Dec
 		CloudEventHeader: msg.CloudEventHeader,
 		VIN:              vin,
 	}, nil
-}
-
-// macronFingerPrint represents the structure of a fingerprint message from a Macron device.
-type macronFingerPrint struct {
-	Header    uint8
-	Timestamp uint32
-	Latitude  float32
-	Longitude float32
-	Protocol  uint8
-	VIN       [17]byte
-}
-
-func decodeVINFromBase64(data string) (string, error) {
-	decodedBytes := make([]byte, base64.StdEncoding.DecodedLen(len(data)))
-	_, err := base64.StdEncoding.Decode(decodedBytes, []byte(data))
-	if err != nil {
-		return "", fmt.Errorf("failed to decode base64 data: %w", err)
-	}
-	// Verify the length of decodedBytes: 1 byte header, 4 bytes timestamp, 8 bytes location, 1 byte protocol, 17 bytes VIN
-	if len(decodedBytes) < 31 {
-		return "", decodeError("invalid data length")
-	}
-
-	macData := macronFingerPrint{}
-	reader := bytes.NewReader(decodedBytes)
-	err = binary.Read(reader, binary.LittleEndian, &macData)
-	if err != nil {
-		return "", fmt.Errorf("failed to read binary data: %w", err)
-	}
-	return string(macData.VIN[:]), nil
-}
-
-func ref[T any](v T) *T {
-	return &v
 }

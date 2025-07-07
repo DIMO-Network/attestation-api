@@ -1,92 +1,81 @@
 package vcrepo
 
 import (
+	"bytes"
 	"context"
+	"crypto/ecdsa"
 	"encoding/json"
 	"fmt"
-	"time"
+	"io"
+	"net/http"
+	"net/url"
 
-	"github.com/ClickHouse/clickhouse-go/v2"
-	"github.com/DIMO-Network/attestation-api/internal/sources"
-	"github.com/DIMO-Network/attestation-api/pkg/verifiable"
+	"github.com/DIMO-Network/attestation-api/internal/client/tokencache"
+	"github.com/DIMO-Network/attestation-api/internal/config"
 	"github.com/DIMO-Network/cloudevent"
-	"github.com/DIMO-Network/cloudevent/pkg/clickhouse/eventrepo"
-	"github.com/segmentio/ksuid"
+	"github.com/ethereum/go-ethereum/crypto"
 )
 
 // Repo manages storing and retrieving VCs.
 type Repo struct {
-	indexService   *eventrepo.Service
-	vinDataVersion string
-	pomDataVersion string
-	vcBucketName   string
+	disURL     *url.URL
+	tokenCache *tokencache.Cache
+	devLicense string
+	privateKey *ecdsa.PrivateKey
 }
 
 // New creates a new instance of VCRepo.
-func New(chConn clickhouse.Conn, objGetter eventrepo.ObjectGetter, vcBucketName, vinVCDataVersion, pomVCDataversion string) *Repo {
-	return &Repo{
-		indexService:   eventrepo.New(chConn, objGetter),
-		vinDataVersion: vinVCDataVersion,
-		pomDataVersion: pomVCDataversion,
-		vcBucketName:   vcBucketName,
-	}
-}
-
-// GetLatestVINVC fetches the latest vinvc from S3.
-func (r *Repo) GetLatestVINVC(ctx context.Context, vehicleDID cloudevent.ERC721DID) (*verifiable.Credential, error) {
-	opts := &eventrepo.SearchOptions{
-		Subject:     ref(vehicleDID.String()),
-		DataVersion: &r.vinDataVersion,
-	}
-	dataObj, err := r.indexService.GetLatestCloudEvent(ctx, r.vcBucketName, opts)
+func New(settings *config.Settings, tokenCache *tokencache.Cache) (*Repo, error) {
+	disURL, err := url.Parse(settings.DISURL)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get vc: %w", err)
+		return nil, fmt.Errorf("failed to parse DIS URL: %w", err)
 	}
-	var vinVC verifiable.Credential
-	if err := json.Unmarshal(dataObj.Data, &vinVC); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal verifiable credential message: %w", err)
+	privateKey, err := crypto.HexToECDSA(settings.SignerPrivateKey)
+	if err != nil {
+		return nil, fmt.Errorf("failed to convert private key to ECDSA: %w", err)
 	}
-	return &vinVC, nil
+	return &Repo{
+		disURL:     disURL,
+		tokenCache: tokenCache,
+		devLicense: settings.DevLicense,
+		privateKey: privateKey,
+	}, nil
 }
 
-// StoreVINVC stores a new VC in S3.
-func (r *Repo) StoreVINVC(ctx context.Context, vehicleDID, producerDID string, rawVC json.RawMessage) error {
-	return r.storeVC(ctx, vehicleDID, producerDID, rawVC, r.vinDataVersion)
-}
-
-// StorePOMVC stores a new VC in S3.
-func (r *Repo) StorePOMVC(ctx context.Context, vehicleDID, producerDID string, rawVC json.RawMessage) error {
-	return r.storeVC(ctx, vehicleDID, producerDID, rawVC, r.pomDataVersion)
-}
-
-func (r *Repo) storeVC(ctx context.Context, vehicleDID, producerDID string, rawVC json.RawMessage, dataVersion string) error {
-	// expire at the end of the week
-	cloudEvent := cloudevent.CloudEvent[json.RawMessage]{
-		CloudEventHeader: cloudevent.CloudEventHeader{
-			SpecVersion:     "1.0",
-			ID:              ksuid.New().String(),
-			Time:            time.Now(),
-			Source:          sources.DINCSource.String(),
-			Subject:         vehicleDID,
-			Producer:        producerDID,
-			Type:            cloudevent.TypeVerifableCredential,
-			DataContentType: "application/json",
-			DataVersion:     dataVersion,
-		},
-		Data: rawVC,
-	}
-	eventBytes, err := json.Marshal(cloudEvent)
+// UploadAttestation uploads a new attestation to DIS.
+func (r *Repo) UploadAttestation(ctx context.Context, attestation *cloudevent.RawEvent) error {
+	eventBytes, err := json.Marshal(attestation)
 	if err != nil {
 		return fmt.Errorf("failed to marshal cloud event: %w", err)
 	}
-	err = r.indexService.StoreObject(ctx, r.vcBucketName, &cloudEvent.CloudEventHeader, eventBytes)
+
+	token, err := r.tokenCache.GetToken(ctx, r.devLicense)
 	if err != nil {
-		return fmt.Errorf("failed to store VC: %w", err)
+		return fmt.Errorf("failed to get token: %w", err)
+	}
+
+	// Create HTTP request
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, r.disURL.String(), bytes.NewBuffer(eventBytes))
+	if err != nil {
+		return fmt.Errorf("failed to create HTTP request: %w", err)
+	}
+
+	// Set headers
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+token)
+
+	// Execute request
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return fmt.Errorf("failed to execute request: %w", err)
+	}
+	defer resp.Body.Close() //nolint:errcheck
+
+	// Check status code
+	if resp.StatusCode >= http.StatusMultipleChoices {
+		bodyBytes, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("DIS returned non-200 status code: %d; %s", resp.StatusCode, string(bodyBytes))
 	}
 
 	return nil
-}
-
-func ref[T any](v T) *T {
-	return &v
 }

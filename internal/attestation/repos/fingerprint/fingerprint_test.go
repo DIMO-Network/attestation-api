@@ -1,11 +1,7 @@
 package fingerprint
 
 import (
-	"encoding/base64"
-	"encoding/binary"
 	"encoding/json"
-	"fmt"
-	"math"
 	"testing"
 	"time"
 
@@ -50,27 +46,9 @@ func TestDecodeFingerprintMessage(t *testing.T) {
 					DataSchema:  "dimo.zone.status/v2.0",
 					Time:        time.Date(2024, 5, 30, 15, 4, 5, 0, time.UTC),
 					Source:      "0x5e31bBc786D7bEd95216383787deA1ab0f1c1897",
-					Extras: map[string]any{
-						"signature": "0x8f4a67281978a93fafc9231e10c6a3489b5c732239ffc72b02e3603608c7375516f876e9ac33aa3b5a2b475521dbca4e1e68d85a797ea7b07f7d9b6369b805751c",
-					},
+					Signature:   "0x8f4a67281978a93fafc9231e10c6a3489b5c732239ffc72b02e3603608c7375516f876e9ac33aa3b5a2b475521dbca4e1e68d85a797ea7b07f7d9b6369b805751c",
 				},
 				VIN: "1HGCM82633A123456",
-			},
-			expectError: false,
-		},
-		{
-			name: "Valid VIN in Data64",
-			data: []byte(fmt.Sprintf(`{"time":"2024-05-30T15:04:05Z","data_base64":"%s","source":"macaron/fingerprint"}`, mockMacronFingerprint("ABCD1234567890XYZ"))),
-			expectedData: models.DecodedFingerprintData{
-				CloudEventHeader: cloudevent.CloudEventHeader{
-					SpecVersion: "1.0",
-					Time:        time.Date(2024, 5, 30, 15, 4, 5, 0, time.UTC),
-					Source:      "macaron/fingerprint",
-					Extras: map[string]any{
-						"data_base64": mockMacronFingerprint("ABCD1234567890XYZ"),
-					},
-				},
-				VIN: "ABCD1234567890XYZ",
 			},
 			expectError: false,
 		},
@@ -180,36 +158,6 @@ func TestDecodeFingerprintMessage(t *testing.T) {
 			require.Equal(t, tt.expectedData, *decodedData)
 		})
 	}
-}
-
-// Mock base64 decoding and macron fingerprint for testing
-func mockMacronFingerprint(vin string) string {
-	vinBytes := []byte(vin)
-	if len(vinBytes) > 17 {
-		vinBytes = vinBytes[:17]
-	}
-
-	// we don't really care about this data, just the length
-	data := macronFingerPrint{
-		Header:    1,
-		Timestamp: 1718967850,
-		Latitude:  40.65445,
-		Longitude: -73.94604,
-		Protocol:  6,
-	}
-
-	copy(data.VIN[:], vinBytes)
-
-	// Encode into base64
-	buf := make([]byte, 31)
-	buf[0] = data.Header
-	binary.LittleEndian.PutUint32(buf[1:5], data.Timestamp)
-	binary.LittleEndian.PutUint32(buf[5:9], math.Float32bits(data.Latitude))
-	binary.LittleEndian.PutUint32(buf[9:13], math.Float32bits(data.Longitude))
-	buf[13] = data.Protocol
-	copy(buf[14:], data.VIN[:])
-
-	return base64.StdEncoding.EncodeToString(buf)
 }
 
 var ruptelaStatusPayload = `

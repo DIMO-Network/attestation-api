@@ -17,13 +17,18 @@ env:
   DEFINITIONS_GRPC_ADDR: device-definitions-api-prod:8086
   TELEMETRY_URL: https://telemetry-api.dimo.zone
   IDENTITY_API_URL: http://identity-api-prod:8080
+  DIS_URL: https://attest.dimo.zone
+  DEX_URL: https://auth.dimo.zone
+  DEV_LICENSE: "0x49eAf63eD94FEf3d40692862Eee2C8dB416B1a5f"
+  FETCH_GRPC_ADDR: fetch-api-prod:8086
+  DIMO_REGISTRY_CHAIN_ID: 137
+
   FINGERPRINT_BUCKET: dimo-network-fingerprint-prod
   AUTOPI_BUCKET_NAME: dimo-network-connectivity-prod
   HASHDOG_BUCKET_NAME: dimo-network-connectivity-prod
   STATUS_BUCKET_NAME: dimo-network-status-prod
   VC_BUCKET: dimo-ingest-cloudevent-prod
   CLOUDEVENT_BUCKET: dimo-ingest-cloudevent-prod
-  DIMO_REGISTRY_CHAIN_ID: 137
 ingress:
   enabled: true
   className: nginx

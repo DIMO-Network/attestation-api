@@ -1,32 +1,26 @@
 package app
 
 import (
-	"context"
-	"encoding/hex"
 	"fmt"
-	"math/big"
-	"net/url"
-	"strconv"
-	"strings"
 	"time"
 
 	"github.com/DIMO-Network/attestation-api/internal/attestation/apis/identity"
 	"github.com/DIMO-Network/attestation-api/internal/attestation/apis/vinvalidator"
-	"github.com/DIMO-Network/attestation-api/internal/attestation/pom"
-	"github.com/DIMO-Network/attestation-api/internal/attestation/repos/connectivity"
 	"github.com/DIMO-Network/attestation-api/internal/attestation/repos/fingerprint"
 	"github.com/DIMO-Network/attestation-api/internal/attestation/repos/vcrepo"
 	"github.com/DIMO-Network/attestation-api/internal/attestation/vinvc"
+	"github.com/DIMO-Network/attestation-api/internal/client/dex"
+	"github.com/DIMO-Network/attestation-api/internal/client/fetchapi"
+	"github.com/DIMO-Network/attestation-api/internal/client/tokencache"
 	"github.com/DIMO-Network/attestation-api/internal/config"
 	"github.com/DIMO-Network/attestation-api/internal/controllers/httphandlers"
 	"github.com/DIMO-Network/attestation-api/internal/controllers/rpc"
-	"github.com/DIMO-Network/attestation-api/pkg/verifiable"
 	"github.com/DIMO-Network/clickhouse-infra/pkg/connect"
 	ddgrpc "github.com/DIMO-Network/device-definitions-api/pkg/grpc"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
-	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/rs/zerolog"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -34,29 +28,26 @@ import (
 
 // createControllers creates a new controllers with the given settings.
 func createControllers(logger *zerolog.Logger, settings *config.Settings, statusRoute, keysRoute, vocabRoute, jsonLDRoute string) (*httphandlers.HTTPController, *rpc.Server, error) {
+
 	// Initialize ClickHouse connection
 	chConn, err := connect.GetClickhouseConn(&settings.Clickhouse)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to create ClickHouse connection: %w", err)
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
-	defer cancel()
-	err = chConn.Ping(ctx)
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to ping ClickHouse: %w", err)
-	}
-
+	// ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
+	// defer cancel()
+	// err = chConn.Ping(ctx)
+	// if err != nil {
+	// 	return nil, nil, fmt.Errorf("failed to ping ClickHouse: %w", err)
+	// }
 	// Initialize S3 client
 	s3Client := s3ClientFromSettings(settings)
 
-	// Initialize VC issuer and revoked list
-	issuer, err := issuerFromSettings(settings, statusRoute, keysRoute, vocabRoute, jsonLDRoute)
+	fetchAPIClient := fetchapi.New(settings)
+
+	privateKey, err := crypto.HexToECDSA(settings.SignerPrivateKey)
 	if err != nil {
-		return nil, nil, err
-	}
-	revokedList, err := revokedListFromSettings(settings)
-	if err != nil {
-		return nil, nil, err
+		return nil, nil, fmt.Errorf("failed to decode private key: %w", err)
 	}
 
 	// Initialize device definition API client
@@ -67,10 +58,24 @@ func createControllers(logger *zerolog.Logger, settings *config.Settings, status
 	vinValidateSerivce := vinvalidator.New(deviceDefGRPCClient)
 
 	// Initialize fingerprint repository
-	fingerprintRepo := fingerprint.New(chConn, s3Client, settings.CloudEventBucket, settings.FingerprintBucket, settings.FingerprintDataType)
+	fingerprintRepo := fingerprint.New(fetchAPIClient, settings.FingerprintBucket, settings.FingerprintDataType, chConn, s3Client)
 
+	dexClient, err := dex.NewClient(settings)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to create dex client: %w", err)
+	}
+
+	// Initialize token cache with both token getters
+	devLicenseTokenCache := tokencache.New(
+		time.Hour,    // Default expiration
+		time.Hour*24, // Cleanup interval
+		dexClient,
+	)
 	// Initialize VC repository
-	vcRepo := vcrepo.New(chConn, s3Client, settings.VCBucket, settings.VINVCDataType, settings.POMVCDataType)
+	vcRepo, err := vcrepo.New(settings, devLicenseTokenCache)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to create VC repository: %w", err)
+	}
 
 	// Initialize identity API client
 	identityAPI, err := identity.NewService(settings.IdentityAPIURL, settings.AfterMarketNFTAddress, settings.SyntheticNFTAddress, nil)
@@ -79,24 +84,21 @@ func createControllers(logger *zerolog.Logger, settings *config.Settings, status
 	}
 
 	// Initialize VC service using the initialized services
-	vinvcService := vinvc.NewService(logger, vcRepo, identityAPI, fingerprintRepo, vinValidateSerivce, issuer, revokedList, settings.VehicleNFTAddress, settings.DIMORegistryChainID)
+	vinvcService := vinvc.NewService(logger, vcRepo, identityAPI, fingerprintRepo, vinValidateSerivce, settings, privateKey)
 
-	conRepo := connectivity.NewConnectivityRepo(chConn, s3Client, settings.AutoPiDataType, settings.AutoPiBucketName, settings.HashDogDataType, settings.HashDogBucketName, settings.StatusDataType, settings.StatusBucketName, settings.CloudEventBucket)
+	// conRepo := connectivity.NewConnectivityRepo(chConn, s3Client, settings.AutoPiDataType, settings.AutoPiBucketName, settings.HashDogDataType, settings.HashDogBucketName, settings.StatusDataType, settings.StatusBucketName, settings.CloudEventBucket)
 
-	pomService, err := pom.NewService(logger, identityAPI, conRepo, vcRepo, issuer, settings.VehicleNFTAddress, settings.DIMORegistryChainID)
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to create POM service: %w", err)
-	}
+	// pomService, err := pom.NewService(logger, identityAPI, conRepo, vcRepo, settings.VehicleNFTAddress, settings.DIMORegistryChainID)
+	// if err != nil {
+	// 	return nil, nil, fmt.Errorf("failed to create POM service: %w", err)
+	// }
 
-	ctrl, err := httphandlers.NewVCController(vinvcService, pomService, settings.TelemetryURL)
+	ctrl, err := httphandlers.NewVCController(vinvcService, nil, settings.TelemetryURL)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to create VC controller: %w", err)
 	}
-	if !common.IsHexAddress(settings.VehicleNFTAddress) {
-		return nil, nil, fmt.Errorf("invalid vehicle NFT address: %s", settings.VehicleNFTAddress)
-	}
 
-	server := rpc.NewServer(vinvcService, vcRepo, common.HexToAddress(settings.VehicleNFTAddress), settings.DIMORegistryChainID)
+	server := rpc.NewServer(vinvcService, settings)
 
 	return ctrl, server, nil
 
@@ -114,55 +116,6 @@ func s3ClientFromSettings(settings *config.Settings) *s3.Client {
 		),
 	}
 	return s3.NewFromConfig(conf)
-}
-
-func issuerFromSettings(settings *config.Settings, statusRoute, keysRoute, vocabRoute, jsonLDRoute string) (*verifiable.Issuer, error) {
-	baseURL := url.URL{
-		Scheme: "https",
-		Host:   settings.ExternalHostname,
-	}
-	baseStatusURL := baseURL.JoinPath(statusRoute)
-	baseKeyURL := baseURL.JoinPath(keysRoute)
-	baseVocabURL := baseURL.JoinPath(vocabRoute)
-	baseJSONLDURL := baseURL.JoinPath(jsonLDRoute)
-	privateKey, err := hex.DecodeString(settings.VINVCPrivateKey)
-	if err != nil {
-		return nil, fmt.Errorf("failed to decode private key: %w", err)
-	}
-	verifiableConfig := verifiable.Config{
-		PrivateKey:        privateKey,
-		ChainID:           big.NewInt(settings.DIMORegistryChainID),
-		VehicleNFTAddress: common.HexToAddress(settings.VehicleNFTAddress),
-		BaseStatusURL:     baseStatusURL,
-		BaseKeyURL:        baseKeyURL,
-		BaseVocabURL:      baseVocabURL,
-		BaseJSONLDURL:     baseJSONLDURL,
-	}
-	issuer, err := verifiable.NewIssuer(verifiableConfig)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create VC issuer: %w", err)
-	}
-	return issuer, nil
-}
-
-func revokedListFromSettings(settings *config.Settings) ([]uint32, error) {
-	if settings.RevokedTokenIDs == "" {
-		return nil, nil
-	}
-	tokenIDs := strings.Split(settings.RevokedTokenIDs, ",")
-	revokedList := make([]uint32, len(tokenIDs))
-	for i, id := range tokenIDs {
-		id = strings.TrimSpace(id)
-		if id == "" {
-			continue
-		}
-		tokenID, err := strconv.Atoi(strings.TrimSpace(id))
-		if err != nil {
-			return nil, fmt.Errorf("failed to convert revoked token ID to int: %w", err)
-		}
-		revokedList[i] = uint32(tokenID)
-	}
-	return revokedList, nil
 }
 
 func deviceDefAPIClientFromSettings(settings *config.Settings) (ddgrpc.VinDecoderServiceClient, error) {

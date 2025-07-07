@@ -14,7 +14,7 @@ import (
 
 	"github.com/DIMO-Network/attestation-api/internal/controllers/ctrlerrors"
 	"github.com/DIMO-Network/attestation-api/internal/models"
-	"github.com/DIMO-Network/attestation-api/pkg/verifiable"
+	"github.com/DIMO-Network/attestation-api/pkg/types"
 	"github.com/DIMO-Network/cloudevent"
 	"github.com/DIMO-Network/model-garage/pkg/convert"
 	"github.com/DIMO-Network/model-garage/pkg/hashdog"
@@ -93,7 +93,7 @@ func (s *Service) CreatePOMVC(ctx context.Context, tokenID uint32) error {
 		return ctrlerrors.Error{InternalError: err, ExternalMsg: msg}
 	}
 
-	pomSubject := verifiable.POMSubject{
+	pomSubject := types.POMSubject{
 		VehicleTokenID:         tokenID,
 		VehicleContractAddress: s.vehicleContractAddress.Hex(),
 		RecordedBy:             pairedDevice.DID.String(),
@@ -113,10 +113,10 @@ func (s *Service) CreatePOMVC(ctx context.Context, tokenID uint32) error {
 }
 
 // getLocationForVehicle retrieves location data from paired devices.
-func (s *Service) getLocationForVehicle(ctx context.Context, vehicleInfo *models.VehicleInfo, logger *zerolog.Logger) (*models.PairedDevice, []verifiable.Location, error) {
+func (s *Service) getLocationForVehicle(ctx context.Context, vehicleInfo *models.VehicleInfo, logger *zerolog.Logger) (*models.PairedDevice, []types.Location, error) {
 	slices.SortStableFunc(vehicleInfo.PairedDevices, pairedDeviceSorter)
 	for _, device := range vehicleInfo.PairedDevices {
-		var locations []verifiable.Location
+		var locations []types.Location
 		var err error
 
 		switch {
@@ -142,7 +142,7 @@ func (s *Service) getLocationForVehicle(ctx context.Context, vehicleInfo *models
 }
 
 // pullAutoPiEvents retrieves AutoPi events and extracts locations.
-func (s *Service) pullAutoPiEvents(ctx context.Context, device *models.PairedDevice) ([]verifiable.Location, error) {
+func (s *Service) pullAutoPiEvents(ctx context.Context, device *models.PairedDevice) ([]types.Location, error) {
 	fetchEvents := func(after, before time.Time, limit int) ([]cloudevent.CloudEvent[json.RawMessage], error) {
 		return s.connectivityRepo.GetAutoPiEvents(ctx, device, after, before, limit)
 	}
@@ -150,7 +150,7 @@ func (s *Service) pullAutoPiEvents(ctx context.Context, device *models.PairedDev
 }
 
 // pullMacaronEvents retrieves Macaron events and extracts locations.
-func (s *Service) pullMacaronEvents(ctx context.Context, device *models.PairedDevice) ([]verifiable.Location, error) {
+func (s *Service) pullMacaronEvents(ctx context.Context, device *models.PairedDevice) ([]types.Location, error) {
 	fetchEvents := func(after, before time.Time, limit int) ([]cloudevent.CloudEvent[json.RawMessage], error) {
 		return s.connectivityRepo.GetHashDogEvents(ctx, device, after, before, limit)
 	}
@@ -158,7 +158,7 @@ func (s *Service) pullMacaronEvents(ctx context.Context, device *models.PairedDe
 }
 
 // pullStatusEvents retrieves synthetic events and extracts locations.
-func (s *Service) pullStatusEvents(ctx context.Context, vehicleDID cloudevent.ERC721DID) ([]verifiable.Location, error) {
+func (s *Service) pullStatusEvents(ctx context.Context, vehicleDID cloudevent.ERC721DID) ([]types.Location, error) {
 	fetchEvents := func(after, before time.Time, limit int) ([]cloudevent.CloudEvent[json.RawMessage], error) {
 		return s.connectivityRepo.GetSyntheticstatusEvents(ctx, vehicleDID, after, before, limit)
 	}
@@ -166,7 +166,7 @@ func (s *Service) pullStatusEvents(ctx context.Context, vehicleDID cloudevent.ER
 }
 
 // pullRuptelaEvents retrieves Ruptela Status events and extracts locations.
-func (s *Service) pullRuptelaEvents(ctx context.Context, vehicleDID cloudevent.ERC721DID) ([]verifiable.Location, error) {
+func (s *Service) pullRuptelaEvents(ctx context.Context, vehicleDID cloudevent.ERC721DID) ([]types.Location, error) {
 	fetchEvents := func(after, before time.Time, limit int) ([]cloudevent.CloudEvent[json.RawMessage], error) {
 		return s.connectivityRepo.GetRuptelaStatusEvents(ctx, vehicleDID, after, before, limit)
 	}
@@ -174,7 +174,7 @@ func (s *Service) pullRuptelaEvents(ctx context.Context, vehicleDID cloudevent.E
 }
 
 // pullEvents is a generic function for fetching events and extracting locations.
-func (s *Service) pullEvents(ctx context.Context, fetchEvents func(time.Time, time.Time, int) ([]cloudevent.CloudEvent[json.RawMessage], error), parseEvent func(cloudevent.CloudEvent[json.RawMessage]) (cloudevent.CloudEvent[any], error)) ([]verifiable.Location, error) {
+func (s *Service) pullEvents(ctx context.Context, fetchEvents func(time.Time, time.Time, int) ([]cloudevent.CloudEvent[json.RawMessage], error), parseEvent func(cloudevent.CloudEvent[json.RawMessage]) (cloudevent.CloudEvent[any], error)) ([]types.Location, error) {
 	limit := 10
 	weekAgo := time.Now().Add(-7 * 24 * time.Hour)
 	before := time.Now()
@@ -235,7 +235,7 @@ func pairedDeviceSorter(a, b models.PairedDevice) int {
 }
 
 // compareLocations compares locations of two events and returns verifiable locations.
-func compareLocations(firstEvent, curEvent cloudevent.CloudEvent[any]) []verifiable.Location {
+func compareLocations(firstEvent, curEvent cloudevent.CloudEvent[any]) []types.Location {
 	if reflect.TypeOf(firstEvent.Data) != reflect.TypeOf(curEvent.Data) {
 		return nil
 	}
@@ -245,36 +245,36 @@ func compareLocations(firstEvent, curEvent cloudevent.CloudEvent[any]) []verifia
 		curCellID := currData.Location.CellID
 		firstCellID := firstEvent.Data.(twilio.ConnectionEvent).Location.CellID
 		if firstCellID != curCellID && firstCellID != "" {
-			return []verifiable.Location{
+			return []types.Location{
 				{
-					LocationType:  verifiable.LocationTypeCellID,
-					LocationValue: verifiable.CellID{CellID: firstCellID},
+					LocationType:  types.LocationTypeCellID,
+					LocationValue: types.CellID{CellID: firstCellID},
 					Timestamp:     firstEvent.Time,
 				},
 				{
-					LocationType:  verifiable.LocationTypeCellID,
-					LocationValue: verifiable.CellID{CellID: curCellID},
+					LocationType:  types.LocationTypeCellID,
+					LocationValue: types.CellID{CellID: curCellID},
 					Timestamp:     curEvent.Time,
 				},
 			}
 		}
 	case hashdog.Data:
-		if firstEvent.CloudEventHeader.Equals(curEvent.CloudEventHeader) {
+		if firstEvent.Equals(curEvent.CloudEventHeader) {
 			// gatway differences must be from different events
 			return nil
 		}
 		firstGatewayID := getFirstGWMeta(firstEvent.Data.(hashdog.Data).Via).GatewayID
 		for _, via := range currData.Via {
 			if via.Metadata.GatewayID != "" && firstGatewayID != via.Metadata.GatewayID {
-				return []verifiable.Location{
+				return []types.Location{
 					{
-						LocationType:  verifiable.LocationTypeGatewayID,
-						LocationValue: verifiable.GatewayID{GatewayID: firstGatewayID},
+						LocationType:  types.LocationTypeGatewayID,
+						LocationValue: types.GatewayID{GatewayID: firstGatewayID},
 						Timestamp:     firstEvent.Time,
 					},
 					{
-						LocationType:  verifiable.LocationTypeGatewayID,
-						LocationValue: verifiable.GatewayID{GatewayID: via.Metadata.GatewayID},
+						LocationType:  types.LocationTypeGatewayID,
+						LocationValue: types.GatewayID{GatewayID: via.Metadata.GatewayID},
 						Timestamp:     curEvent.Time,
 					},
 				}
@@ -289,15 +289,15 @@ func compareLocations(firstEvent, curEvent cloudevent.CloudEvent[any]) []verifia
 		firstCell := firstCells[0]
 		for _, cell := range currCells {
 			if cell != firstCell {
-				return []verifiable.Location{
+				return []types.Location{
 					{
-						LocationType:  verifiable.LocationTypeH3Cell,
-						LocationValue: verifiable.H3Cell{CellID: cell.String()},
+						LocationType:  types.LocationTypeH3Cell,
+						LocationValue: types.H3Cell{CellID: cell.String()},
 						Timestamp:     firstEvent.Time,
 					},
 					{
-						LocationType:  verifiable.LocationTypeH3Cell,
-						LocationValue: verifiable.H3Cell{CellID: cell.String()},
+						LocationType:  types.LocationTypeH3Cell,
+						LocationValue: types.H3Cell{CellID: cell.String()},
 						Timestamp:     curEvent.Time,
 					},
 				}
@@ -389,11 +389,12 @@ func getH3Cells(signals []vss.Signal) ([]h3.Cell, bool) {
 	latLongPairs := map[int64]LatLng{}
 	for _, signal := range signals {
 		timeInSecs := signal.Timestamp.Unix()
-		if signal.Name == vss.FieldCurrentLocationLatitude {
+		switch signal.Name {
+		case vss.FieldCurrentLocationLatitude:
 			latLng := latLongPairs[timeInSecs]
 			latLng.Latitude = &signal.ValueNumber
 			latLongPairs[timeInSecs] = latLng
-		} else if signal.Name == vss.FieldCurrentLocationLongitude {
+		case vss.FieldCurrentLocationLongitude:
 			latLng := latLongPairs[timeInSecs]
 			latLng.Longitude = &signal.ValueNumber
 			latLongPairs[timeInSecs] = latLng
