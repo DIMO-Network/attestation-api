@@ -27,6 +27,7 @@ env:
   PORT: 8080
   MON_PORT: 8888
   GRPC_PORT: 8086
+  ENABLE_PPROF: false
   DEFINITIONS_GRPC_ADDR: device-definitions-api-dev:8086
   TOKEN_EXCHANGE_JWK_KEY_SET_URL: http://dex-roles-rights.dev.svc.cluster.local:5556/keys
   TOKEN_EXCHANGE_ISSUER_URL: https://auth-roles-rights.dev.dimo.zone

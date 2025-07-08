@@ -13,6 +13,7 @@ import (
 type Settings struct {
 	Port                      int    `env:"PORT"`
 	MonPort                   int    `env:"MON_PORT"`
+	EnablePprof               bool   `env:"ENABLE_PPROF"`
 	GRPCPort                  int    `env:"GRPC_PORT"`
 	DefinitionsGRPCAddr       string `env:"DEFINITIONS_GRPC_ADDR"`
 	TokenExchangeJWTKeySetURL string `env:"TOKEN_EXCHANGE_JWK_KEY_SET_URL"`
