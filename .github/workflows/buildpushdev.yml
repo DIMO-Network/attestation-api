@@ -3,6 +3,9 @@ on:
   push:
     branches:
       - main
+env:
+  APP_NAME: attestation-api
+
 jobs:
   build:
     name: buildpushdev
@@ -28,14 +31,16 @@ jobs:
         with:
           context: .
           file: ./Dockerfile
+          build-args: |
+            APP_NAME=${{ env.APP_NAME }}
           push: true
           platforms: linux/amd64
-          tags: dimozone/attestation-api:${{ steps.slug.outputs.sha7 }}, dimozone/attestation-api:latest
+          tags: dimozone/${{ env.APP_NAME }}:${{ steps.slug.outputs.sha7 }}, dimozone/${{ env.APP_NAME }}:latest
 
       - name: Update Image Version in the worker HelmChart values.yaml
         uses: fjogeleit/yaml-update-action@master
         with:
-          valueFile: "charts/attestation-api/values.yaml"
+          valueFile: "charts/${{ env.APP_NAME }}/values.yaml"
           propertyPath: "image.tag"
           value: ${{ steps.slug.outputs.sha7 }}
           branch: main

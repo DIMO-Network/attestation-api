@@ -6,8 +6,8 @@ import (
 	"testing"
 
 	"github.com/DIMO-Network/attestation-api/pkg/auth"
-	"github.com/DIMO-Network/shared/middleware/privilegetoken"
-	"github.com/DIMO-Network/shared/privileges"
+	"github.com/DIMO-Network/shared/pkg/middleware/privilegetoken"
+	"github.com/DIMO-Network/shared/pkg/privileges"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/gofiber/fiber/v2"
 	"github.com/golang-jwt/jwt/v5"
