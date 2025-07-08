@@ -22,7 +22,7 @@ import (
 	"github.com/DIMO-Network/model-garage/pkg/ruptela"
 	"github.com/DIMO-Network/model-garage/pkg/twilio"
 	"github.com/DIMO-Network/model-garage/pkg/vss"
-	"github.com/DIMO-Network/shared/set"
+	"github.com/DIMO-Network/shared/pkg/set"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/rs/zerolog"
 	"github.com/uber/h3-go/v4"
