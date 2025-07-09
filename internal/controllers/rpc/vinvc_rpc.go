@@ -38,7 +38,7 @@ type vinCtrl interface {
 
 // EnsureVinVc ensures that a VC exists for the given token ID.
 func (s *Server) EnsureVinVc(ctx context.Context, req *grpc.EnsureVinVcRequest) (*grpc.EnsureVinVcResponse, error) {
-	rawVC, err := s.ctrl.CreateVINAttestation(ctx, req.GetTokenId())
+	rawVC, err := s.ctrl.CreateAndStoreVINAttestation(ctx, req.GetTokenId())
 	if err != nil {
 		return nil, err
 	}
