@@ -1,4 +1,4 @@
-.PHONY: clean run build install dep test lint format docker
+.PHONY: help build run clean install tidy test lint docker tools-golangci-lint tools-protoc generate generate-swagger generate-go generate-grpc
 
 SHELL := /bin/bash
 PATHINSTBIN = $(abspath ./bin)
@@ -12,20 +12,16 @@ DEFAULT_GOOS				:= $(shell go env GOOS)
 ARCH						?= $(DEFAULT_ARCH)
 GOOS						?= $(DEFAULT_GOOS)
 INSTALL_DIR					?= $(DEFAULT_INSTALL_DIR)
-.DEFAULT_GOAL 				:= run
+.DEFAULT_GOAL 				:= build
 
-
-VERSION   := $(shell git describe --tags || echo "v0.0.0")
-VER_CUT   := $(shell echo $(VERSION) | cut -c2-)
 
 # Dependency versions
-GOLANGCI_VERSION   = latest
-PROTOC_VERSION             = 28.3
-PROTOC_GEN_GO_VERSION      = $(shell go list -m -f '{{.Version}}' google.golang.org/protobuf)
-PROTOC_GEN_GO_GRPC_VERSION = v1.5.1
+GOLANGCI_VERSION   	= latest
+PROTOC_VERSION		= 31.1
 
-help:
-	@echo "\nSpecify a subcommand:\n"
+
+help: ## show help message
+	@echo "Specify a subcommand:"
 	@grep -hE '^[0-9a-zA-Z_-]+:.*?## .*$$' ${MAKEFILE_LIST} | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[0;36m%-20s\033[m %s\n", $$1, $$2}'
 	@echo ""
 
@@ -35,7 +31,8 @@ build: ## build the binary
 
 run: build ## run the binary
 	@./$(PATHINSTBIN)/$(BIN_NAME)
-all: clean target
+
+all: clean build
 
 clean: ## clean the binary
 	@rm -rf $(PATHINSTBIN)
@@ -55,6 +52,8 @@ lint: ## run linter
 	@PATH=$$PATH golangci-lint run --timeout 10m
 
 docker: dep ## build docker image
+	VERSION   := $(shell git describe --tags || echo "v0.0.0")
+	VER_CUT   := $(shell echo $(VERSION) | cut -c2-)
 	@docker build -f ./Dockerfile . -t dimozone/$(BIN_NAME):$(VER_CUT)
 	@docker tag dimozone/$(BIN_NAME):$(VER_CUT) dimozone/$(BIN_NAME):latest
 
