@@ -75,6 +75,7 @@ func setupHttpServer(logger *zerolog.Logger, settings *config.Settings, httpCtrl
 		Rules: map[string]string{
 			"/v1/vc/vin/*": "/v2/attestation/vin/$1",
 		},
+		StatusCode: fiber.StatusTemporaryRedirect,
 	}))
 	app.Post("/v2/attestation/vin/:"+httphandlers.TokenIDParam, jwtAuth, vinMiddleware, httpCtrl.CreateVINAttestation)
 
