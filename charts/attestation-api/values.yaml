@@ -42,20 +42,8 @@ env:
   FETCH_GRPC_ADDR: fetch-api-dev:8086
   DIMO_REGISTRY_CHAIN_ID: 80002
   DEV_LICENSE_REDIRECT_URL: http://127.0.0.1:10000
-  AUTOPI_DATA_TYPE: Twilio_1.0
-  AUTOPI_BUCKET_NAME: dimo-network-connectivity-dev
-  HASHDOG_DATA_TYPE: Lora_1.0
-  HASHDOG_BUCKET_NAME: dimo-network-connectivity-dev
-  STATUS_DATA_TYPE: Status_1.0
-  STATUS_BUCKET_NAME: dimo-network-status-dev
   VIN_DATA_VERSION: vin/v1.0
   POMVC_DATA_TYPE: POMVCv1.0
-  CLICKHOUSE_TCP_PORT: 9440
-  CLICKHOUSE_DATABASE: file_index
-  S3_AWS_REGION: us-east-2
-  FINGERPRINT_BUCKET: dimo-network-fingerprint-dev
-  FINGERPRINT_DATA_TYPE: FP_v0.0.1
-  VC_BUCKET: dimo-ingest-cloudevent-dev
   CLOUDEVENT_BUCKET: dimo-ingest-cloudevent-dev
 service:
   type: ClusterIP

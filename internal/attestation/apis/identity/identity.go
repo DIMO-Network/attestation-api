@@ -9,7 +9,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"math/big"
 	"net/http"
 	"net/url"
 	"time"
@@ -103,31 +102,24 @@ func (s *Service) GetVehicleInfo(ctx context.Context, vehicleDID cloudevent.ERC7
 
 	var pairedDevices []models.PairedDevice
 	if respBody.Data.Vehicle.AftermarketDevice != nil {
-		tokenId := respBody.Data.Vehicle.AftermarketDevice.TokenID
-		did := cloudevent.ERC721DID{
-			ChainID:         vehicleDID.ChainID,
-			TokenID:         big.NewInt(int64(tokenId)),
-			ContractAddress: s.aftermarketAddr,
+		did, err := cloudevent.DecodeERC721DID(respBody.Data.Vehicle.AftermarketDevice.DID)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse DID: %w", err)
 		}
 		pairedDevices = append(pairedDevices, models.PairedDevice{
 			DID:              did,
-			Address:          respBody.Data.Vehicle.AftermarketDevice.Address,
 			Type:             models.DeviceTypeAftermarket,
 			ManufacturerName: respBody.Data.Vehicle.AftermarketDevice.Manufacturer.Name,
-			IMEI:             respBody.Data.Vehicle.AftermarketDevice.IMEI,
 		})
 	}
 	if respBody.Data.Vehicle.SyntheticDevice != nil {
-		tokenID := respBody.Data.Vehicle.SyntheticDevice.TokenID
-		did := cloudevent.ERC721DID{
-			ChainID:         vehicleDID.ChainID,
-			TokenID:         big.NewInt(int64(tokenID)),
-			ContractAddress: s.SyntheticAddr,
+		did, err := cloudevent.DecodeERC721DID(respBody.Data.Vehicle.SyntheticDevice.DID)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse DID: %w", err)
 		}
 		pairedDevices = append(pairedDevices, models.PairedDevice{
-			DID:     did,
-			Address: respBody.Data.Vehicle.SyntheticDevice.Address,
-			Type:    models.DeviceTypeSynthetic,
+			DID:  did,
+			Type: models.DeviceTypeSynthetic,
 		})
 	}
 	if respBody.Data.Vehicle.Definition == nil || respBody.Data.Vehicle.Definition.ID.value == nil {

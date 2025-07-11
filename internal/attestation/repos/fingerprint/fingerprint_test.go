@@ -146,7 +146,7 @@ func TestDecodeFingerprintMessage(t *testing.T) {
 			event := cloudevent.CloudEvent[json.RawMessage]{}
 			err := json.Unmarshal(tt.data, &event)
 			require.NoError(t, err)
-			decodedData, err := srv.decodeFingerprintMessage(event)
+			decodedData, err := srv.decodeFingerprintMessage(t.Context(), event)
 
 			if tt.expectError {
 				require.Error(t, err)

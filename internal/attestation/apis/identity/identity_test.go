@@ -54,14 +54,14 @@ func TestService_GetPairedDevices(t *testing.T) {
 							"id": "toyota_tacoma-4wd_2023"
 						},
 						"aftermarketDevice": {
-							"tokenId": %d
+							"did": "%s"
 						},
 						"syntheticDevice": {
-							"tokenId": %d
+							"did": "%s"
 						}
 					}
 				}
-			}`, deviceDID1.TokenID, deviceDID2.TokenID),
+			}`, deviceDID1.String(), deviceDID2.String()),
 			mockStatusCode: http.StatusOK,
 			expectedInfo: &models.VehicleInfo{
 				DID:      cloudevent.ERC721DID{TokenID: new(big.Int).SetInt64(123), ChainID: 137, ContractAddress: vehicleAddr},
@@ -125,11 +125,11 @@ func TestService_GetPairedDevices(t *testing.T) {
 							"id": "toyota_tacoma-4wd_2023"
 						},
 						"aftermarketDevice": {
-							"tokenId": %d
+							"did": "%s"
 						}
 					}
 				}
-			}`, deviceDID1.TokenID),
+			}`, deviceDID1.String()),
 			mockStatusCode: http.StatusOK,
 			expectedInfo: &models.VehicleInfo{
 				DID:      cloudevent.ERC721DID{TokenID: new(big.Int).SetInt64(128), ChainID: 137, ContractAddress: vehicleAddr},
@@ -151,11 +151,11 @@ func TestService_GetPairedDevices(t *testing.T) {
 							"id": "toyota_tacoma-4wd_2023"
 						},
 						"syntheticDevice": {
-							"tokenId": %d
+							"did": "%s"
 						}
 					}
 				}
-			}`, deviceDID2.TokenID),
+			}`, deviceDID2.String()),
 			mockStatusCode: http.StatusOK,
 			expectedInfo: &models.VehicleInfo{
 				DID:      cloudevent.ERC721DID{TokenID: new(big.Int).SetInt64(129), ChainID: 137, ContractAddress: vehicleAddr},
@@ -177,11 +177,11 @@ func TestService_GetPairedDevices(t *testing.T) {
 							"id": null
 						},
 						"syntheticDevice": {
-							"tokenId": %d
+							"did": "%s"
 						}
 					}
 				}
-			}`, deviceDID2.TokenID),
+			}`, deviceDID2.String()),
 			mockStatusCode: http.StatusOK,
 			expectedInfo:   nil,
 			expectedError:  true,

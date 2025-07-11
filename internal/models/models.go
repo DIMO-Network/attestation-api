@@ -19,10 +19,6 @@ type PairedDevice struct {
 	DID              cloudevent.ERC721DID `json:"erc721Did"`
 	Type             DeviceType           `json:"type"`
 	ManufacturerName string               `json:"manufacturerName"`
-
-	// TODO remove legacy lookup fields once ingest is updated
-	Address string `json:"address"`
-	IMEI    string `json:"imei"`
 }
 
 // DecodedFingerprintData represents the decoded fingerprint data.
