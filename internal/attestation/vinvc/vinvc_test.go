@@ -9,7 +9,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"log"
 	"math/big"
 	"net/http/httptest"
 	"reflect"
@@ -22,7 +21,6 @@ import (
 	"github.com/DIMO-Network/attestation-api/pkg/types"
 	"github.com/DIMO-Network/cloudevent"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/rs/zerolog"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
@@ -77,11 +75,9 @@ func TestVCController_GetVINVC(t *testing.T) {
 			name:    "valid request with paired devices",
 			tokenID: 124,
 			setupMocks: func(mocks Mocks) {
-				pairedAddr := randAddress()
 				tokenID := big.NewInt(124)
 				pariedDevice := models.PairedDevice{
-					Address: pairedAddr.String(),
-					Type:    models.DeviceTypeAftermarket,
+					Type: models.DeviceTypeAftermarket,
 					DID: cloudevent.ERC721DID{
 						ChainID:         polygonChainID,
 						TokenID:         tokenID10,
@@ -144,10 +140,8 @@ func TestVCController_GetVINVC(t *testing.T) {
 			tokenID: 127,
 			setupMocks: func(mocks Mocks) {
 				tokenID := big.NewInt(127)
-				pairedAddr := randAddress()
 				pariedDevice := models.PairedDevice{
-					Address: pairedAddr.String(),
-					Type:    models.DeviceTypeAftermarket,
+					Type: models.DeviceTypeAftermarket,
 					DID: cloudevent.ERC721DID{
 						ChainID:         polygonChainID,
 						TokenID:         tokenID10,
@@ -172,12 +166,9 @@ func TestVCController_GetVINVC(t *testing.T) {
 			name:    "fingerprint messages with different VINs",
 			tokenID: 128,
 			setupMocks: func(mocks Mocks) {
-				pairedAddr := randAddress()
-				pairedAddr2 := randAddress()
 				tokenID := big.NewInt(128)
 				device1 := models.PairedDevice{
-					Address: pairedAddr.String(),
-					Type:    models.DeviceTypeAftermarket,
+					Type: models.DeviceTypeAftermarket,
 					DID: cloudevent.ERC721DID{
 						ChainID:         polygonChainID,
 						TokenID:         tokenID10,
@@ -185,8 +176,7 @@ func TestVCController_GetVINVC(t *testing.T) {
 					},
 				}
 				device2 := models.PairedDevice{
-					Address: pairedAddr2.String(),
-					Type:    models.DeviceTypeSynthetic,
+					Type: models.DeviceTypeSynthetic,
 					DID: cloudevent.ERC721DID{
 						ChainID:         polygonChainID,
 						TokenID:         big.NewInt(11),
@@ -242,11 +232,9 @@ func TestVCController_GetVINVC(t *testing.T) {
 			name:    "failed to decode VIN from fingerprint message",
 			tokenID: 129,
 			setupMocks: func(mocks Mocks) {
-				pairedAddr := randAddress()
 				tokenID := new(big.Int).SetInt64(129)
 				pariedDevice := models.PairedDevice{
-					Address: pairedAddr.String(),
-					Type:    models.DeviceTypeAftermarket,
+					Type: models.DeviceTypeAftermarket,
 					DID: cloudevent.ERC721DID{
 						ChainID:         polygonChainID,
 						TokenID:         tokenID10,
@@ -280,11 +268,9 @@ func TestVCController_GetVINVC(t *testing.T) {
 			name:    "invalid VIN from fingerprint message",
 			tokenID: 130,
 			setupMocks: func(mocks Mocks) {
-				pairedAddr := randAddress()
 				tokenID := big.NewInt(130)
 				pariedDevice := models.PairedDevice{
-					Address: pairedAddr.String(),
-					Type:    models.DeviceTypeAftermarket,
+					Type: models.DeviceTypeAftermarket,
 					DID: cloudevent.ERC721DID{
 						ChainID:         polygonChainID,
 						TokenID:         tokenID10,
@@ -318,11 +304,9 @@ func TestVCController_GetVINVC(t *testing.T) {
 			name:    "error on generate and store VC",
 			tokenID: 131,
 			setupMocks: func(mocks Mocks) {
-				pairedAddr := randAddress()
 				tokenID := big.NewInt(131)
 				pariedDevice := models.PairedDevice{
-					Address: pairedAddr.String(),
-					Type:    models.DeviceTypeAftermarket,
+					Type: models.DeviceTypeAftermarket,
 					DID: cloudevent.ERC721DID{
 						ChainID:         polygonChainID,
 						TokenID:         tokenID10,
@@ -369,10 +353,8 @@ func TestVCController_GetVINVC(t *testing.T) {
 			tokenID: 133,
 			setupMocks: func(mocks Mocks) {
 				tokenID := big.NewInt(133)
-				pairedAddr := randAddress()
 				pariedDevice := models.PairedDevice{
-					Address: pairedAddr.String(),
-					Type:    models.DeviceTypeAftermarket,
+					Type: models.DeviceTypeAftermarket,
 					DID: cloudevent.ERC721DID{
 						ChainID:         polygonChainID,
 						TokenID:         tokenID10,
@@ -454,14 +436,6 @@ func TestVCController_GetVINVC(t *testing.T) {
 			require.NoError(t, err)
 		})
 	}
-}
-
-func randAddress() common.Address {
-	privateKey, err := crypto.GenerateKey()
-	if err != nil {
-		log.Fatalf("Failed to generate private key: %v", err)
-	}
-	return crypto.PubkeyToAddress(privateKey.PublicKey)
 }
 
 // matchVINSubject creates a gomock matcher that verifies the VIN subject content

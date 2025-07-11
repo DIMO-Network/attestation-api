@@ -13,7 +13,6 @@ import (
 	context "context"
 	json "encoding/json"
 	reflect "reflect"
-	time "time"
 
 	models "github.com/DIMO-Network/attestation-api/internal/models"
 	types "github.com/DIMO-Network/attestation-api/pkg/types"
@@ -96,105 +95,6 @@ func (m *MockIdentityAPI) GetVehicleInfo(ctx context.Context, vehicleDID cloudev
 func (mr *MockIdentityAPIMockRecorder) GetVehicleInfo(ctx, vehicleDID any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetVehicleInfo", reflect.TypeOf((*MockIdentityAPI)(nil).GetVehicleInfo), ctx, vehicleDID)
-}
-
-// MockConnectivityRepo is a mock of ConnectivityRepo interface.
-type MockConnectivityRepo struct {
-	ctrl     *gomock.Controller
-	recorder *MockConnectivityRepoMockRecorder
-	isgomock struct{}
-}
-
-// MockConnectivityRepoMockRecorder is the mock recorder for MockConnectivityRepo.
-type MockConnectivityRepoMockRecorder struct {
-	mock *MockConnectivityRepo
-}
-
-// NewMockConnectivityRepo creates a new mock instance.
-func NewMockConnectivityRepo(ctrl *gomock.Controller) *MockConnectivityRepo {
-	mock := &MockConnectivityRepo{ctrl: ctrl}
-	mock.recorder = &MockConnectivityRepoMockRecorder{mock}
-	return mock
-}
-
-// EXPECT returns an object that allows the caller to indicate expected use.
-func (m *MockConnectivityRepo) EXPECT() *MockConnectivityRepoMockRecorder {
-	return m.recorder
-}
-
-// GetAutoPiEvents mocks base method.
-func (m *MockConnectivityRepo) GetAutoPiEvents(ctx context.Context, pairedDevice *models.PairedDevice, after, before time.Time, limit int) ([]cloudevent.CloudEvent[json.RawMessage], error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetAutoPiEvents", ctx, pairedDevice, after, before, limit)
-	ret0, _ := ret[0].([]cloudevent.CloudEvent[json.RawMessage])
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// GetAutoPiEvents indicates an expected call of GetAutoPiEvents.
-func (mr *MockConnectivityRepoMockRecorder) GetAutoPiEvents(ctx, pairedDevice, after, before, limit any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAutoPiEvents", reflect.TypeOf((*MockConnectivityRepo)(nil).GetAutoPiEvents), ctx, pairedDevice, after, before, limit)
-}
-
-// GetCompassStatusEvents mocks base method.
-func (m *MockConnectivityRepo) GetCompassStatusEvents(ctx context.Context, vehicleDID cloudevent.ERC721DID, after, before time.Time, limit int) ([]cloudevent.CloudEvent[json.RawMessage], error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetCompassStatusEvents", ctx, vehicleDID, after, before, limit)
-	ret0, _ := ret[0].([]cloudevent.CloudEvent[json.RawMessage])
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// GetCompassStatusEvents indicates an expected call of GetCompassStatusEvents.
-func (mr *MockConnectivityRepoMockRecorder) GetCompassStatusEvents(ctx, vehicleDID, after, before, limit any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetCompassStatusEvents", reflect.TypeOf((*MockConnectivityRepo)(nil).GetCompassStatusEvents), ctx, vehicleDID, after, before, limit)
-}
-
-// GetHashDogEvents mocks base method.
-func (m *MockConnectivityRepo) GetHashDogEvents(ctx context.Context, pairedDevice *models.PairedDevice, after, before time.Time, limit int) ([]cloudevent.CloudEvent[json.RawMessage], error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetHashDogEvents", ctx, pairedDevice, after, before, limit)
-	ret0, _ := ret[0].([]cloudevent.CloudEvent[json.RawMessage])
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// GetHashDogEvents indicates an expected call of GetHashDogEvents.
-func (mr *MockConnectivityRepoMockRecorder) GetHashDogEvents(ctx, pairedDevice, after, before, limit any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetHashDogEvents", reflect.TypeOf((*MockConnectivityRepo)(nil).GetHashDogEvents), ctx, pairedDevice, after, before, limit)
-}
-
-// GetRuptelaStatusEvents mocks base method.
-func (m *MockConnectivityRepo) GetRuptelaStatusEvents(ctx context.Context, vehicleDID cloudevent.ERC721DID, after, before time.Time, limit int) ([]cloudevent.CloudEvent[json.RawMessage], error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetRuptelaStatusEvents", ctx, vehicleDID, after, before, limit)
-	ret0, _ := ret[0].([]cloudevent.CloudEvent[json.RawMessage])
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// GetRuptelaStatusEvents indicates an expected call of GetRuptelaStatusEvents.
-func (mr *MockConnectivityRepoMockRecorder) GetRuptelaStatusEvents(ctx, vehicleDID, after, before, limit any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetRuptelaStatusEvents", reflect.TypeOf((*MockConnectivityRepo)(nil).GetRuptelaStatusEvents), ctx, vehicleDID, after, before, limit)
-}
-
-// GetSyntheticstatusEvents mocks base method.
-func (m *MockConnectivityRepo) GetSyntheticstatusEvents(ctx context.Context, vehicleDID cloudevent.ERC721DID, after, before time.Time, limit int) ([]cloudevent.CloudEvent[json.RawMessage], error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetSyntheticstatusEvents", ctx, vehicleDID, after, before, limit)
-	ret0, _ := ret[0].([]cloudevent.CloudEvent[json.RawMessage])
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// GetSyntheticstatusEvents indicates an expected call of GetSyntheticstatusEvents.
-func (mr *MockConnectivityRepoMockRecorder) GetSyntheticstatusEvents(ctx, vehicleDID, after, before, limit any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetSyntheticstatusEvents", reflect.TypeOf((*MockConnectivityRepo)(nil).GetSyntheticstatusEvents), ctx, vehicleDID, after, before, limit)
 }
 
 // MockIssuer is a mock of Issuer interface.

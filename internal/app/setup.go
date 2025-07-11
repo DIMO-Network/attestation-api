@@ -15,11 +15,7 @@ import (
 	"github.com/DIMO-Network/attestation-api/internal/config"
 	"github.com/DIMO-Network/attestation-api/internal/controllers/httphandlers"
 	"github.com/DIMO-Network/attestation-api/internal/controllers/rpc"
-	"github.com/DIMO-Network/clickhouse-infra/pkg/connect"
 	ddgrpc "github.com/DIMO-Network/device-definitions-api/pkg/grpc"
-	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/credentials"
-	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/rs/zerolog"
 	"google.golang.org/grpc"
@@ -28,21 +24,6 @@ import (
 
 // createControllers creates a new controllers with the given settings.
 func createControllers(logger *zerolog.Logger, settings *config.Settings, statusRoute, keysRoute, vocabRoute, jsonLDRoute string) (*httphandlers.HTTPController, *rpc.Server, error) {
-
-	// Initialize ClickHouse connection
-	chConn, err := connect.GetClickhouseConn(&settings.Clickhouse)
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to create ClickHouse connection: %w", err)
-	}
-	// ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
-	// defer cancel()
-	// err = chConn.Ping(ctx)
-	// if err != nil {
-	// 	return nil, nil, fmt.Errorf("failed to ping ClickHouse: %w", err)
-	// }
-	// Initialize S3 client
-	s3Client := s3ClientFromSettings(settings)
-
 	fetchAPIClient := fetchapi.New(settings)
 
 	privateKey, err := crypto.HexToECDSA(settings.SignerPrivateKey)
@@ -58,7 +39,7 @@ func createControllers(logger *zerolog.Logger, settings *config.Settings, status
 	vinValidateSerivce := vinvalidator.New(deviceDefGRPCClient)
 
 	// Initialize fingerprint repository
-	fingerprintRepo := fingerprint.New(fetchAPIClient, settings.FingerprintBucket, settings.FingerprintDataType, chConn, s3Client)
+	fingerprintRepo := fingerprint.New(fetchAPIClient)
 
 	dexClient, err := dex.NewClient(settings)
 	if err != nil {
@@ -102,20 +83,6 @@ func createControllers(logger *zerolog.Logger, settings *config.Settings, status
 
 	return ctrl, server, nil
 
-}
-
-// s3ClientFromSettings creates an S3 client from the given settings.
-func s3ClientFromSettings(settings *config.Settings) *s3.Client {
-	// Create an AWS session
-	conf := aws.Config{
-		Region: settings.S3AWSRegion,
-		Credentials: credentials.NewStaticCredentialsProvider(
-			settings.S3AWSAccessKeyID,
-			settings.S3AWSSecretAccessKey,
-			"",
-		),
-	}
-	return s3.NewFromConfig(conf)
 }
 
 func deviceDefAPIClientFromSettings(settings *config.Settings) (ddgrpc.VinDecoderServiceClient, error) {

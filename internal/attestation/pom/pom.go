@@ -3,66 +3,49 @@ package pom
 import (
 	"cmp"
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"math"
 	"math/big"
-	"reflect"
 	"slices"
 	"time"
 
+	"github.com/DIMO-Network/attestation-api/internal/client/fetchapi"
 	"github.com/DIMO-Network/attestation-api/internal/controllers/ctrlerrors"
 	"github.com/DIMO-Network/attestation-api/internal/models"
 	"github.com/DIMO-Network/attestation-api/pkg/types"
 	"github.com/DIMO-Network/cloudevent"
-	"github.com/DIMO-Network/model-garage/pkg/convert"
-	"github.com/DIMO-Network/model-garage/pkg/hashdog"
-	"github.com/DIMO-Network/model-garage/pkg/nativestatus"
-	"github.com/DIMO-Network/model-garage/pkg/ruptela"
-	"github.com/DIMO-Network/model-garage/pkg/twilio"
+	"github.com/DIMO-Network/fetch-api/pkg/grpc"
+	"github.com/DIMO-Network/model-garage/pkg/modules"
 	"github.com/DIMO-Network/model-garage/pkg/vss"
-	"github.com/DIMO-Network/shared/pkg/set"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/rs/zerolog"
 	"github.com/uber/h3-go/v4"
+	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
 const (
-	autoPiManufacturer  = "AutoPi"
-	hashDogManufacturer = "HashDog"
-	ruptelaManufacturer = "Ruptela"
 	// h3Resolution resolution for h3 hex 8 ~= 0.737327598 km2
 	h3Resolution = 8
 )
 
 var errNoLocation = fmt.Errorf("no location data found")
 
-var acceptableStatusSources = set.New(
-	// Tesla source
-	"dimo/integration/22N2xaPOq2WW2gAHBHd0Ikn4Zob",
-	// Smartcar source
-	"dimo/integration/26A5Dk3vvvQutjSyF0Jka2DP5lg",
-)
-
 type Service struct {
-	logger                 zerolog.Logger
 	identityAPI            IdentityAPI
-	connectivityRepo       ConnectivityRepo
 	vcRepo                 VCRepo
 	issuer                 Issuer
 	vehicleContractAddress common.Address
 	chainID                uint64
+
+	fetchService *fetchapi.FetchAPIService
 }
 
-func NewService(logger *zerolog.Logger, identityAPI IdentityAPI, connectivityRepo ConnectivityRepo, vcRepo VCRepo, issuer Issuer, vehicleContractAddress string, chainID int64) (*Service, error) {
+func NewService(identityAPI IdentityAPI, vcRepo VCRepo, issuer Issuer, vehicleContractAddress string, chainID int64) (*Service, error) {
 	if !common.IsHexAddress(vehicleContractAddress) {
 		return nil, fmt.Errorf("invalid vehicle contract address: %s", vehicleContractAddress)
 	}
 	return &Service{
-		logger:                 *logger,
 		identityAPI:            identityAPI,
-		connectivityRepo:       connectivityRepo,
 		vcRepo:                 vcRepo,
 		issuer:                 issuer,
 		vehicleContractAddress: common.HexToAddress(vehicleContractAddress),
@@ -77,14 +60,13 @@ func (s *Service) CreatePOMVC(ctx context.Context, tokenID uint32) error {
 		TokenID:         big.NewInt(int64(tokenID)),
 		ContractAddress: s.vehicleContractAddress,
 	}
-	logger := s.logger.With().Uint32("vehicleTokenId", tokenID).Logger()
 
 	vehicleInfo, err := s.identityAPI.GetVehicleInfo(ctx, vehicleDID)
 	if err != nil {
 		return ctrlerrors.Error{InternalError: err, ExternalMsg: "Failed to get vehicle info"}
 	}
 
-	pairedDevice, locations, err := s.getLocationForVehicle(ctx, vehicleInfo, &logger)
+	pairedDevice, locations, err := s.getLocationForVehicle(ctx, vehicleInfo)
 	if err != nil {
 		msg := "Failed to get location data"
 		if errors.Is(err, errNoLocation) {
@@ -113,22 +95,10 @@ func (s *Service) CreatePOMVC(ctx context.Context, tokenID uint32) error {
 }
 
 // getLocationForVehicle retrieves location data from paired devices.
-func (s *Service) getLocationForVehicle(ctx context.Context, vehicleInfo *models.VehicleInfo, logger *zerolog.Logger) (*models.PairedDevice, []types.Location, error) {
+func (s *Service) getLocationForVehicle(ctx context.Context, vehicleInfo *models.VehicleInfo) (*models.PairedDevice, []types.Location, error) {
 	slices.SortStableFunc(vehicleInfo.PairedDevices, pairedDeviceSorter)
 	for _, device := range vehicleInfo.PairedDevices {
-		var locations []types.Location
-		var err error
-
-		switch {
-		case device.Type == models.DeviceTypeAftermarket && device.ManufacturerName == autoPiManufacturer:
-			locations, err = s.pullAutoPiEvents(ctx, &device)
-		case device.Type == models.DeviceTypeAftermarket && device.ManufacturerName == hashDogManufacturer:
-			locations, err = s.pullMacaronEvents(ctx, &device)
-		case device.Type == models.DeviceTypeAftermarket && device.ManufacturerName == ruptelaManufacturer:
-			locations, err = s.pullRuptelaEvents(ctx, vehicleInfo.DID)
-		default:
-			locations, err = s.pullStatusEvents(ctx, vehicleInfo.DID)
-		}
+		locations, err := s.pullEvents(ctx, vehicleInfo.DID, device.DID)
 		if err == nil {
 			return &device, locations, nil
 		}
@@ -141,48 +111,31 @@ func (s *Service) getLocationForVehicle(ctx context.Context, vehicleInfo *models
 	return nil, nil, errNoLocation
 }
 
-// pullAutoPiEvents retrieves AutoPi events and extracts locations.
-func (s *Service) pullAutoPiEvents(ctx context.Context, device *models.PairedDevice) ([]types.Location, error) {
-	fetchEvents := func(after, before time.Time, limit int) ([]cloudevent.CloudEvent[json.RawMessage], error) {
-		return s.connectivityRepo.GetAutoPiEvents(ctx, device, after, before, limit)
+func (s *Service) fetchEvents(ctx context.Context, vehicleDID, deviceDID cloudevent.ERC721DID, after, before time.Time, limit int) ([]cloudevent.RawEvent, error) {
+	statusType := cloudevent.TypeStatus
+	opts := &grpc.SearchOptions{
+		Subject:  wrapperspb.String(vehicleDID.String()),
+		Producer: wrapperspb.String(deviceDID.String()),
+		// Source:   wrapperspb.String(source),
+		Type: wrapperspb.String(statusType),
 	}
-	return s.pullEvents(ctx, fetchEvents, parseAutoPiEvent)
-}
-
-// pullMacaronEvents retrieves Macaron events and extracts locations.
-func (s *Service) pullMacaronEvents(ctx context.Context, device *models.PairedDevice) ([]types.Location, error) {
-	fetchEvents := func(after, before time.Time, limit int) ([]cloudevent.CloudEvent[json.RawMessage], error) {
-		return s.connectivityRepo.GetHashDogEvents(ctx, device, after, before, limit)
+	dataObj, err := s.fetchService.GetAllCloudEvents(ctx, opts, int32(limit))
+	if err != nil {
+		return nil, fmt.Errorf("failed to get fingerprint message: %w", err)
 	}
-	return s.pullEvents(ctx, fetchEvents, parseMacaronEvent)
-}
-
-// pullStatusEvents retrieves synthetic events and extracts locations.
-func (s *Service) pullStatusEvents(ctx context.Context, vehicleDID cloudevent.ERC721DID) ([]types.Location, error) {
-	fetchEvents := func(after, before time.Time, limit int) ([]cloudevent.CloudEvent[json.RawMessage], error) {
-		return s.connectivityRepo.GetSyntheticstatusEvents(ctx, vehicleDID, after, before, limit)
-	}
-	return s.pullEvents(ctx, fetchEvents, parseSyntheticEvent)
-}
-
-// pullRuptelaEvents retrieves Ruptela Status events and extracts locations.
-func (s *Service) pullRuptelaEvents(ctx context.Context, vehicleDID cloudevent.ERC721DID) ([]types.Location, error) {
-	fetchEvents := func(after, before time.Time, limit int) ([]cloudevent.CloudEvent[json.RawMessage], error) {
-		return s.connectivityRepo.GetRuptelaStatusEvents(ctx, vehicleDID, after, before, limit)
-	}
-	return s.pullEvents(ctx, fetchEvents, parseRuptelaEvent)
+	return dataObj, nil
 }
 
 // pullEvents is a generic function for fetching events and extracting locations.
-func (s *Service) pullEvents(ctx context.Context, fetchEvents func(time.Time, time.Time, int) ([]cloudevent.CloudEvent[json.RawMessage], error), parseEvent func(cloudevent.CloudEvent[json.RawMessage]) (cloudevent.CloudEvent[any], error)) ([]types.Location, error) {
+func (s *Service) pullEvents(ctx context.Context, vehicleDID, deviceDID cloudevent.ERC721DID) ([]types.Location, error) {
 	limit := 10
 	weekAgo := time.Now().Add(-7 * 24 * time.Hour)
 	before := time.Now()
 
-	var firstEvent cloudevent.CloudEvent[any]
+	var firstEvent cloudevent.CloudEvent[[]h3.Cell]
 
 	for weekAgo.Before(before) {
-		events, err := fetchEvents(weekAgo, before, limit)
+		events, err := s.fetchEvents(ctx, vehicleDID, deviceDID, weekAgo, before, limit)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get events: %w", err)
 		}
@@ -191,7 +144,7 @@ func (s *Service) pullEvents(ctx context.Context, fetchEvents func(time.Time, ti
 		}
 
 		for _, rawEvent := range events {
-			cloudEvent, err := parseEvent(rawEvent)
+			cloudEvent, err := parseEvent(ctx, rawEvent)
 			if err != nil {
 				return nil, err
 			}
@@ -219,170 +172,47 @@ func (s *Service) pullEvents(ctx context.Context, fetchEvents func(time.Time, ti
 
 // pairedDeviceSorter compares two paired devices.
 func pairedDeviceSorter(a, b models.PairedDevice) int {
-	if a.Type == b.Type {
-		if a.ManufacturerName == b.ManufacturerName {
-			return cmp.Compare(a.Address, b.Address)
-		}
-		return cmp.Compare(a.ManufacturerName, b.ManufacturerName)
-	}
-	if a.Type == "aftermarket" {
-		return -1
-	}
-	if b.Type == "aftermarket" {
-		return 1
-	}
-	return cmp.Compare(a.Type, b.Type)
+	return cmp.Compare(a.DID.String(), b.DID.String())
 }
 
 // compareLocations compares locations of two events and returns verifiable locations.
-func compareLocations(firstEvent, curEvent cloudevent.CloudEvent[any]) []types.Location {
-	if reflect.TypeOf(firstEvent.Data) != reflect.TypeOf(curEvent.Data) {
+func compareLocations(firstEvent, curEvent cloudevent.CloudEvent[[]h3.Cell]) []types.Location {
+	currCells := curEvent.Data
+	firstCells := firstEvent.Data
+	if len(firstCells) == 0 {
 		return nil
 	}
-
-	switch currData := curEvent.Data.(type) {
-	case twilio.ConnectionEvent:
-		curCellID := currData.Location.CellID
-		firstCellID := firstEvent.Data.(twilio.ConnectionEvent).Location.CellID
-		if firstCellID != curCellID && firstCellID != "" {
+	firstCell := firstCells[0]
+	for _, cell := range currCells {
+		if cell != firstCell {
 			return []types.Location{
 				{
-					LocationType:  types.LocationTypeCellID,
-					LocationValue: types.CellID{CellID: firstCellID},
+					LocationType:  types.LocationTypeH3Cell,
+					LocationValue: types.H3Cell{CellID: cell.String()},
 					Timestamp:     firstEvent.Time,
 				},
 				{
-					LocationType:  types.LocationTypeCellID,
-					LocationValue: types.CellID{CellID: curCellID},
+					LocationType:  types.LocationTypeH3Cell,
+					LocationValue: types.H3Cell{CellID: cell.String()},
 					Timestamp:     curEvent.Time,
 				},
-			}
-		}
-	case hashdog.Data:
-		if firstEvent.Equals(curEvent.CloudEventHeader) {
-			// gatway differences must be from different events
-			return nil
-		}
-		firstGatewayID := getFirstGWMeta(firstEvent.Data.(hashdog.Data).Via).GatewayID
-		for _, via := range currData.Via {
-			if via.Metadata.GatewayID != "" && firstGatewayID != via.Metadata.GatewayID {
-				return []types.Location{
-					{
-						LocationType:  types.LocationTypeGatewayID,
-						LocationValue: types.GatewayID{GatewayID: firstGatewayID},
-						Timestamp:     firstEvent.Time,
-					},
-					{
-						LocationType:  types.LocationTypeGatewayID,
-						LocationValue: types.GatewayID{GatewayID: via.Metadata.GatewayID},
-						Timestamp:     curEvent.Time,
-					},
-				}
-			}
-		}
-	case []h3.Cell:
-		currCells := currData
-		firstCells := firstEvent.Data.([]h3.Cell)
-		if len(firstCells) == 0 {
-			return nil
-		}
-		firstCell := firstCells[0]
-		for _, cell := range currCells {
-			if cell != firstCell {
-				return []types.Location{
-					{
-						LocationType:  types.LocationTypeH3Cell,
-						LocationValue: types.H3Cell{CellID: cell.String()},
-						Timestamp:     firstEvent.Time,
-					},
-					{
-						LocationType:  types.LocationTypeH3Cell,
-						LocationValue: types.H3Cell{CellID: cell.String()},
-						Timestamp:     curEvent.Time,
-					},
-				}
 			}
 		}
 	}
 	return nil
 }
 
-// parseAutoPiEvent parses twilo events and returns data for events with cell data.
-func parseAutoPiEvent(event cloudevent.CloudEvent[json.RawMessage]) (cloudevent.CloudEvent[any], error) {
-	var eventData twilio.ConnectionEvent
-	err := json.Unmarshal(event.Data, &eventData)
+// parseEvent parses status events and returns data for events with lat and long data.
+func parseEvent(ctx context.Context, event cloudevent.RawEvent) (cloudevent.CloudEvent[[]h3.Cell], error) {
+	signals, err := modules.ConvertToSignals(ctx, event.Source, event)
 	if err != nil {
-		return cloudevent.CloudEvent[any]{}, fmt.Errorf("failed to unmarshal twilio event: %w", err)
-	}
-	// only return events with cell data
-	if eventData.Location == nil || eventData.Location.CellID == "" {
-		return cloudevent.CloudEvent[any]{CloudEventHeader: event.CloudEventHeader}, nil
-	}
-	return cloudevent.CloudEvent[any]{CloudEventHeader: event.CloudEventHeader, Data: eventData}, nil
-}
-
-// parseMacaronEvent parses hashdog events and returns data for events with gateway data.
-func parseMacaronEvent(event cloudevent.CloudEvent[json.RawMessage]) (cloudevent.CloudEvent[any], error) {
-	var eventData hashdog.Data
-	err := json.Unmarshal(event.Data, &eventData)
-	if err != nil {
-		return cloudevent.CloudEvent[any]{}, fmt.Errorf("failed to unmarshal hashdog event: %w", err)
-	}
-
-	// only return events with gateway data
-	if getFirstGWMeta(eventData.Via).GatewayID == "" {
-		return cloudevent.CloudEvent[any]{CloudEventHeader: event.CloudEventHeader}, nil
-	}
-
-	return cloudevent.CloudEvent[any]{CloudEventHeader: event.CloudEventHeader, Data: eventData}, nil
-}
-
-// parseSyntheticEvent parses status events and returns data for events with lat and long data.
-func parseSyntheticEvent(event cloudevent.CloudEvent[json.RawMessage]) (cloudevent.CloudEvent[any], error) {
-	if !acceptableStatusSources.Contains(event.Source) {
-		return cloudevent.CloudEvent[any]{CloudEventHeader: event.CloudEventHeader}, nil
-	}
-	data, err := json.Marshal(event)
-	if err != nil {
-		return cloudevent.CloudEvent[any]{}, fmt.Errorf("failed to marshal event data: %w", err)
-	}
-
-	// TODO this context argument will be going away.
-	signals, err := nativestatus.SignalsFromPayload(context.TODO(), nil, data)
-	if err != nil {
-		return cloudevent.CloudEvent[any]{}, fmt.Errorf("failed to convert signals: %w", err)
+		return cloudevent.CloudEvent[[]h3.Cell]{}, fmt.Errorf("failed to convert signals: %w", err)
 	}
 	latLong, ok := getH3Cells(signals)
 	if !ok {
-		return cloudevent.CloudEvent[any]{CloudEventHeader: event.CloudEventHeader}, nil
+		return cloudevent.CloudEvent[[]h3.Cell]{CloudEventHeader: event.CloudEventHeader}, nil
 	}
-	return cloudevent.CloudEvent[any]{CloudEventHeader: event.CloudEventHeader, Data: latLong}, nil
-}
-
-func parseRuptelaEvent(event cloudevent.CloudEvent[json.RawMessage]) (cloudevent.CloudEvent[any], error) {
-	signals, err := ruptela.DecodeStatusSignals(event)
-	if err != nil {
-		convErr := convert.ConversionError{}
-		if !errors.As(err, &convErr) || len(convErr.DecodedSignals) == 0 {
-			return cloudevent.CloudEvent[any]{}, fmt.Errorf("failed to decode signals: %w", err)
-		}
-		signals = convErr.DecodedSignals
-	}
-	latLong, ok := getH3Cells(signals)
-	if !ok {
-		return cloudevent.CloudEvent[any]{CloudEventHeader: event.CloudEventHeader}, nil
-	}
-	return cloudevent.CloudEvent[any]{CloudEventHeader: event.CloudEventHeader, Data: latLong}, nil
-}
-
-// getFirstGWMeta retrieves the first gateway metadata from a list of Via events.
-func getFirstGWMeta(vias []hashdog.Via) hashdog.GWMetadata {
-	for _, via := range vias {
-		if via.Metadata.GatewayID != "" {
-			return via.Metadata
-		}
-	}
-	return hashdog.GWMetadata{}
+	return cloudevent.CloudEvent[[]h3.Cell]{CloudEventHeader: event.CloudEventHeader, Data: latLong}, nil
 }
 
 func getH3Cells(signals []vss.Signal) ([]h3.Cell, bool) {

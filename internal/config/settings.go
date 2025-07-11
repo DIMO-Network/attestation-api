@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/DIMO-Network/clickhouse-infra/pkg/connect/config"
 	"github.com/caarlos0/env/v11"
 	"gopkg.in/yaml.v3"
 )
@@ -22,17 +21,7 @@ type Settings struct {
 	AfterMarketNFTAddress     string `env:"AFTERMARKET_NFT_ADDRESS"`
 	SyntheticNFTAddress       string `env:"SYNTHETIC_NFT_ADDRESS"`
 	TelemetryURL              string `env:"TELEMETRY_URL"`
-	VCBucket                  string `env:"VC_BUCKET"`
-	POMVCDataType             string `env:"POMVC_DATA_TYPE"`
-	CloudEventBucket          string `env:"CLOUDEVENT_BUCKET"`
-	AutoPiDataType            string `env:"AUTOPI_DATA_TYPE"`
-	AutoPiBucketName          string `env:"AUTOPI_BUCKET_NAME"`
-	HashDogDataType           string `env:"HASHDOG_DATA_TYPE"`
-	HashDogBucketName         string `env:"HASHDOG_BUCKET_NAME"`
-	StatusDataType            string `env:"STATUS_DATA_TYPE"`
-	StatusBucketName          string `env:"STATUS_BUCKET_NAME"`
 	IdentityAPIURL            string `env:"IDENTITY_API_URL"`
-	VINVCPrivateKey           string `env:"VIN_ISSUER_PRIVATE_KEY"`
 	DIMORegistryChainID       int64  `env:"DIMO_REGISTRY_CHAIN_ID"`
 	DISURL                    string `env:"DIS_URL"`
 	SignerPrivateKey          string `env:"SIGNER_PRIVATE_KEY"`
@@ -41,14 +30,6 @@ type Settings struct {
 	FetchGRPCAddr             string `env:"FETCH_GRPC_ADDR"`
 	RedirectURL               string `env:"DEV_LICENSE_REDIRECT_URL"`
 	VINDataVersion            string `env:"VIN_DATA_VERSION"`
-
-	// TODO (kevin): Remove with smartcar deprecation
-	Clickhouse           config.Settings
-	FingerprintBucket    string `env:"FINGERPRINT_BUCKET"`
-	FingerprintDataType  string `env:"FINGERPRINT_DATA_TYPE"`
-	S3AWSRegion          string `env:"S3_AWS_REGION"`
-	S3AWSAccessKeyID     string `env:"S3_AWS_ACCESS_KEY_ID"`
-	S3AWSSecretAccessKey string `env:"S3_AWS_SECRET_ACCESS_KEY"`
 }
 
 func LoadSettings(filePath string) (*Settings, error) {

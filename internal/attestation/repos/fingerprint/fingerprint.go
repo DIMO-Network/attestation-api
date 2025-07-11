@@ -2,20 +2,15 @@ package fingerprint
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"regexp"
 	"strings"
 
-	"github.com/ClickHouse/clickhouse-go/v2"
 	"github.com/DIMO-Network/attestation-api/internal/client/fetchapi"
 	"github.com/DIMO-Network/attestation-api/internal/models"
 	"github.com/DIMO-Network/cloudevent"
-	"github.com/DIMO-Network/cloudevent/pkg/clickhouse/eventrepo"
 	"github.com/DIMO-Network/fetch-api/pkg/grpc"
 	"github.com/DIMO-Network/model-garage/pkg/modules"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
@@ -30,23 +25,12 @@ func (d decodeError) Error() string {
 // Service manages and retrieves fingerprint messages.
 type Service struct {
 	fetchService *fetchapi.FetchAPIService
-
-	// TODO (kevin): Remove with smartcar deprecation
-	bucketName   string
-	indexService *eventrepo.Service
-	dataType     string
 }
 
 // New creates a new instance of Service.
-func New(fetchService *fetchapi.FetchAPIService, legacyBucketName, fingerprintDataType string,
-	chConn clickhouse.Conn, objGetter eventrepo.ObjectGetter) *Service {
+func New(fetchService *fetchapi.FetchAPIService) *Service {
 	return &Service{
 		fetchService: fetchService,
-
-		// TODO (kevin): Remove with smartcar deprecation
-		indexService: eventrepo.New(chConn, objGetter),
-		dataType:     fingerprintDataType,
-		bucketName:   legacyBucketName,
 	}
 }
 
@@ -60,53 +44,19 @@ func (s *Service) GetLatestFingerprintMessages(ctx context.Context, vehicleDID c
 	}
 	dataObj, err := s.fetchService.GetLatestCloudEvent(ctx, opts)
 	if err != nil {
-		// if we can't find a fingerprint message in the new bucket, try the old bucket
-		if status.Code(err) == codes.NotFound {
-			return s.legacyGetLatestFingerprintMessages(ctx, device)
-		}
 		return nil, fmt.Errorf("failed to get fingerprint message: %w", err)
 	}
-	msg, err := s.decodeFingerprintMessage(dataObj)
+	msg, err := s.decodeFingerprintMessage(ctx, dataObj)
 	if err != nil {
 		return nil, err
 	}
 	return msg, nil
 }
 
-// TODO (kevin): Remove with smartcar deprecation
-func (s *Service) legacyGetLatestFingerprintMessages(ctx context.Context, device models.PairedDevice) (*models.DecodedFingerprintData, error) {
-	encodedAddress := device.Address[2:]
-	opts := &eventrepo.SearchOptions{
-		Subject:     &encodedAddress,
-		DataVersion: &s.dataType,
-	}
-	cloudIdx, err := s.indexService.GetLatestIndex(ctx, opts)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get latest fingerprint: %w", err)
-	}
-	dataObj, err := s.indexService.GetObjectFromKey(ctx, cloudIdx.Data.Key, s.bucketName)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get latest fingerprint object: %w", err)
-	}
-	embeddedEvent := cloudevent.CloudEvent[json.RawMessage]{}
-	err = json.Unmarshal(dataObj, &embeddedEvent)
-	if err != nil {
-		return nil, fmt.Errorf("failed to unmarshal legacy fingerprint message: %w", err)
-	}
-	msg, err := s.decodeFingerprintMessage(embeddedEvent)
-	if err != nil {
-		return nil, err
-	}
-	if msg.Producer == "" {
-		msg.Producer = device.DID.String()
-	}
-	return msg, nil
-}
-
-func (s *Service) decodeFingerprintMessage(msg cloudevent.RawEvent) (*models.DecodedFingerprintData, error) {
+func (s *Service) decodeFingerprintMessage(ctx context.Context, msg cloudevent.RawEvent) (*models.DecodedFingerprintData, error) {
 	var vin string
 	var err error
-	fp, err := modules.ConvertToFingerprint(context.TODO(), msg.Source, msg)
+	fp, err := modules.ConvertToFingerprint(ctx, msg.Source, msg)
 	if err != nil {
 		return nil, fmt.Errorf("failed to convert to fingerprint: %w", err)
 	}
