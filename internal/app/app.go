@@ -30,19 +30,15 @@ import (
 
 // CreateServers creates a new fiber app and grpc server with the given settings.
 func CreateServers(logger *zerolog.Logger, settings *config.Settings) (*fiber.App, *grpc.Server, error) {
-	statusRoute := "/v1/vc/status"
-	keysRoute := "/v1/vc/keys"
-	vocabRoute := "/v1/vc/context/vocab"
-	jsonLDRoute := "/v1/vc/context"
-	httpCtrl, rpcCtrl, err := createControllers(logger, settings, statusRoute, keysRoute, vocabRoute, jsonLDRoute)
+	httpCtrl, rpcCtrl, err := createControllers(logger, settings)
 	if err != nil {
 		return nil, nil, err
 	}
-	app := setupHttpServer(logger, settings, httpCtrl, statusRoute, keysRoute, vocabRoute, jsonLDRoute)
-	rpc := setupRPCServer(logger, settings, rpcCtrl)
+	app := setupHttpServer(logger, settings, httpCtrl)
+	rpc := setupRPCServer(logger, rpcCtrl)
 	return app, rpc, nil
 }
-func setupHttpServer(logger *zerolog.Logger, settings *config.Settings, httpCtrl *httphandlers.HTTPController, statusRoute, keysRoute, vocabRoute, jsonLDRoute string) *fiber.App {
+func setupHttpServer(logger *zerolog.Logger, settings *config.Settings, httpCtrl *httphandlers.HTTPController) *fiber.App {
 	app := fiber.New(fiber.Config{
 		ErrorHandler: func(c *fiber.Ctx, err error) error {
 			return ErrorHandler(c, err, logger)
@@ -85,7 +81,7 @@ func setupHttpServer(logger *zerolog.Logger, settings *config.Settings, httpCtrl
 	return app
 }
 
-func setupRPCServer(logger *zerolog.Logger, settings *config.Settings, rpcCtrl *rpc.Server) *grpc.Server {
+func setupRPCServer(logger *zerolog.Logger, rpcCtrl *rpc.Server) *grpc.Server {
 	grpcPanic := metrics.GRPCPanicker{Logger: logger}
 	server := grpc.NewServer(
 		grpc.UnaryInterceptor(grpc_middleware.ChainUnaryServer(

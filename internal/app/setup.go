@@ -23,7 +23,7 @@ import (
 )
 
 // createControllers creates a new controllers with the given settings.
-func createControllers(logger *zerolog.Logger, settings *config.Settings, statusRoute, keysRoute, vocabRoute, jsonLDRoute string) (*httphandlers.HTTPController, *rpc.Server, error) {
+func createControllers(logger *zerolog.Logger, settings *config.Settings) (*httphandlers.HTTPController, *rpc.Server, error) {
 	fetchAPIClient := fetchapi.New(settings)
 
 	privateKey, err := crypto.HexToECDSA(settings.SignerPrivateKey)
