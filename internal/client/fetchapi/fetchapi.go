@@ -71,6 +71,21 @@ func (c *FetchAPIService) GetAllCloudEvents(ctx context.Context, filter *pb.Sear
 	return cldEvts, nil
 }
 
+func (c *FetchAPIService) GetLatestIndex(ctx context.Context, filter *pb.SearchOptions) (cloudevent.CloudEventHeader, error) {
+	client, err := c.getClient()
+	if err != nil {
+		return cloudevent.CloudEventHeader{}, err
+	}
+	resp, err := client.GetLatestIndex(ctx, &pb.GetLatestIndexRequest{
+		Options: filter,
+	})
+	if err != nil {
+		return cloudevent.CloudEventHeader{}, fmt.Errorf("failed to get latest index: %w", err)
+	}
+	header := resp.GetIndex().GetHeader().AsCloudEventHeader()
+	return header, nil
+}
+
 func (c *FetchAPIService) getClient() (pb.FetchServiceClient, error) {
 	if c.client != nil {
 		return c.client, nil

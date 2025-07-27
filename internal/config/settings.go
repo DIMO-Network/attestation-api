@@ -30,6 +30,9 @@ type Settings struct {
 	FetchGRPCAddr             string `env:"FETCH_GRPC_ADDR"`
 	RedirectURL               string `env:"DEV_LICENSE_REDIRECT_URL"`
 	VINDataVersion            string `env:"VIN_DATA_VERSION"`
+
+	SubjectsList     string `env:"SUBJECTS_LIST"`
+	ConcurrencyLimit int    `env:"CONCURRENCY_LIMIT"`
 }
 
 func LoadSettings(filePath string) (*Settings, error) {
