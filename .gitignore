@@ -22,7 +22,7 @@ bin/
 # Go workspace file
 go.work
 settings.yaml
-
+.env
 .idea
 .vscode/
 __debug_bin*

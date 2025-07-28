@@ -5,7 +5,7 @@ import (
 	"os"
 
 	"github.com/caarlos0/env/v11"
-	"gopkg.in/yaml.v3"
+	"github.com/joho/godotenv"
 )
 
 // Settings contains the application config.
@@ -35,32 +35,18 @@ type Settings struct {
 	ConcurrencyLimit int    `env:"CONCURRENCY_LIMIT"`
 }
 
+// LoadSettings loads the settings from environment variables or .env file.
 func LoadSettings(filePath string) (*Settings, error) {
 	settings := &Settings{}
 
-	// First try to load from settings.yaml
+	// First try to populate env variables from .env file if it exists.
 	if _, err := os.Stat(filePath); err == nil {
-		data, err := os.ReadFile(filePath)
+		err = godotenv.Load(filePath)
 		if err != nil {
-			return nil, fmt.Errorf("failed to read settings from %s: %w", filePath, err)
+			return nil, fmt.Errorf("failed to load settings from %s: %w", filePath, err)
 		}
-
-		var yamlMap map[string]string
-		if err := yaml.Unmarshal(data, &yamlMap); err != nil {
-			return nil, fmt.Errorf("failed to parse settings from %s: %w", filePath, err)
-		}
-
-		opts := env.Options{
-			Environment: yamlMap,
-		}
-
-		if err := env.ParseWithOptions(settings, opts); err != nil {
-			return nil, fmt.Errorf("failed to parse settings from %s: %w", filePath, err)
-		}
-		return settings, nil
 	}
 
-	// Then override with environment variables
 	if err := env.Parse(settings); err != nil {
 		return nil, fmt.Errorf("failed to parse settings from environment variables: %w", err)
 	}

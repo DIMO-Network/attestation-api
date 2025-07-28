@@ -46,7 +46,7 @@ func main() {
 
 	runnerGroup, runnerCtx := errgroup.WithContext(mainCtx)
 	// create a flag for the settings file
-	settingsFile := flag.String("settings", "settings.yaml", "settings file")
+	settingsFile := flag.String("env-file", ".env", "env file")
 	flag.Parse()
 	settings, err := config.LoadSettings(*settingsFile)
 	if err != nil {

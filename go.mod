@@ -18,6 +18,7 @@ require (
 	github.com/grpc-ecosystem/go-grpc-middleware v1.4.0
 	github.com/grpc-ecosystem/go-grpc-middleware/v2 v2.3.2
 	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0
+	github.com/joho/godotenv v1.5.1
 	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/rs/zerolog v1.34.0
 	github.com/segmentio/ksuid v1.0.4
@@ -28,7 +29,6 @@ require (
 	golang.org/x/sync v0.15.0
 	google.golang.org/grpc v1.73.0
 	google.golang.org/protobuf v1.36.6
-	gopkg.in/yaml.v3 v3.0.1
 )
 
 require (
@@ -83,6 +83,7 @@ require (
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20250324211829-b45e905df463 // indirect
 	google.golang.org/grpc/cmd/protoc-gen-go-grpc v1.5.1 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
+	gopkg.in/yaml.v3 v3.0.1 // indirect
 	sigs.k8s.io/yaml v1.3.0 // indirect
 )
 
