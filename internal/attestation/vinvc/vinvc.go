@@ -136,9 +136,12 @@ func (v *Service) getValidFingerPrint(ctx context.Context, vehicleInfo *models.V
 	for _, device := range vehicleInfo.PairedDevices {
 		fingerprint, err := v.fingerprintRepo.GetLatestFingerprintMessages(ctx, vehicleInfo.DID, device)
 		if err != nil {
-			// log the error and continue to the next device if possible
-			msg := fmt.Sprintf("Failed to get latest vin message for device %s", device.DID.String())
-			err = ctrlerrors.Error{InternalError: err, ExternalMsg: msg}
+			var ctrlErr ctrlerrors.Error
+			if !errors.As(err, &ctrlErr) {
+				// log the error and continue to the next device if possible
+				msg := fmt.Sprintf("Failed to get latest vin message for device %s", device.DID.String())
+				err = ctrlerrors.Error{InternalError: err, ExternalMsg: msg}
+			}
 			fingerprintErr = errors.Join(fingerprintErr, err)
 			continue
 		}
@@ -154,10 +157,10 @@ func (v *Service) getValidFingerPrint(ctx context.Context, vehicleInfo *models.V
 	}
 	decodedNameSlug, err := v.vinAPI.DecodeVIN(ctx, latestFP.VIN, countryCode)
 	if err != nil {
-		return nil, ctrlerrors.Error{InternalError: err, ExternalMsg: "Failed to decode VIN"}
+		return nil, ctrlerrors.Error{InternalError: err, ExternalMsg: "Server failed to decode VIN"}
 	}
 	if decodedNameSlug != vehicleInfo.NameSlug {
-		message := "Invalid VIN Decoding from fingerprint"
+		message := fmt.Sprintf("Invalid VIN Decoding expected: %s got: %s", vehicleInfo.NameSlug, decodedNameSlug)
 		err := fmt.Errorf("decodedNameSlug: %s != identityNameSlug: %s vin = %s", decodedNameSlug, vehicleInfo.NameSlug, latestFP.VIN)
 		return nil, ctrlerrors.Error{InternalError: err, ExternalMsg: message, Code: fiber.StatusBadRequest}
 	}
