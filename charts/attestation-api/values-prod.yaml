@@ -22,7 +22,6 @@ env:
   DEV_LICENSE: '0x49eAf63eD94FEf3d40692862Eee2C8dB416B1a5f'
   FETCH_GRPC_ADDR: fetch-api-prod:8086
   DIMO_REGISTRY_CHAIN_ID: 137
-  CLOUDEVENT_BUCKET: dimo-ingest-cloudevent-prod
 ingress:
   enabled: true
   className: nginx
