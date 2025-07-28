@@ -14,17 +14,26 @@ import (
 // TransferStats tracks the progress of the manual transfer
 type TransferStats struct {
 	mu             sync.RWMutex
-	TotalSubjects  int           `json:"total_subjects"`
-	Processed      int           `json:"processed"`
-	Successful     int           `json:"successful"`
-	Failed         int           `json:"failed"`
-	Skipped        int           `json:"skipped"`
-	StartTime      time.Time     `json:"start_time"`
-	LastUpdateTime time.Time     `json:"last_update_time"`
-	Errors         []string      `json:"errors"`
-	FailedSubjects []string      `json:"failed_subjects"`
-	CurrentSubject string        `json:"current_subject"`
-	ProcessingTime time.Duration `json:"processing_time"`
+	TotalSubjects  int            `json:"total_subjects"`
+	Processed      int            `json:"processed"`
+	Successful     int            `json:"successful"`
+	Failed         int            `json:"failed"`
+	Skipped        int            `json:"skipped"`
+	StartTime      time.Time      `json:"start_time"`
+	LastUpdateTime time.Time      `json:"last_update_time"`
+	Errors         []string       `json:"errors"`
+	FailedSubjects []string       `json:"failed_subjects"`
+	CurrentSubject string         `json:"current_subject"`
+	ProcessingTime ezReadDuration `json:"processing_time"`
+}
+
+type ezReadDuration struct {
+	time.Duration
+}
+
+func (t ezReadDuration) MarshalText() ([]byte, error) {
+	dur := time.Duration(t.Duration)
+	return []byte(dur.String()), nil
 }
 
 func (ts *TransferStats) IncrementProcessed() {
@@ -74,7 +83,7 @@ func (ts *TransferStats) GetStats() TransferStats {
 	ts.mu.RLock()
 	defer ts.mu.RUnlock()
 	stats := *ts
-	stats.ProcessingTime = time.Since(ts.StartTime)
+	stats.ProcessingTime = ezReadDuration{time.Since(ts.StartTime)}
 	return stats
 }
 
@@ -136,7 +145,7 @@ func startStatsServer(port int, stats *TransferStats, logger zerolog.Logger) {
         <strong>Errors:</strong>
         <ul>
 `, stats.TotalSubjects, stats.Processed, stats.Successful, stats.Failed, stats.Skipped,
-			stats.CurrentSubject, stats.ProcessingTime.Round(time.Second),
+			stats.CurrentSubject, stats.ProcessingTime,
 			float64(stats.Processed)/float64(stats.TotalSubjects)*100,
 			float64(stats.Processed)/float64(stats.TotalSubjects)*100,
 			stats.LastUpdateTime.Format("2006-01-02 15:04:05"))

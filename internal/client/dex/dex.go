@@ -93,13 +93,13 @@ func (c *Client) GetToken(ctx context.Context, devLicense string) (string, error
 	}
 	defer resp.Body.Close() //nolint:errcheck
 
-	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("error generating challenge: %s", resp.Status)
-	}
-
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return "", fmt.Errorf("error reading response body: %w", err)
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("error generating challenge: %s; %s", resp.Status, string(body))
 	}
 
 	var challengeResponse ChallengeResponse

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"time"
 
 	"github.com/DIMO-Network/attestation-api/internal/config"
 	"github.com/DIMO-Network/attestation-api/pkg/grpc"
@@ -33,7 +34,7 @@ func NewServer(ctrl vinCtrl, settings *config.Settings) *Server {
 type vinCtrl interface {
 	CreateAndStoreVINAttestation(ctx context.Context, tokenID uint32) (*cloudevent.RawEvent, error)
 	CreateVINAttestation(ctx context.Context, tokenID uint32) (*cloudevent.RawEvent, error)
-	CreateManualVINAttestation(ctx context.Context, tokenID uint32, vin string, countryCode string) (*cloudevent.RawEvent, error)
+	CreateManualVINAttestation(ctx context.Context, tokenID uint32, vin string, countryCode string, recordedAt time.Time, expirationDate time.Time) (*cloudevent.RawEvent, error)
 }
 
 // EnsureVinVc ensures that a VC exists for the given token ID.
@@ -72,7 +73,7 @@ func (s *Server) TestVinVcCreation(ctx context.Context, req *grpc.TestVinVcCreat
 
 // ManualVinVcCreation generates a VIN VC for the given token ID.
 func (s *Server) ManualVinVcCreation(ctx context.Context, req *grpc.ManualVinVcCreationRequest) (*grpc.ManualVinVcCreationResponse, error) {
-	rawVC, err := s.ctrl.CreateManualVINAttestation(ctx, req.GetTokenId(), req.GetVin(), req.GetCountryCode())
+	rawVC, err := s.ctrl.CreateManualVINAttestation(ctx, req.GetTokenId(), req.GetVin(), req.GetCountryCode(), time.Now(), time.Now().AddDate(10, 0, 0))
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate VIN VC: %w", err)
 	}

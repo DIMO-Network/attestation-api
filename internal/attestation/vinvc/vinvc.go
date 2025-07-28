@@ -165,7 +165,7 @@ func (v *Service) getValidFingerPrint(ctx context.Context, vehicleInfo *models.V
 	return latestFP, nil
 }
 
-func (v *Service) CreateManualVINAttestation(ctx context.Context, tokenID uint32, vin string, countryCode string) (*cloudevent.RawEvent, error) {
+func (v *Service) CreateManualVINAttestation(ctx context.Context, tokenID uint32, vin string, countryCode string, recordedAt time.Time, expirationDate time.Time) (*cloudevent.RawEvent, error) {
 	producer := cloudevent.EthrDID{
 		ChainID:         v.chainID,
 		ContractAddress: sources.DINCSource,
@@ -182,12 +182,10 @@ func (v *Service) CreateManualVINAttestation(ctx context.Context, tokenID uint32
 		VehicleTokenID:              tokenID,
 		CountryCode:                 countryCode,
 		RecordedBy:                  producer,
-		RecordedAt:                  time.Now(),
+		RecordedAt:                  recordedAt.UTC(),
 	}
 
-	// expire in 10 years
-	expTime := time.Now().AddDate(10, 0, 0).UTC().Truncate(time.Hour * 24)
-	rawVC, err := v.compileVINAttestation(vinSubject, expTime)
+	rawVC, err := v.compileVINAttestation(vinSubject, expirationDate)
 	if err != nil {
 		return nil, ctrlerrors.Error{InternalError: err, ExternalMsg: "Failed to create VC"}
 	}
@@ -198,7 +196,6 @@ func (v *Service) CreateManualVINAttestation(ctx context.Context, tokenID uint32
 	}
 	return rawVC, nil
 }
-
 func (v *Service) compileVINAttestation(subject types.VINSubject, expirationDate time.Time) (*cloudevent.RawEvent, error) {
 	issuanceDate := time.Now().UTC()
 

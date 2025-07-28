@@ -61,20 +61,22 @@ func main() {
 	}()
 
 	// create flags for the settings file and subject list
-	settingsFile := flag.String("settings", "settings.yaml", "settings file")
+	envFile := flag.String("env-file", ".env", "env file")
 	flag.Parse()
-
-	settings, err := config.LoadSettings(*settingsFile)
+	settings, err := config.LoadSettings(*envFile)
 	if err != nil {
 		logger.Fatal().Err(err).Msg("Couldn't load settings.")
 	}
-
-	subjects := strings.Split(settings.SubjectsList, ",")
+	var subjects []string
+	err = json.Unmarshal([]byte(settings.SubjectsList), &subjects)
+	if err != nil {
+		logger.Fatal().Err(err).Msg("Couldn't unmarshal subjects list.")
+	}
 	slices.Sort(subjects)
 
 	// Initialize stats
 	stats := &TransferStats{
-		TotalSubjects:  len(settings.SubjectsList),
+		TotalSubjects:  len(subjects),
 		StartTime:      time.Now(),
 		LastUpdateTime: time.Now(),
 	}
@@ -86,7 +88,9 @@ func main() {
 	if err != nil {
 		logger.Fatal().Err(err).Msg("Failed to run")
 	}
-	logger.Info().Msg("Finished")
+	logger.Info().Msg("Finished enter ctrl+c to exit")
+	<-mainCtx.Done()
+	logger.Info().Msg("Exiting")
 }
 
 func run(ctx context.Context, logger *zerolog.Logger, settings *config.Settings, stats *TransferStats, subjects []string) error {
@@ -111,6 +115,11 @@ func run(ctx context.Context, logger *zerolog.Logger, settings *config.Settings,
 		time.Hour*24, // Cleanup interval
 		dexClient,
 	)
+	// prime the cache
+	_, err = devLicenseTokenCache.GetToken(ctx, settings.DevLicense)
+	if err != nil {
+		return fmt.Errorf("failed to get token: %w", err)
+	}
 	// Initialize VC repository
 	vcRepo, err := vcrepo.New(settings, devLicenseTokenCache)
 	if err != nil {
@@ -148,10 +157,11 @@ func run(ctx context.Context, logger *zerolog.Logger, settings *config.Settings,
 				errorMsg := fmt.Sprintf("failed to check if there is a new VC for %s: %v", subject, err)
 				stats.AddError(errorMsg)
 				stats.IncrementFailed(subject)
-				return fmt.Errorf(errorMsg)
+				logger.Warn().Str("subject", subject).Msg(errorMsg)
+				return nil
 			}
-			if !hasNewVC {
-				logger.Info().Str("subject", subject).Msg("No new VC found, skipping")
+			if hasNewVC {
+				logger.Info().Str("subject", subject).Msg("New VC found, skipping")
 				stats.IncrementSkipped()
 				return nil
 			}
@@ -162,6 +172,7 @@ func run(ctx context.Context, logger *zerolog.Logger, settings *config.Settings,
 				errorMsg := fmt.Sprintf("failed to get last manual VINVC for %s: %v", subject, err)
 				stats.AddError(errorMsg)
 				stats.IncrementFailed(subject)
+				logger.Warn().Str("subject", subject).Msg(errorMsg)
 				return nil
 			}
 
@@ -170,15 +181,25 @@ func run(ctx context.Context, logger *zerolog.Logger, settings *config.Settings,
 				errorMsg := fmt.Sprintf("failed to unmarshal VIN VC for %s: %v", subject, err)
 				stats.AddError(errorMsg)
 				stats.IncrementFailed(subject)
+				logger.Warn().Str("subject", subject).Msg(errorMsg)
 				return nil
 			}
 
-			_, err = vinvcService.CreateManualVINAttestation(ctx, cred.CredentialSubject.VehicleTokenID, cred.CredentialSubject.VehicleIdentificationNumber, cred.CredentialSubject.CountryCode)
-			if err != nil {
-				errorMsg := fmt.Sprintf("failed to create manual VIN VC for %s: %v", subject, err)
-				stats.AddError(errorMsg)
-				stats.IncrementFailed(subject)
-				return nil
+			for {
+				_, err = vinvcService.CreateManualVINAttestation(ctx, cred.CredentialSubject.VehicleTokenID, cred.CredentialSubject.VehicleIdentificationNumber, cred.CredentialSubject.CountryCode, cred.CredentialSubject.RecordedAt, cred.ValidTo)
+				if err != nil {
+					if strings.Contains(err.Error(), "429") {
+						logger.Warn().Str("subject", subject).Msg("Rate limit exceeded, sleeping for 10 seconds")
+						time.Sleep(10 * time.Second)
+						continue
+					}
+					errorMsg := fmt.Sprintf("failed to create manual VIN VC for %s: %v", subject, err)
+					stats.AddError(errorMsg)
+					stats.IncrementFailed(subject)
+					logger.Warn().Str("subject", subject).Msg(errorMsg)
+					return nil
+				}
+				break
 			}
 
 			logger.Info().Str("subject", subject).Msg("Successfully processed manual VIN VC")
