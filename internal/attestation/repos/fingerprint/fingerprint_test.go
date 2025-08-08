@@ -110,7 +110,7 @@ func TestDecodeFingerprintMessage(t *testing.T) {
 					Source:      common.HexToAddress("0x4c674ddE8189aEF6e3b58F5a36d7438b2b1f6Bc2").String(), // hashdog source
 					Type:        cloudevent.TypeFingerprint,
 				},
-				VIN: "1ABCD2EFGH3JKLMNO",
+				VIN: "1ABCD2EFGH3JKLMN0",
 			},
 		},
 		{
@@ -156,6 +156,72 @@ func TestDecodeFingerprintMessage(t *testing.T) {
 			require.NoError(t, err)
 			require.NotNil(t, decodedData)
 			require.Equal(t, tt.expectedData, *decodedData)
+		})
+	}
+}
+
+func TestValidateVIN(t *testing.T) {
+	tests := []struct {
+		name     string
+		vin      string
+		expected bool
+	}{
+		{
+			name:     "Valid Japanese chassis number",
+			vin:      "SNT33-042261",
+			expected: true,
+		},
+		{
+			name:     "Valid 17 character VIN",
+			vin:      "1FTFX1E57JKE37092",
+			expected: true,
+		},
+		{
+			name:     "Invalid VIN - too short but valid Japanese chassis",
+			vin:      "123456789",
+			expected: true, // This is actually a valid Japanese chassis format
+		},
+		{
+			name:     "Invalid VIN - too long",
+			vin:      "1FTFX1E57JKE37092EXTRA",
+			expected: false,
+		},
+		{
+			name:     "Invalid VIN - contains invalid characters",
+			vin:      "1FTFX1E57JKE3709I", // 'I' is not allowed in VINs
+			expected: false,
+		},
+		{
+			name:     "Empty VIN",
+			vin:      "",
+			expected: false,
+		},
+		{
+			name:     "VIN with only spaces",
+			vin:      "   ",
+			expected: false,
+		},
+		{
+			name:     "Short Japanese chassis - still valid",
+			vin:      "SNT33-04226",
+			expected: true, // This is actually a valid Japanese chassis format
+		},
+		{
+			name:     "Long Japanese chassis - still valid",
+			vin:      "SNT33-0422611",
+			expected: true, // This is actually a valid Japanese chassis format
+		},
+		{
+			name:     "Invalid format - wrong Japanese chassis pattern",
+			vin:      "SNT-33042261",
+			expected: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := validateVIN(tt.vin)
+			require.Equal(t, tt.expected, result, "VIN: %s", tt.vin)
 		})
 	}
 }
@@ -256,7 +322,7 @@ var hashdogFPPayload = `{
       "protocol": 6,
       "signature": "0x9a8b7c6d5e4f3g2h1i0j9k8l7m6n5o4p3q2r1s0t9u8v7w6x5y4z3a2b1c0d9e8f7g6h5i4j3k2l1m",
       "timestamp": "2025-03-05T12:46:32.000Z",
-      "vin": "1ABCD2EFGH3JKLMNO"
+      "vin": "1ABCD2EFGH3JKLMN0"
     },
     "device": {
       "id": "A1B2C3D4E5F6G7H8",
