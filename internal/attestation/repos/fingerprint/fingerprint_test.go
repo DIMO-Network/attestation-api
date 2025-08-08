@@ -110,7 +110,7 @@ func TestDecodeFingerprintMessage(t *testing.T) {
 					Source:      common.HexToAddress("0x4c674ddE8189aEF6e3b58F5a36d7438b2b1f6Bc2").String(), // hashdog source
 					Type:        cloudevent.TypeFingerprint,
 				},
-				VIN: "1ABCD2EFGH3JKLMNO",
+				VIN: "1ABCD2EFGH3JKLMN0",
 			},
 		},
 		{
@@ -322,7 +322,7 @@ var hashdogFPPayload = `{
       "protocol": 6,
       "signature": "0x9a8b7c6d5e4f3g2h1i0j9k8l7m6n5o4p3q2r1s0t9u8v7w6x5y4z3a2b1c0d9e8f7g6h5i4j3k2l1m",
       "timestamp": "2025-03-05T12:46:32.000Z",
-      "vin": "1ABCD2EFGH3JKLMNO"
+      "vin": "1ABCD2EFGH3JKLMN0"
     },
     "device": {
       "id": "A1B2C3D4E5F6G7H8",
