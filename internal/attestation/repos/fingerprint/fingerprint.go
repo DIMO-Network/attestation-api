@@ -16,6 +16,8 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/wrapperspb"
+
+	vinutil "github.com/DIMO-Network/shared/pkg/vin"
 )
 
 type decodeError string
@@ -90,10 +92,10 @@ func (s *Service) decodeFingerprintMessage(ctx context.Context, msg cloudevent.R
 	vin = strings.ToUpper(strings.ReplaceAll(vin, " ", ""))
 
 	// We have seen crazy VINs like "\u000" before.
-	if !basicVINExp.MatchString(vin) {
+	if !validateVIN(vin) {
 		return nil, ctrlerrors.Error{
 			Code:          http.StatusBadRequest,
-			InternalError: decodeError("invalid vin regex"),
+			InternalError: decodeError("invalid vin"),
 			ExternalMsg:   fmt.Sprintf("VIN in vehicle payload was did not match expected format %s", vinRegex),
 		}
 	}
@@ -101,4 +103,16 @@ func (s *Service) decodeFingerprintMessage(ctx context.Context, msg cloudevent.R
 		CloudEventHeader: msg.CloudEventHeader,
 		VIN:              vin,
 	}, nil
+}
+
+// validateVIN checks if VIN is valid as a 17 character traditional VIN or as a japanese chassis number
+func validateVIN(vin string) bool {
+	vinObj := vinutil.VIN(vin)
+
+	if vinObj.IsValidVIN() {
+		return true
+	} else if vinObj.IsValidJapanChassis() {
+		return true
+	}
+	return false
 }
