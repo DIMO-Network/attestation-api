@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"regexp"
 	"strings"
 
 	"github.com/DIMO-Network/attestation-api/internal/client/fetchapi"
@@ -21,10 +20,6 @@ import (
 )
 
 type decodeError string
-
-const vinRegex = `^[A-Z0-9]{17}$`
-
-var basicVINExp = regexp.MustCompile(vinRegex)
 
 func (d decodeError) Error() string {
 	return fmt.Sprintf("failed to decode fingerprint message: %s", string(d))
@@ -95,8 +90,8 @@ func (s *Service) decodeFingerprintMessage(ctx context.Context, msg cloudevent.R
 	if !validateVIN(vin) {
 		return nil, ctrlerrors.Error{
 			Code:          http.StatusBadRequest,
-			InternalError: decodeError("invalid vin"),
-			ExternalMsg:   fmt.Sprintf("VIN in vehicle payload was did not match expected format %s", vinRegex),
+			InternalError: decodeError("invalid vin " + vin),
+			ExternalMsg:   fmt.Sprintf("VIN in vehicle payload failed validation rules %s", vin),
 		}
 	}
 	return &models.DecodedFingerprintData{

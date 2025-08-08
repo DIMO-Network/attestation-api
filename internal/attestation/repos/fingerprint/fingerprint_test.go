@@ -160,6 +160,72 @@ func TestDecodeFingerprintMessage(t *testing.T) {
 	}
 }
 
+func TestValidateVIN(t *testing.T) {
+	tests := []struct {
+		name     string
+		vin      string
+		expected bool
+	}{
+		{
+			name:     "Valid Japanese chassis number",
+			vin:      "SNT33-042261",
+			expected: true,
+		},
+		{
+			name:     "Valid 17 character VIN",
+			vin:      "1FTFX1E57JKE37092",
+			expected: true,
+		},
+		{
+			name:     "Invalid VIN - too short but valid Japanese chassis",
+			vin:      "123456789",
+			expected: true, // This is actually a valid Japanese chassis format
+		},
+		{
+			name:     "Invalid VIN - too long",
+			vin:      "1FTFX1E57JKE37092EXTRA",
+			expected: false,
+		},
+		{
+			name:     "Invalid VIN - contains invalid characters",
+			vin:      "1FTFX1E57JKE3709I", // 'I' is not allowed in VINs
+			expected: false,
+		},
+		{
+			name:     "Empty VIN",
+			vin:      "",
+			expected: false,
+		},
+		{
+			name:     "VIN with only spaces",
+			vin:      "   ",
+			expected: false,
+		},
+		{
+			name:     "Short Japanese chassis - still valid",
+			vin:      "SNT33-04226",
+			expected: true, // This is actually a valid Japanese chassis format
+		},
+		{
+			name:     "Long Japanese chassis - still valid",
+			vin:      "SNT33-0422611",
+			expected: true, // This is actually a valid Japanese chassis format
+		},
+		{
+			name:     "Invalid format - wrong Japanese chassis pattern",
+			vin:      "SNT-33042261",
+			expected: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := validateVIN(tt.vin)
+			require.Equal(t, tt.expected, result, "VIN: %s", tt.vin)
+		})
+	}
+}
+
 var ruptelaStatusPayload = `
 {
 	"source": "0xF26421509Efe92861a587482100c6d728aBf1CD0",
