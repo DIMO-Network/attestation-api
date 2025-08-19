@@ -42,7 +42,7 @@ type vehicleField struct {
 
 // deviceResponse represents the structure of the device response.
 type deviceResponse struct {
-	DID          string       `json:"did"`
+	TokenDID     string       `json:"tokenDID"`
 	Manufacturer manufacturer `json:"manufacturer"`
 }
 type manufacturer struct {

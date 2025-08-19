@@ -102,7 +102,7 @@ func (s *Service) GetVehicleInfo(ctx context.Context, vehicleDID cloudevent.ERC7
 
 	var pairedDevices []models.PairedDevice
 	if respBody.Data.Vehicle.AftermarketDevice != nil {
-		did, err := cloudevent.DecodeERC721DID(respBody.Data.Vehicle.AftermarketDevice.DID)
+		did, err := cloudevent.DecodeERC721DID(respBody.Data.Vehicle.AftermarketDevice.TokenDID)
 		if err != nil {
 			return nil, fmt.Errorf("failed to parse DID: %w", err)
 		}
@@ -113,7 +113,7 @@ func (s *Service) GetVehicleInfo(ctx context.Context, vehicleDID cloudevent.ERC7
 		})
 	}
 	if respBody.Data.Vehicle.SyntheticDevice != nil {
-		did, err := cloudevent.DecodeERC721DID(respBody.Data.Vehicle.SyntheticDevice.DID)
+		did, err := cloudevent.DecodeERC721DID(respBody.Data.Vehicle.SyntheticDevice.TokenDID)
 		if err != nil {
 			return nil, fmt.Errorf("failed to parse DID: %w", err)
 		}
