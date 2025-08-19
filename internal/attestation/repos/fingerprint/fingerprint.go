@@ -12,11 +12,10 @@ import (
 	"github.com/DIMO-Network/cloudevent"
 	"github.com/DIMO-Network/fetch-api/pkg/grpc"
 	"github.com/DIMO-Network/model-garage/pkg/modules"
+	"github.com/DIMO-Network/shared/pkg/vin"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/wrapperspb"
-
-	vinutil "github.com/DIMO-Network/shared/pkg/vin"
 )
 
 type decodeError string
@@ -64,7 +63,7 @@ func (s *Service) GetLatestFingerprintMessages(ctx context.Context, vehicleDID c
 }
 
 func (s *Service) decodeFingerprintMessage(ctx context.Context, msg cloudevent.RawEvent) (*models.DecodedFingerprintData, error) {
-	var vin string
+	var vinVal string
 	var err error
 	fp, err := modules.ConvertToFingerprint(ctx, msg.Source, msg)
 	if err != nil {
@@ -74,9 +73,9 @@ func (s *Service) decodeFingerprintMessage(ctx context.Context, msg cloudevent.R
 			ExternalMsg:   "Failed to extract VIN from vehicle payload",
 		}
 	}
-	vin = fp.VIN
+	vinVal = fp.VIN
 
-	if vin == "" {
+	if vinVal == "" {
 		return nil, ctrlerrors.Error{
 			Code:          http.StatusBadRequest,
 			InternalError: decodeError("missing vin"),
@@ -84,25 +83,25 @@ func (s *Service) decodeFingerprintMessage(ctx context.Context, msg cloudevent.R
 		}
 	}
 	// Minor cleaning.
-	vin = strings.ToUpper(strings.ReplaceAll(vin, " ", ""))
+	vinVal = strings.ToUpper(strings.ReplaceAll(vinVal, " ", ""))
 
 	// We have seen crazy VINs like "\u000" before.
-	if !validateVIN(vin) {
+	if !validateVIN(vinVal) {
 		return nil, ctrlerrors.Error{
 			Code:          http.StatusBadRequest,
-			InternalError: decodeError("invalid vin " + vin),
-			ExternalMsg:   fmt.Sprintf("VIN in vehicle payload failed validation rules %s", vin),
+			InternalError: decodeError("invalid vin " + vinVal),
+			ExternalMsg:   fmt.Sprintf("VIN in vehicle payload failed validation rules %s", vinVal),
 		}
 	}
 	return &models.DecodedFingerprintData{
 		CloudEventHeader: msg.CloudEventHeader,
-		VIN:              vin,
+		VIN:              vinVal,
 	}, nil
 }
 
 // validateVIN checks if VIN is valid as a 17 character traditional VIN or as a japanese chassis number
-func validateVIN(vin string) bool {
-	vinObj := vinutil.VIN(vin)
+func validateVIN(vinValue string) bool {
+	vinObj := vin.VIN(vinValue)
 
 	if vinObj.IsValidVIN() {
 		return true
