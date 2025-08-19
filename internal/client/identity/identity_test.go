@@ -10,7 +10,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/DIMO-Network/attestation-api/internal/attestation/apis/identity"
+	"github.com/DIMO-Network/attestation-api/internal/client/identity"
 	"github.com/DIMO-Network/attestation-api/internal/models"
 	"github.com/DIMO-Network/cloudevent"
 	"github.com/ethereum/go-ethereum/common"
@@ -54,10 +54,10 @@ func TestService_GetPairedDevices(t *testing.T) {
 							"id": "toyota_tacoma-4wd_2023"
 						},
 						"aftermarketDevice": {
-							"did": "%s"
+							"tokenDID": "%s"
 						},
 						"syntheticDevice": {
-							"did": "%s"
+							"tokenDID": "%s"
 						}
 					}
 				}
@@ -125,7 +125,7 @@ func TestService_GetPairedDevices(t *testing.T) {
 							"id": "toyota_tacoma-4wd_2023"
 						},
 						"aftermarketDevice": {
-							"did": "%s"
+							"tokenDID": "%s"
 						}
 					}
 				}
@@ -151,7 +151,7 @@ func TestService_GetPairedDevices(t *testing.T) {
 							"id": "toyota_tacoma-4wd_2023"
 						},
 						"syntheticDevice": {
-							"did": "%s"
+							"tokenDID": "%s"
 						}
 					}
 				}
@@ -177,7 +177,7 @@ func TestService_GetPairedDevices(t *testing.T) {
 							"id": null
 						},
 						"syntheticDevice": {
-							"did": "%s"
+							"tokenDID": "%s"
 						}
 					}
 				}
