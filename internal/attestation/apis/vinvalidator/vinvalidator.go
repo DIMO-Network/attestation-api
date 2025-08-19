@@ -25,10 +25,6 @@ func New(client ddgrpc.VinDecoderServiceClient) *Service {
 
 // DecodeVIN decodes the provided VIN and returns the associated name slug.
 func (s *Service) DecodeVIN(ctx context.Context, vin, countryCode string) (string, error) {
-	if len(vin) != 17 {
-		return "", InvalidVINErr("vin must be 17 chars")
-	}
-
 	resp, err := s.grpcClient.DecodeVin(ctx, &ddgrpc.DecodeVinRequest{
 		Vin:     vin,
 		Country: countryCode,
