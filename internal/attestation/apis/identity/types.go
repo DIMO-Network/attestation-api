@@ -7,13 +7,13 @@ const query = `
 	query ($tokenId: Int!) {
 		vehicle(tokenId: $tokenId) {
 			aftermarketDevice {
-				did
+				tokenDID
 				manufacturer {
 					name
 				}
 			}
 			syntheticDevice {
-				did
+				tokenDID
 			}
 			definition{
 				id
