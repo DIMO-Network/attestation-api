@@ -30,6 +30,143 @@
                 }
             }
         },
+        "/v2/attestation/odometer-statement/{tokenId}": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Generate a new Odometer Statement attestation for a given token Id. If timestamp is not provided, uses the latest odometer reading.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "OdometerStatementVC"
+                ],
+                "summary": "Create Odometer Statement Attestation",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "token Id of the vehicle NFT",
+                        "name": "tokenId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Request body",
+                        "name": "request",
+                        "in": "body",
+                        "schema": {
+                            "$ref": "#/definitions/internal_controllers_httphandlers.CreateOdometerStatementVCRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/internal_controllers_httphandlers.getVCResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/v2/attestation/vehicle-health/{tokenId}": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Generate a new Vehicle Health attestation for a given token Id and time range. The time range cannot exceed 30 days.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "VehicleHealthVC"
+                ],
+                "summary": "Create Vehicle Health Attestation",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "token Id of the vehicle NFT",
+                        "name": "tokenId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Request body",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_controllers_httphandlers.CreateVehicleHealthVCRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/internal_controllers_httphandlers.getVCResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/v2/attestation/vehicle-position/{tokenId}": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Generate a new Vehicle Position attestation for a given token Id and timestamp.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "VehiclePositionVC"
+                ],
+                "summary": "Create Vehicle Position Attestation",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "token Id of the vehicle NFT",
+                        "name": "tokenId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Request body",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_controllers_httphandlers.CreateVehiclePositionVCRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/internal_controllers_httphandlers.getVCResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/v2/attestation/vin/{tokenId}": {
             "post": {
                 "security": [
@@ -69,6 +206,41 @@
         }
     },
     "definitions": {
+        "internal_controllers_httphandlers.CreateOdometerStatementVCRequest": {
+            "type": "object",
+            "properties": {
+                "timestamp": {
+                    "description": "Optional timestamp",
+                    "type": "string"
+                }
+            }
+        },
+        "internal_controllers_httphandlers.CreateVehicleHealthVCRequest": {
+            "type": "object",
+            "required": [
+                "endTime",
+                "startTime"
+            ],
+            "properties": {
+                "endTime": {
+                    "type": "string"
+                },
+                "startTime": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_controllers_httphandlers.CreateVehiclePositionVCRequest": {
+            "type": "object",
+            "required": [
+                "timestamp"
+            ],
+            "properties": {
+                "timestamp": {
+                    "type": "string"
+                }
+            }
+        },
         "internal_controllers_httphandlers.getVCResponse": {
             "type": "object",
             "properties": {
