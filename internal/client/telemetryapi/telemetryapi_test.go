@@ -4,9 +4,11 @@ import (
 	"context"
 	"crypto/x509"
 	"io"
+	"math/big"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/DIMO-Network/attestation-api/internal/client/telemetryapi"
 	"github.com/stretchr/testify/require"
@@ -19,7 +21,7 @@ func TestService_GetLatestSignals(t *testing.T) {
 		tokenID          int
 		mockResponseBody string
 		mockStatusCode   int
-		expectedRecords  int
+		expectedSignals  int
 		expectedError    bool
 	}{
 		{
@@ -42,7 +44,7 @@ func TestService_GetLatestSignals(t *testing.T) {
 				}
 			}`,
 			mockStatusCode:  http.StatusOK,
-			expectedRecords: 1,
+			expectedSignals: 2,
 			expectedError:   false,
 		},
 		{
@@ -57,7 +59,7 @@ func TestService_GetLatestSignals(t *testing.T) {
 				}
 			}`,
 			mockStatusCode:  http.StatusOK,
-			expectedRecords: 1,
+			expectedSignals: 0,
 			expectedError:   false,
 		},
 		{
@@ -104,16 +106,17 @@ func TestService_GetLatestSignals(t *testing.T) {
 			require.NoError(t, err)
 
 			// Run the test with JWT auth (using empty token for test)
-			records, err := service.GetLatestSignalsWithAuth(ctx, tt.tokenID, "test-jwt-token")
+			signals, err := service.GetLatestSignalsWithAuth(ctx, tt.tokenID, "test-jwt-token")
 			if tt.expectedError {
 				require.Error(t, err)
-				require.Nil(t, records)
+				require.Nil(t, signals)
 			} else {
 				require.NoError(t, err)
-				require.Len(t, records, tt.expectedRecords)
-				if tt.expectedRecords > 0 && len(records) > 0 && len(records[0].Signals) > 0 {
-					// Check that we have signals in the record
-					require.Greater(t, len(records[0].Signals), 0)
+				require.Len(t, signals, tt.expectedSignals)
+				if tt.expectedSignals > 0 && len(signals) > 0 {
+					// Check that we have signals with proper structure
+					require.NotEmpty(t, signals[0].Name)
+					require.NotNil(t, signals[0].Value)
 				}
 			}
 		})
@@ -150,18 +153,20 @@ func TestService_GetHistoricalData(t *testing.T) {
 	service, err := telemetryapi.NewService(server.URL, certPool)
 	require.NoError(t, err)
 
+	startTime, _ := time.Parse(time.RFC3339, "2024-01-15T00:00:00Z")
+	endTime, _ := time.Parse(time.RFC3339, "2024-01-15T23:59:59Z")
 	options := telemetryapi.TelemetryQueryOptions{
-		TokenID:   123,
-		StartDate: "2024-01-15T00:00:00Z",
-		EndDate:   "2024-01-15T23:59:59Z",
+		TokenID:   big.NewInt(123),
+		StartDate: startTime,
+		EndDate:   endTime,
 		Signals:   []string{"speed"},
 	}
 
-	records, err := service.GetHistoricalDataWithAuth(ctx, options, "test-jwt-token")
+	signals, err := service.GetHistoricalDataWithAuth(ctx, options, "test-jwt-token")
 	require.NoError(t, err)
-	require.Len(t, records, 2)
-	require.Equal(t, "speed", records[0].Signals[0].Name)
-	require.Equal(t, 65.5, records[0].Signals[0].Value)
-	require.Equal(t, "speed", records[1].Signals[0].Name)
-	require.Equal(t, 70.2, records[1].Signals[0].Value)
+	require.Len(t, signals, 2)
+	require.Equal(t, "speed", signals[0].Name)
+	require.Equal(t, 65.5, signals[0].Value)
+	require.Equal(t, "speed", signals[1].Name)
+	require.Equal(t, 70.2, signals[1].Value)
 }

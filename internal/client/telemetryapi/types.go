@@ -1,6 +1,9 @@
 package telemetryapi
 
-import "encoding/json"
+import (
+	"math/big"
+	"time"
+)
 
 // GraphQL query to fetch latest telemetry signals.
 const latestSignalsQuery = `
@@ -58,7 +61,7 @@ type dataField struct {
 
 // SignalCollection represents the latest signals collection from telemetry API.
 type SignalCollection struct {
-	LastSeen                                string        `json:"lastSeen"`
+	LastSeen                                time.Time     `json:"lastSeen"`
 	CurrentLocationLatitude                 *SignalFloat  `json:"currentLocationLatitude"`
 	CurrentLocationLongitude                *SignalFloat  `json:"currentLocationLongitude"`
 	CurrentLocationApproximateLatitude      *SignalFloat  `json:"currentLocationApproximateLatitude"`
@@ -75,45 +78,38 @@ type SignalCollection struct {
 
 // SignalAggregations represents historical signal aggregations.
 type SignalAggregations struct {
-	Timestamp                               string   `json:"timestamp"`
-	CurrentLocationLatitude                 *float64 `json:"currentLocationLatitude"`
-	CurrentLocationLongitude                *float64 `json:"currentLocationLongitude"`
-	CurrentLocationApproximateLatitude      *float64 `json:"currentLocationApproximateLatitude"`
-	CurrentLocationApproximateLongitude     *float64 `json:"currentLocationApproximateLongitude"`
-	PowertrainTransmissionTravelledDistance *float64 `json:"powertrainTransmissionTravelledDistance"`
-	Speed                                   *float64 `json:"speed"`
-	ObdDTCList                              *string  `json:"obdDTCList"`
-	ObdStatusDTCCount                       *float64 `json:"obdStatusDTCCount"`
-	ChassisAxleRow1WheelLeftTirePressure    *float64 `json:"chassisAxleRow1WheelLeftTirePressure"`
-	ChassisAxleRow1WheelRightTirePressure   *float64 `json:"chassisAxleRow1WheelRightTirePressure"`
-	ChassisAxleRow2WheelLeftTirePressure    *float64 `json:"chassisAxleRow2WheelLeftTirePressure"`
-	ChassisAxleRow2WheelRightTirePressure   *float64 `json:"chassisAxleRow2WheelRightTirePressure"`
+	Timestamp                               time.Time `json:"timestamp"`
+	CurrentLocationLatitude                 *float64  `json:"currentLocationLatitude"`
+	CurrentLocationLongitude                *float64  `json:"currentLocationLongitude"`
+	CurrentLocationApproximateLatitude      *float64  `json:"currentLocationApproximateLatitude"`
+	CurrentLocationApproximateLongitude     *float64  `json:"currentLocationApproximateLongitude"`
+	PowertrainTransmissionTravelledDistance *float64  `json:"powertrainTransmissionTravelledDistance"`
+	Speed                                   *float64  `json:"speed"`
+	ObdDTCList                              *string   `json:"obdDTCList"`
+	ObdStatusDTCCount                       *float64  `json:"obdStatusDTCCount"`
+	ChassisAxleRow1WheelLeftTirePressure    *float64  `json:"chassisAxleRow1WheelLeftTirePressure"`
+	ChassisAxleRow1WheelRightTirePressure   *float64  `json:"chassisAxleRow1WheelRightTirePressure"`
+	ChassisAxleRow2WheelLeftTirePressure    *float64  `json:"chassisAxleRow2WheelLeftTirePressure"`
+	ChassisAxleRow2WheelRightTirePressure   *float64  `json:"chassisAxleRow2WheelRightTirePressure"`
 }
 
 // SignalFloat represents a float signal with timestamp.
 type SignalFloat struct {
-	Timestamp string  `json:"timestamp"`
-	Value     float64 `json:"value"`
+	Timestamp time.Time `json:"timestamp"`
+	Value     float64   `json:"value"`
 }
 
 // SignalString represents a string signal with timestamp.
 type SignalString struct {
-	Timestamp string `json:"timestamp"`
-	Value     string `json:"value"`
-}
-
-// TelemetryRecord represents a telemetry data record (for backward compatibility).
-type TelemetryRecord struct {
-	Timestamp string   `json:"timestamp"`
-	Source    string   `json:"source"`
-	Signals   []Signal `json:"signals"`
+	Timestamp time.Time `json:"timestamp"`
+	Value     string    `json:"value"`
 }
 
 // Signal represents a telemetry signal (for backward compatibility).
 type Signal struct {
-	Name      string      `json:"name"`
-	Value     interface{} `json:"value"`
-	Timestamp string      `json:"timestamp"`
+	Name      string    `json:"name"`
+	Value     any       `json:"value"`
+	Timestamp time.Time `json:"timestamp"`
 }
 
 // graphQLError represents an error returned from the GraphQL API.
@@ -123,23 +119,9 @@ type graphQLError struct {
 
 // TelemetryQueryOptions represents options for querying telemetry data.
 type TelemetryQueryOptions struct {
-	TokenID   int      `json:"tokenId"`
-	StartDate string   `json:"startDate,omitempty"`
-	EndDate   string   `json:"endDate,omitempty"`
-	Interval  string   `json:"interval,omitempty"`
-	Signals   []string `json:"signals,omitempty"`
-}
-
-// nullableString is a string that can interpret "null" as nil.
-type nullableString struct {
-	value *string
-}
-
-// UnmarshalJSON unmarshals a nullableString.
-func (n *nullableString) UnmarshalJSON(data []byte) error {
-	if string(data) == "null" {
-		n.value = nil
-		return nil
-	}
-	return json.Unmarshal(data, &n.value)
+	TokenID   *big.Int  `json:"tokenId"`
+	StartDate time.Time `json:"startDate,omitempty"`
+	EndDate   time.Time `json:"endDate,omitempty"`
+	Interval  string    `json:"interval,omitempty"`
+	Signals   []string  `json:"signals,omitempty"`
 }

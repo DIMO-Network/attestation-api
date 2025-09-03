@@ -12,6 +12,8 @@ import (
 	"net/http"
 	"net/url"
 	"time"
+
+	"github.com/DIMO-Network/model-garage/pkg/vss"
 )
 
 // Service interacts with the telemetry GraphQL API.
@@ -43,7 +45,7 @@ func NewService(apiBaseURL string, certPool *x509.CertPool) (*Service, error) {
 }
 
 // GetLatestSignalsWithAuth fetches the latest telemetry signals for a vehicle with JWT authentication.
-func (s *Service) GetLatestSignalsWithAuth(ctx context.Context, tokenID int, jwtToken string) ([]TelemetryRecord, error) {
+func (s *Service) GetLatestSignalsWithAuth(ctx context.Context, tokenID int, jwtToken string) ([]Signal, error) {
 	requestBody := map[string]any{
 		"query": latestSignalsQuery,
 		"variables": map[string]any{
@@ -61,7 +63,7 @@ func (s *Service) GetLatestSignalsWithAuth(ctx context.Context, tokenID int, jwt
 	}
 
 	if response.Data.SignalsLatest == nil {
-		return []TelemetryRecord{}, nil
+		return []Signal{}, nil
 	}
 
 	// Convert SignalCollection to TelemetryRecord format
@@ -69,7 +71,7 @@ func (s *Service) GetLatestSignalsWithAuth(ctx context.Context, tokenID int, jwt
 }
 
 // GetHistoricalDataWithAuth fetches historical telemetry data for a vehicle with JWT authentication.
-func (s *Service) GetHistoricalDataWithAuth(ctx context.Context, options TelemetryQueryOptions, jwtToken string) ([]TelemetryRecord, error) {
+func (s *Service) GetHistoricalDataWithAuth(ctx context.Context, options TelemetryQueryOptions, jwtToken string) ([]Signal, error) {
 	requestBody := map[string]any{
 		"query": historicalQuery,
 		"variables": map[string]any{
@@ -130,20 +132,20 @@ func (s *Service) executeQueryWithAuth(ctx context.Context, requestBody map[stri
 }
 
 // convertSignalCollectionToRecords converts SignalCollection to TelemetryRecord format.
-func (s *Service) convertSignalCollectionToRecords(collection SignalCollection) []TelemetryRecord {
+func (s *Service) convertSignalCollectionToRecords(collection SignalCollection) []Signal {
 	var signals []Signal
 
 	// Convert each signal field to Signal format
 	if collection.CurrentLocationLatitude != nil {
 		signals = append(signals, Signal{
-			Name:      "currentLocationLatitude",
+			Name:      vss.FieldCurrentLocationLatitude,
 			Value:     collection.CurrentLocationLatitude.Value,
 			Timestamp: collection.CurrentLocationLatitude.Timestamp,
 		})
 	}
 	if collection.CurrentLocationLongitude != nil {
 		signals = append(signals, Signal{
-			Name:      "currentLocationLongitude",
+			Name:      vss.FieldCurrentLocationLongitude,
 			Value:     collection.CurrentLocationLongitude.Value,
 			Timestamp: collection.CurrentLocationLongitude.Timestamp,
 		})
@@ -164,88 +166,80 @@ func (s *Service) convertSignalCollectionToRecords(collection SignalCollection) 
 	}
 	if collection.PowertrainTransmissionTravelledDistance != nil {
 		signals = append(signals, Signal{
-			Name:      "powertrainTransmissionTravelledDistance",
+			Name:      vss.FieldPowertrainTransmissionTravelledDistance,
 			Value:     collection.PowertrainTransmissionTravelledDistance.Value,
 			Timestamp: collection.PowertrainTransmissionTravelledDistance.Timestamp,
 		})
 	}
 	if collection.Speed != nil {
 		signals = append(signals, Signal{
-			Name:      "speed",
+			Name:      vss.FieldSpeed,
 			Value:     collection.Speed.Value,
 			Timestamp: collection.Speed.Timestamp,
 		})
 	}
 	if collection.ObdDTCList != nil {
 		signals = append(signals, Signal{
-			Name:      "obdDTCList",
+			Name:      vss.FieldOBDDTCList,
 			Value:     collection.ObdDTCList.Value,
 			Timestamp: collection.ObdDTCList.Timestamp,
 		})
 	}
 	if collection.ObdStatusDTCCount != nil {
 		signals = append(signals, Signal{
-			Name:      "obdStatusDTCCount",
+			Name:      vss.FieldOBDStatusDTCCount,
 			Value:     collection.ObdStatusDTCCount.Value,
 			Timestamp: collection.ObdStatusDTCCount.Timestamp,
 		})
 	}
 	if collection.ChassisAxleRow1WheelLeftTirePressure != nil {
 		signals = append(signals, Signal{
-			Name:      "chassisAxleRow1WheelLeftTirePressure",
+			Name:      vss.FieldChassisAxleRow1WheelLeftTirePressure,
 			Value:     collection.ChassisAxleRow1WheelLeftTirePressure.Value,
 			Timestamp: collection.ChassisAxleRow1WheelLeftTirePressure.Timestamp,
 		})
 	}
 	if collection.ChassisAxleRow1WheelRightTirePressure != nil {
 		signals = append(signals, Signal{
-			Name:      "chassisAxleRow1WheelRightTirePressure",
+			Name:      vss.FieldChassisAxleRow1WheelRightTirePressure,
 			Value:     collection.ChassisAxleRow1WheelRightTirePressure.Value,
 			Timestamp: collection.ChassisAxleRow1WheelRightTirePressure.Timestamp,
 		})
 	}
 	if collection.ChassisAxleRow2WheelLeftTirePressure != nil {
 		signals = append(signals, Signal{
-			Name:      "chassisAxleRow2WheelLeftTirePressure",
+			Name:      vss.FieldChassisAxleRow2WheelLeftTirePressure,
 			Value:     collection.ChassisAxleRow2WheelLeftTirePressure.Value,
 			Timestamp: collection.ChassisAxleRow2WheelLeftTirePressure.Timestamp,
 		})
 	}
 	if collection.ChassisAxleRow2WheelRightTirePressure != nil {
 		signals = append(signals, Signal{
-			Name:      "chassisAxleRow2WheelRightTirePressure",
+			Name:      vss.FieldChassisAxleRow2WheelRightTirePressure,
 			Value:     collection.ChassisAxleRow2WheelRightTirePressure.Value,
 			Timestamp: collection.ChassisAxleRow2WheelRightTirePressure.Timestamp,
 		})
 	}
 
-	return []TelemetryRecord{
-		{
-			Timestamp: collection.LastSeen,
-			Source:    "telemetry-api",
-			Signals:   signals,
-		},
-	}
+	return signals
 }
 
 // convertSignalAggregationsToRecords converts SignalAggregations to TelemetryRecord format.
-func (s *Service) convertSignalAggregationsToRecords(aggregations []SignalAggregations) []TelemetryRecord {
-	var records []TelemetryRecord
+func (s *Service) convertSignalAggregationsToRecords(aggregations []SignalAggregations) []Signal {
+	var signals []Signal
 
 	for _, agg := range aggregations {
-		var signals []Signal
-
 		// Convert each aggregation field to Signal format
 		if agg.CurrentLocationLatitude != nil {
 			signals = append(signals, Signal{
-				Name:      "currentLocationLatitude",
+				Name:      vss.FieldCurrentLocationLatitude,
 				Value:     *agg.CurrentLocationLatitude,
 				Timestamp: agg.Timestamp,
 			})
 		}
 		if agg.CurrentLocationLongitude != nil {
 			signals = append(signals, Signal{
-				Name:      "currentLocationLongitude",
+				Name:      vss.FieldCurrentLocationLongitude,
 				Value:     *agg.CurrentLocationLongitude,
 				Timestamp: agg.Timestamp,
 			})
@@ -266,70 +260,61 @@ func (s *Service) convertSignalAggregationsToRecords(aggregations []SignalAggreg
 		}
 		if agg.PowertrainTransmissionTravelledDistance != nil {
 			signals = append(signals, Signal{
-				Name:      "powertrainTransmissionTravelledDistance",
+				Name:      vss.FieldPowertrainTransmissionTravelledDistance,
 				Value:     *agg.PowertrainTransmissionTravelledDistance,
 				Timestamp: agg.Timestamp,
 			})
 		}
 		if agg.Speed != nil {
 			signals = append(signals, Signal{
-				Name:      "speed",
+				Name:      vss.FieldSpeed,
 				Value:     *agg.Speed,
 				Timestamp: agg.Timestamp,
 			})
 		}
 		if agg.ObdDTCList != nil {
 			signals = append(signals, Signal{
-				Name:      "obdDTCList",
+				Name:      vss.FieldOBDDTCList,
 				Value:     *agg.ObdDTCList,
 				Timestamp: agg.Timestamp,
 			})
 		}
 		if agg.ObdStatusDTCCount != nil {
 			signals = append(signals, Signal{
-				Name:      "obdStatusDTCCount",
+				Name:      vss.FieldOBDStatusDTCCount,
 				Value:     *agg.ObdStatusDTCCount,
 				Timestamp: agg.Timestamp,
 			})
 		}
 		if agg.ChassisAxleRow1WheelLeftTirePressure != nil {
 			signals = append(signals, Signal{
-				Name:      "chassisAxleRow1WheelLeftTirePressure",
+				Name:      vss.FieldChassisAxleRow1WheelLeftTirePressure,
 				Value:     *agg.ChassisAxleRow1WheelLeftTirePressure,
 				Timestamp: agg.Timestamp,
 			})
 		}
 		if agg.ChassisAxleRow1WheelRightTirePressure != nil {
 			signals = append(signals, Signal{
-				Name:      "chassisAxleRow1WheelRightTirePressure",
+				Name:      vss.FieldChassisAxleRow1WheelRightTirePressure,
 				Value:     *agg.ChassisAxleRow1WheelRightTirePressure,
 				Timestamp: agg.Timestamp,
 			})
 		}
 		if agg.ChassisAxleRow2WheelLeftTirePressure != nil {
 			signals = append(signals, Signal{
-				Name:      "chassisAxleRow2WheelLeftTirePressure",
+				Name:      vss.FieldChassisAxleRow2WheelLeftTirePressure,
 				Value:     *agg.ChassisAxleRow2WheelLeftTirePressure,
 				Timestamp: agg.Timestamp,
 			})
 		}
 		if agg.ChassisAxleRow2WheelRightTirePressure != nil {
 			signals = append(signals, Signal{
-				Name:      "chassisAxleRow2WheelRightTirePressure",
+				Name:      vss.FieldChassisAxleRow2WheelRightTirePressure,
 				Value:     *agg.ChassisAxleRow2WheelRightTirePressure,
 				Timestamp: agg.Timestamp,
 			})
 		}
-
-		// Only add record if it has signals
-		if len(signals) > 0 {
-			records = append(records, TelemetryRecord{
-				Timestamp: agg.Timestamp,
-				Source:    "telemetry-api",
-				Signals:   signals,
-			})
-		}
 	}
 
-	return records
+	return signals
 }
