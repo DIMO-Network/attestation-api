@@ -12,13 +12,15 @@ import (
 	"github.com/DIMO-Network/attestation-api/internal/config"
 	"github.com/DIMO-Network/attestation-api/internal/controllers/ctrlerrors"
 	"github.com/DIMO-Network/attestation-api/internal/erc191"
-	"github.com/DIMO-Network/attestation-api/internal/models"
 	"github.com/DIMO-Network/attestation-api/internal/sources"
 	"github.com/DIMO-Network/attestation-api/pkg/types"
 	"github.com/DIMO-Network/cloudevent"
+	"github.com/DIMO-Network/model-garage/pkg/vss"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/segmentio/ksuid"
 )
+
+const odometerUnit = "km"
 
 // Service handles OdometerStatementVC-related operations.
 type Service struct {
@@ -59,23 +61,15 @@ func (s *Service) CreateOdometerStatementVC(ctx context.Context, tokenID uint32,
 		ContractAddress: s.vehicleContractAddress,
 	}
 
-	vehicleInfo, err := s.identityAPI.GetVehicleInfo(ctx, vehicleDID)
-	if err != nil {
-		return ctrlerrors.Error{InternalError: err, ExternalMsg: "Failed to get vehicle info"}
-	}
-
-	odometerReading, producer, err := s.getOdometerReading(ctx, vehicleInfo, timestamp, jwtToken)
+	odometerReading, err := s.getOdometerReading(ctx, vehicleDID, timestamp, jwtToken)
 	if err != nil {
 		return ctrlerrors.Error{InternalError: err, ExternalMsg: "Failed to get odometer reading"}
 	}
 
 	subject := types.OdometerStatementVCSubject{
-		VehicleDID:             vehicleDID.String(),
-		VehicleTokenID:         tokenID,
-		VehicleContractAddress: s.vehicleContractAddress.Hex(),
-		RecordedBy:             producer,
-		OdometerReading:        *odometerReading,
-		RequestedTimestamp:     timestamp,
+		VehicleDID:         vehicleDID,
+		OdometerReading:    *odometerReading,
+		RequestedTimestamp: timestamp,
 	}
 
 	vc, err := s.createAttestation(subject)
@@ -91,131 +85,85 @@ func (s *Service) CreateOdometerStatementVC(ctx context.Context, tokenID uint32,
 }
 
 // getOdometerReading retrieves the odometer reading for the specified timestamp or latest using telemetry API.
-func (s *Service) getOdometerReading(ctx context.Context, vehicleInfo *models.VehicleInfo, timestamp *time.Time, jwtToken string) (*types.OdometerReading, string, error) {
-	var records []telemetryapi.TelemetryRecord
+func (s *Service) getOdometerReading(ctx context.Context, vehicleInfo cloudevent.ERC721DID, requestTime *time.Time, jwtToken string) (*types.OdometerReading, error) {
+	var records []telemetryapi.Signal
 	var err error
 
-	if timestamp != nil {
+	if requestTime != nil {
 		// Search around the requested time
-		startTime := timestamp.Add(-time.Hour)
-		endTime := timestamp.Add(time.Hour)
+		startTime := requestTime.Add(-time.Hour)
+		endTime := requestTime.Add(time.Hour)
 
 		options := telemetryapi.TelemetryQueryOptions{
-			TokenID:   int(vehicleInfo.DID.TokenID.Uint64()),
-			StartDate: startTime.Format(time.RFC3339),
-			EndDate:   endTime.Format(time.RFC3339),
-			Signals:   []string{"powertrainTransmissionTravelledDistance"},
+			TokenID:   vehicleInfo.TokenID,
+			StartDate: startTime,
+			EndDate:   endTime,
+			Signals:   []string{vss.FieldPowertrainTransmissionTravelledDistance},
 		}
 
 		records, err = s.telemetryAPI.GetHistoricalDataWithAuth(ctx, options, jwtToken)
 		if err != nil {
-			return nil, "", fmt.Errorf("failed to get odometer telemetry data: %w", err)
+			return nil, fmt.Errorf("failed to get odometer telemetry data: %w", err)
 		}
 
 		// Find closest odometer reading
-		return s.findClosestOdometerFromTelemetry(records, *timestamp)
+		return s.findClosestOdometerFromTelemetry(records, *requestTime)
 	}
 
 	// Get latest odometer reading
-	records, err = s.telemetryAPI.GetLatestSignalsWithAuth(ctx, int(vehicleInfo.DID.TokenID.Uint64()), jwtToken)
+	records, err = s.telemetryAPI.GetLatestSignalsWithAuth(ctx, vehicleInfo.TokenID, jwtToken)
 	if err != nil {
-		return nil, "", fmt.Errorf("failed to get latest telemetry data: %w", err)
+		return nil, fmt.Errorf("failed to get latest telemetry data: %w", err)
 	}
 
-	return s.extractLatestOdometerFromTelemetry(records)
+	return s.findClosestOdometerFromTelemetry(records, time.Now())
 }
 
 // findClosestOdometerFromTelemetry finds the odometer reading closest to the requested time.
-func (s *Service) findClosestOdometerFromTelemetry(records []telemetryapi.TelemetryRecord, requestedTime time.Time) (*types.OdometerReading, string, error) {
-	var closestReading *types.OdometerReading
+func (s *Service) findClosestOdometerFromTelemetry(signals []telemetryapi.Signal, requestedTime time.Time) (*types.OdometerReading, error) {
+	var closestSignal *telemetryapi.Signal
 	var closestTimeDiff time.Duration
-	var producer string
-
-	for _, record := range records {
-		reading, err := s.extractOdometerFromTelemetry(record)
-		if err != nil || reading == nil {
+	for _, signal := range signals {
+		if !s.isOdometerSignal(signal) {
 			continue
 		}
 
-		recordTime, err := time.Parse(time.RFC3339, record.Timestamp)
-		if err != nil {
-			continue
-		}
-
-		timeDiff := absTimeDiff(recordTime, requestedTime)
-		if closestReading == nil || timeDiff < closestTimeDiff {
-			closestReading = reading
+		timeDiff := absTimeDiff(signal.Timestamp, requestedTime)
+		if closestSignal == nil || timeDiff < closestTimeDiff {
+			closestSignal = &signal
 			closestTimeDiff = timeDiff
-			producer = record.Source
 		}
 	}
 
-	if closestReading == nil {
-		return nil, "", fmt.Errorf("no odometer data found")
+	if closestSignal == nil {
+		return nil, fmt.Errorf("no odometer data found")
 	}
 
-	return closestReading, producer, nil
-}
-
-// extractLatestOdometerFromTelemetry extracts the latest odometer reading from telemetry records.
-func (s *Service) extractLatestOdometerFromTelemetry(records []telemetryapi.TelemetryRecord) (*types.OdometerReading, string, error) {
-	var latestReading *types.OdometerReading
-	var producer string
-
-	for _, record := range records {
-		reading, err := s.extractOdometerFromTelemetry(record)
-		if err != nil || reading == nil {
-			continue
-		}
-
-		if latestReading == nil {
-			latestReading = reading
-			producer = record.Source
-		}
-	}
-
-	if latestReading == nil {
-		return nil, "", fmt.Errorf("no odometer data found")
-	}
-
-	return latestReading, producer, nil
+	return &types.OdometerReading{
+		Value:     closestSignal.Value.(float64),
+		Unit:      odometerUnit,
+		Timestamp: closestSignal.Timestamp,
+	}, nil
 }
 
 // extractOdometerFromTelemetry extracts odometer data from a telemetry record.
-func (s *Service) extractOdometerFromTelemetry(record telemetryapi.TelemetryRecord) (*types.OdometerReading, error) {
-	for _, signal := range record.Signals {
-		// Check for the specific odometer signal from schema
-		if signal.Name == "powertrainTransmissionTravelledDistance" {
-			if odometerValue, ok := signal.Value.(float64); ok {
-				// Skip if value is 0 or negative
-				if odometerValue <= 0 {
-					continue
-				}
-
-				// Parse signal timestamp or use record timestamp
-				timestamp := record.Timestamp
-				if signal.Timestamp != "" {
-					timestamp = signal.Timestamp
-				}
-
-				recordTime, err := time.Parse(time.RFC3339, timestamp)
-				if err != nil {
-					recordTime = time.Now() // Fallback to now
-				}
-
-				// Default to km for travelled distance
-				unit := "km"
-
-				return &types.OdometerReading{
-					Value:     odometerValue,
-					Unit:      unit,
-					Timestamp: recordTime,
-				}, nil
-			}
-		}
+func (s *Service) isOdometerSignal(signal telemetryapi.Signal) bool {
+	// Check for the specific odometer signal from schema
+	if signal.Name != "powertrainTransmissionTravelledDistance" {
+		return false
 	}
 
-	return nil, nil // No odometer data in this record
+	odometerValue, ok := signal.Value.(float64)
+	if !ok {
+		return false
+	}
+
+	// Skip if value is 0 or negative
+	if odometerValue <= 0 {
+		return false
+	}
+
+	return true
 }
 
 // createAttestation creates the attestation cloud event.
@@ -250,8 +198,7 @@ func (s *Service) createAttestation(subject types.OdometerStatementVCSubject) (*
 			ID:              ksuid.New().String(),
 			Time:            issuanceDate,
 			Source:          sources.DINCSource.String(),
-			Subject:         subject.VehicleDID,
-			Producer:        subject.RecordedBy,
+			Subject:         subject.VehicleDID.String(),
 			Type:            cloudevent.TypeAttestation,
 			DataContentType: "application/json",
 			DataVersion:     s.dataVersion,
