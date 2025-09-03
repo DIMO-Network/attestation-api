@@ -12,10 +12,10 @@ import (
 	"github.com/DIMO-Network/attestation-api/internal/config"
 	"github.com/DIMO-Network/attestation-api/internal/controllers/ctrlerrors"
 	"github.com/DIMO-Network/attestation-api/internal/erc191"
-	"github.com/DIMO-Network/attestation-api/internal/models"
 	"github.com/DIMO-Network/attestation-api/internal/sources"
 	"github.com/DIMO-Network/attestation-api/pkg/types"
 	"github.com/DIMO-Network/cloudevent"
+	"github.com/DIMO-Network/model-garage/pkg/vss"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/segmentio/ksuid"
 	"github.com/uber/h3-go/v4"
@@ -57,30 +57,22 @@ func NewService(
 }
 
 // CreateVehiclePositionVC creates a VehiclePositionVC for a specific timestamp.
-func (s *Service) CreateVehiclePositionVC(ctx context.Context, tokenID uint32, timestamp time.Time, jwtToken string) error {
+func (s *Service) CreateVehiclePositionVC(ctx context.Context, tokenID uint32, requestedTimestamp time.Time, jwtToken string) error {
 	vehicleDID := cloudevent.ERC721DID{
 		ChainID:         s.chainID,
 		TokenID:         big.NewInt(int64(tokenID)),
 		ContractAddress: s.vehicleContractAddress,
 	}
 
-	vehicleInfo, err := s.identityAPI.GetVehicleInfo(ctx, vehicleDID)
-	if err != nil {
-		return ctrlerrors.Error{InternalError: err, ExternalMsg: "Failed to get vehicle info"}
-	}
-
-	location, producer, err := s.findClosestLocation(ctx, vehicleInfo, timestamp, jwtToken)
+	location, err := s.findClosestLocation(ctx, vehicleDID, requestedTimestamp, jwtToken)
 	if err != nil {
 		return ctrlerrors.Error{InternalError: err, ExternalMsg: "Failed to find location data"}
 	}
 
 	subject := types.VehiclePositionVCSubject{
-		VehicleDID:             vehicleDID.String(),
-		VehicleTokenID:         tokenID,
-		VehicleContractAddress: s.vehicleContractAddress.Hex(),
-		RecordedBy:             producer,
-		Location:               *location,
-		RequestedTimestamp:     timestamp,
+		VehicleDID:         vehicleDID.String(),
+		Location:           *location,
+		RequestedTimestamp: requestedTimestamp,
 	}
 
 	vc, err := s.createAttestation(subject)
@@ -96,108 +88,43 @@ func (s *Service) CreateVehiclePositionVC(ctx context.Context, tokenID uint32, t
 }
 
 // findClosestLocation finds the location closest to the requested timestamp using telemetry API.
-func (s *Service) findClosestLocation(ctx context.Context, vehicleInfo *models.VehicleInfo, requestedTime time.Time, jwtToken string) (*types.Location, string, error) {
+func (s *Service) findClosestLocation(ctx context.Context, vehicleInfo cloudevent.ERC721DID, requestedTime time.Time, jwtToken string) (*types.Location, error) {
 	// Define time window around requested timestamp (1 hour before and after)
 	startTime := requestedTime.Add(-time.Hour)
 	endTime := requestedTime.Add(time.Hour)
 
 	options := telemetryapi.TelemetryQueryOptions{
-		TokenID:   int(vehicleInfo.DID.TokenID.Uint64()),
-		StartDate: startTime.Format(time.RFC3339),
-		EndDate:   endTime.Format(time.RFC3339),
+		TokenID:   vehicleInfo.TokenID,
+		StartDate: startTime,
+		EndDate:   endTime,
 		Signals:   []string{"currentLocationLatitude", "currentLocationLongitude", "currentLocationApproximateLatitude", "currentLocationApproximateLongitude"},
 	}
 
 	// Get historical telemetry data
-	records, err := s.telemetryAPI.GetHistoricalDataWithAuth(ctx, options, jwtToken)
+	signals, err := s.telemetryAPI.GetHistoricalDataWithAuth(ctx, options, jwtToken)
 	if err != nil {
-		return nil, "", fmt.Errorf("failed to get telemetry data: %w", err)
-	}
-
-	if len(records) == 0 {
-		// Try with latest signals if no historical data found
-		records, err = s.telemetryAPI.GetLatestSignalsWithAuth(ctx, int(vehicleInfo.DID.TokenID.Uint64()), jwtToken)
-		if err != nil {
-			return nil, "", fmt.Errorf("failed to get latest telemetry data: %w", err)
-		}
+		return nil, fmt.Errorf("failed to get telemetry data: %w", err)
 	}
 
 	// Find the location closest to requested timestamp
 	var closestLocation *types.Location
 	var closestTimeDiff time.Duration
-	var producer string
 
-	for _, record := range records {
-		location, err := s.extractLocationFromTelemetry(record)
-		if err != nil || location == nil {
-			continue
-		}
+	h3Locations := signalsToH3Values(signals)
 
-		recordTime, err := time.Parse(time.RFC3339, record.Timestamp)
-		if err != nil {
-			continue
-		}
-
-		timeDiff := absTimeDiff(recordTime, requestedTime)
+	for _, h3Location := range h3Locations {
+		timeDiff := absTimeDiff(h3Location.Timestamp, requestedTime)
 		if closestLocation == nil || timeDiff < closestTimeDiff {
-			closestLocation = location
+			closestLocation = &h3Location
 			closestTimeDiff = timeDiff
-			producer = record.Source
 		}
 	}
 
 	if closestLocation == nil {
-		return nil, "", fmt.Errorf("no location data found in telemetry")
+		return nil, fmt.Errorf("no location data found in telemetry")
 	}
 
-	return closestLocation, producer, nil
-}
-
-// extractLocationFromTelemetry extracts location data from a telemetry record.
-func (s *Service) extractLocationFromTelemetry(record telemetryapi.TelemetryRecord) (*types.Location, error) {
-	var latitude, longitude *float64
-
-	// Extract latitude and longitude from signals
-	for _, signal := range record.Signals {
-		switch signal.Name {
-		case "currentLocationLatitude", "currentLocationApproximateLatitude":
-			if lat, ok := signal.Value.(float64); ok {
-				latitude = &lat
-			}
-		case "currentLocationLongitude", "currentLocationApproximateLongitude":
-			if lng, ok := signal.Value.(float64); ok {
-				longitude = &lng
-			}
-		}
-	}
-
-	// Check if we have both coordinates
-	if latitude == nil || longitude == nil {
-		return nil, fmt.Errorf("incomplete location data")
-	}
-
-	// Convert to H3 cell
-	h3LatLng := h3.NewLatLng(*latitude, *longitude)
-	cell, err := h3.LatLngToCell(h3LatLng, h3Resolution)
-	if err != nil {
-		return nil, fmt.Errorf("failed to convert to H3 cell: %w", err)
-	}
-
-	// Parse timestamp
-	timestamp, err := time.Parse(time.RFC3339, record.Timestamp)
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse timestamp: %w", err)
-	}
-
-	location := &types.Location{
-		LocationType: types.LocationTypeH3Cell,
-		LocationValue: types.H3Cell{
-			CellID: cell.String(),
-		},
-		Timestamp: timestamp,
-	}
-
-	return location, nil
+	return closestLocation, nil
 }
 
 // createAttestation creates the attestation cloud event.
@@ -233,7 +160,6 @@ func (s *Service) createAttestation(subject types.VehiclePositionVCSubject) (*cl
 			Time:            issuanceDate,
 			Source:          sources.DINCSource.String(),
 			Subject:         subject.VehicleDID,
-			Producer:        subject.RecordedBy,
 			Type:            cloudevent.TypeAttestation,
 			DataContentType: "application/json",
 			DataVersion:     s.dataVersion,
@@ -243,6 +169,38 @@ func (s *Service) createAttestation(subject types.VehiclePositionVCSubject) (*cl
 	}
 
 	return &cloudEvent, nil
+}
+
+func signalsToH3Values(signals []telemetryapi.Signal) []types.Location {
+	pairs := map[time.Time]vss.Location{}
+	for _, signal := range signals {
+		location := pairs[signal.Timestamp]
+		switch signal.Name {
+		case vss.FieldCurrentLocationLatitude, "currentLocationApproximateLatitude":
+			if lat, ok := signal.Value.(float64); ok {
+				location.Latitude = lat
+			}
+		case vss.FieldCurrentLocationLongitude, "currentLocationApproximateLongitude":
+			if lng, ok := signal.Value.(float64); ok {
+				location.Longitude = lng
+			}
+		}
+		pairs[signal.Timestamp] = location
+	}
+	h3Locations := make([]types.Location, 0, len(pairs))
+	for timestamp, pair := range pairs {
+		cell, err := h3.LatLngToCell(h3.NewLatLng(pair.Latitude, pair.Longitude), h3Resolution)
+		if err != nil {
+			continue
+		}
+		location := types.Location{
+			LocationType:  types.LocationTypeH3Cell,
+			LocationValue: types.H3Cell{CellID: cell.String()},
+			Timestamp:     timestamp,
+		}
+		h3Locations = append(h3Locations, location)
+	}
+	return h3Locations
 }
 
 // absTimeDiff returns the absolute difference between two times.

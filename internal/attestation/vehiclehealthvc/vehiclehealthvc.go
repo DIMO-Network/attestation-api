@@ -13,18 +13,19 @@ import (
 	"github.com/DIMO-Network/attestation-api/internal/config"
 	"github.com/DIMO-Network/attestation-api/internal/controllers/ctrlerrors"
 	"github.com/DIMO-Network/attestation-api/internal/erc191"
-	"github.com/DIMO-Network/attestation-api/internal/models"
 	"github.com/DIMO-Network/attestation-api/internal/sources"
 	"github.com/DIMO-Network/attestation-api/pkg/types"
 	"github.com/DIMO-Network/cloudevent"
+	"github.com/DIMO-Network/model-garage/pkg/vss"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/segmentio/ksuid"
 )
 
 const (
-	// Tire pressure thresholds (in PSI)
-	minNormalTirePressure = 30.0
-	maxNormalTirePressure = 40.0
+	// Tire pressure thresholds (in kPa)
+	minNormalTirePressure   = 206.84 // 30 psi
+	maxNormalTirePressure   = 275.79 // 40 psi
+	defaultTirePressureUnit = "kPa"
 )
 
 // Service handles VehicleHealthVC-related operations.
@@ -66,22 +67,14 @@ func (s *Service) CreateVehicleHealthVC(ctx context.Context, tokenID uint32, sta
 		ContractAddress: s.vehicleContractAddress,
 	}
 
-	vehicleInfo, err := s.identityAPI.GetVehicleInfo(ctx, vehicleDID)
-	if err != nil {
-		return ctrlerrors.Error{InternalError: err, ExternalMsg: "Failed to get vehicle info"}
-	}
-
-	healthStatus, producer, err := s.analyzeVehicleHealth(ctx, vehicleInfo, startTime, endTime, jwtToken)
+	healthStatus, err := s.analyzeVehicleHealth(ctx, &vehicleDID, startTime, endTime, jwtToken)
 	if err != nil {
 		return ctrlerrors.Error{InternalError: err, ExternalMsg: "Failed to analyze vehicle health"}
 	}
 
 	subject := types.VehicleHealthVCSubject{
-		VehicleDID:             vehicleDID.String(),
-		VehicleTokenID:         tokenID,
-		VehicleContractAddress: s.vehicleContractAddress.Hex(),
-		RecordedBy:             producer,
-		HealthStatus:           *healthStatus,
+		VehicleDID:   vehicleDID,
+		HealthStatus: *healthStatus,
 		SearchedTimeRange: types.TimeRange{
 			Start: startTime,
 			End:   endTime,
@@ -101,67 +94,56 @@ func (s *Service) CreateVehicleHealthVC(ctx context.Context, tokenID uint32, sta
 }
 
 // analyzeVehicleHealth analyzes vehicle health data within the time range using telemetry API.
-func (s *Service) analyzeVehicleHealth(ctx context.Context, vehicleInfo *models.VehicleInfo, startTime, endTime time.Time, jwtToken string) (*types.VehicleHealthStatus, string, error) {
+func (s *Service) analyzeVehicleHealth(ctx context.Context, vehicleDID *cloudevent.ERC721DID, startTime, endTime time.Time, jwtToken string) (*types.VehicleHealthStatus, error) {
 	// Query telemetry data for health-related signals
 	options := telemetryapi.TelemetryQueryOptions{
-		TokenID:   int(vehicleInfo.DID.TokenID.Uint64()),
-		StartDate: startTime.Format(time.RFC3339),
-		EndDate:   endTime.Format(time.RFC3339),
+		TokenID:   vehicleDID.TokenID,
+		StartDate: startTime,
+		EndDate:   endTime,
 		Signals: []string{
-			"obdDTCList",
-			"obdStatusDTCCount",
-			"chassisAxleRow1WheelLeftTirePressure",
-			"chassisAxleRow1WheelRightTirePressure",
-			"chassisAxleRow2WheelLeftTirePressure",
-			"chassisAxleRow2WheelRightTirePressure",
+			vss.FieldOBDDTCList,
+			vss.FieldOBDStatusDTCCount,
+			vss.FieldChassisAxleRow1WheelLeftTirePressure,
+			vss.FieldChassisAxleRow1WheelRightTirePressure,
+			vss.FieldChassisAxleRow2WheelLeftTirePressure,
+			vss.FieldChassisAxleRow2WheelRightTirePressure,
 		},
 	}
 
 	// Get health data from telemetry API
-	records, err := s.telemetryAPI.GetHistoricalDataWithAuth(ctx, options, jwtToken)
+	signals, err := s.telemetryAPI.GetHistoricalDataWithAuth(ctx, options, jwtToken)
 	if err != nil {
-		return nil, "", fmt.Errorf("failed to get health telemetry data: %w", err)
+		return nil, fmt.Errorf("failed to get health telemetry data: %w", err)
 	}
 
-	if len(records) == 0 {
-		return nil, "", fmt.Errorf("no health data found in the specified time range")
+	if len(signals) == 0 {
+		return nil, fmt.Errorf("no health data found in the specified time range")
 	}
 
 	// Process records to extract health information
-	healthStatus := s.processHealthTelemetryRecords(records)
+	healthStatus := processHealthTelemetrySignals(signals)
 
 	// Calculate health score and overall health status
 	s.calculateHealthScore(healthStatus)
 
-	// Use the most recent record source as producer
-	producer := "telemetry-api"
-	if len(records) > 0 {
-		producer = records[0].Source
-	}
-
-	return healthStatus, producer, nil
+	return healthStatus, nil
 }
 
-// processHealthTelemetryRecords processes telemetry records to extract health status.
-func (s *Service) processHealthTelemetryRecords(records []telemetryapi.TelemetryRecord) *types.VehicleHealthStatus {
+// processHealthTelemetrySignals processes telemetry signals to extract health status.
+func processHealthTelemetrySignals(signals []telemetryapi.Signal) *types.VehicleHealthStatus {
 	dtcMap := make(map[string]types.DiagnosticTroubleCode)
 	var latestTirePressure *types.TirePressureStatus
 	var lastUpdated time.Time
 
-	for _, record := range records {
-		// Parse record timestamp
-		recordTime, err := time.Parse(time.RFC3339, record.Timestamp)
-		if err != nil {
-			continue
-		}
+	for _, signal := range signals {
 
 		// Update last timestamp
-		if recordTime.After(lastUpdated) {
-			lastUpdated = recordTime
+		if signal.Timestamp.After(lastUpdated) {
+			lastUpdated = signal.Timestamp
 		}
 
 		// Extract DTCs
-		dtcs := s.extractDTCsFromTelemetry(record)
+		dtcs := extractDTCsFromTelemetry(signal)
 		for _, dtc := range dtcs {
 			// Store unique DTCs by code
 			if _, exists := dtcMap[dtc.Code]; !exists {
@@ -170,7 +152,7 @@ func (s *Service) processHealthTelemetryRecords(records []telemetryapi.Telemetry
 		}
 
 		// Extract tire pressure
-		tirePressure := s.extractTirePressureFromTelemetry(record)
+		tirePressure := extractTirePressureFromTelemetry(signal)
 		if tirePressure != nil {
 			latestTirePressure = tirePressure
 		}
@@ -190,99 +172,94 @@ func (s *Service) processHealthTelemetryRecords(records []telemetryapi.Telemetry
 }
 
 // extractDTCsFromTelemetry extracts diagnostic trouble codes from a telemetry record.
-func (s *Service) extractDTCsFromTelemetry(record telemetryapi.TelemetryRecord) []types.DiagnosticTroubleCode {
+func extractDTCsFromTelemetry(signal telemetryapi.Signal) []types.DiagnosticTroubleCode {
 	var dtcs []types.DiagnosticTroubleCode
 
-	for _, signal := range record.Signals {
-		// Check for OBD DTC List
-		if signal.Name == "obdDTCList" {
-			if dtcValue, ok := signal.Value.(string); ok && dtcValue != "" {
-				// Parse DTC codes (could be comma-separated)
-				codes := strings.Split(dtcValue, ",")
-				for _, code := range codes {
-					code = strings.TrimSpace(code)
-					if code != "" && code != "0" && code != "00000" {
-						timestamp, _ := time.Parse(time.RFC3339, signal.Timestamp)
-						dtc := types.DiagnosticTroubleCode{
-							Code:      code,
-							Severity:  s.categorizeDTCSeverity(code),
-							Timestamp: timestamp,
-						}
-						dtcs = append(dtcs, dtc)
-					}
-				}
-			}
+	switch signal.Name {
+	case vss.FieldOBDDTCList:
+		dtcValue, ok := signal.Value.(string)
+		if !ok || dtcValue == "" {
+			return dtcs
 		}
-		// Check for DTC count to infer MIL status
-		if signal.Name == "obdStatusDTCCount" {
-			if dtcCount, ok := signal.Value.(float64); ok && dtcCount > 0 {
-				timestamp, _ := time.Parse(time.RFC3339, signal.Timestamp)
+		var codes []string
+		if err := json.Unmarshal([]byte(dtcValue), &codes); err != nil {
+			return dtcs
+		}
+		for _, code := range codes {
+			code = strings.TrimSpace(code)
+			if code != "" && code != "0" && code != "00000" {
 				dtc := types.DiagnosticTroubleCode{
-					Code:        "MIL_ON",
-					Description: "Check Engine Light is ON (DTC count > 0)",
-					Severity:    "warning",
-					Timestamp:   timestamp,
+					Code:      code,
+					Severity:  categorizeDTCSeverity(code),
+					Timestamp: signal.Timestamp,
 				}
 				dtcs = append(dtcs, dtc)
 			}
 		}
+
+	// Check for DTC count to infer MIL status
+	case vss.FieldOBDStatusDTCCount:
+		dtcCount, ok := signal.Value.(float64)
+		if !ok || dtcCount <= 0 {
+			return dtcs
+		}
+		dtc := types.DiagnosticTroubleCode{
+			Code:        "MIL_ON",
+			Description: "Check Engine Light is ON (DTC count > 0)",
+			Severity:    "warning",
+			Timestamp:   signal.Timestamp,
+		}
+		dtcs = append(dtcs, dtc)
 	}
 
 	return dtcs
 }
 
 // extractTirePressureFromTelemetry extracts tire pressure data from a telemetry record.
-func (s *Service) extractTirePressureFromTelemetry(record telemetryapi.TelemetryRecord) *types.TirePressureStatus {
+func extractTirePressureFromTelemetry(signal telemetryapi.Signal) *types.TirePressureStatus {
 	tirePressure := &types.TirePressureStatus{
-		Unit:      "psi",      // Default to PSI
-		Timestamp: time.Now(), // Default timestamp
+		Unit:      defaultTirePressureUnit, // Default to kpa
+		Timestamp: time.Now(),              // Default timestamp
 	}
 
-	// Parse record timestamp
-	if recordTime, err := time.Parse(time.RFC3339, record.Timestamp); err == nil {
-		tirePressure.Timestamp = recordTime
-	}
-
-	foundAny := false
-
-	for _, signal := range record.Signals {
-		// Check for specific tire pressure signals from schema
-		switch signal.Name {
-		case "chassisAxleRow1WheelLeftTirePressure":
-			if pressureValue, ok := signal.Value.(float64); ok {
-				tirePressure.FrontLeft = &pressureValue
-				foundAny = true
-			}
-		case "chassisAxleRow1WheelRightTirePressure":
-			if pressureValue, ok := signal.Value.(float64); ok {
-				tirePressure.FrontRight = &pressureValue
-				foundAny = true
-			}
-		case "chassisAxleRow2WheelLeftTirePressure":
-			if pressureValue, ok := signal.Value.(float64); ok {
-				tirePressure.RearLeft = &pressureValue
-				foundAny = true
-			}
-		case "chassisAxleRow2WheelRightTirePressure":
-			if pressureValue, ok := signal.Value.(float64); ok {
-				tirePressure.RearRight = &pressureValue
-				foundAny = true
-			}
+	// Check for specific tire pressure signals from schema
+	switch signal.Name {
+	case vss.FieldChassisAxleRow1WheelLeftTirePressure:
+		pressureValue, ok := signal.Value.(float64)
+		if !ok {
+			return nil
 		}
-	}
-
-	if !foundAny {
+		tirePressure.FrontLeft = &pressureValue
+	case vss.FieldChassisAxleRow1WheelRightTirePressure:
+		pressureValue, ok := signal.Value.(float64)
+		if !ok {
+			return nil
+		}
+		tirePressure.FrontRight = &pressureValue
+	case vss.FieldChassisAxleRow2WheelLeftTirePressure:
+		pressureValue, ok := signal.Value.(float64)
+		if !ok {
+			return nil
+		}
+		tirePressure.RearLeft = &pressureValue
+	case vss.FieldChassisAxleRow2WheelRightTirePressure:
+		pressureValue, ok := signal.Value.(float64)
+		if !ok {
+			return nil
+		}
+		tirePressure.RearRight = &pressureValue
+	default:
 		return nil
 	}
 
 	// Check if all pressures are normal
-	tirePressure.IsNormal = s.isTirePressureNormal(tirePressure)
+	tirePressure.IsNormal = isTirePressureNormal(tirePressure)
 
 	return tirePressure
 }
 
 // categorizeDTCSeverity categorizes DTC severity based on the code.
-func (s *Service) categorizeDTCSeverity(code string) string {
+func categorizeDTCSeverity(code string) string {
 	// P0XXX codes are powertrain
 	// P1XXX codes are manufacturer specific
 	// C0XXX codes are chassis
@@ -307,14 +284,12 @@ func (s *Service) categorizeDTCSeverity(code string) string {
 }
 
 // isTirePressureNormal checks if all tire pressures are within normal range.
-func (s *Service) isTirePressureNormal(tp *types.TirePressureStatus) bool {
+func isTirePressureNormal(tp *types.TirePressureStatus) bool {
 	pressures := []*float64{tp.FrontLeft, tp.FrontRight, tp.RearLeft, tp.RearRight}
 
 	for _, pressure := range pressures {
-		if pressure != nil {
-			if *pressure < minNormalTirePressure || *pressure > maxNormalTirePressure {
-				return false
-			}
+		if pressure != nil && (*pressure < minNormalTirePressure || *pressure > maxNormalTirePressure) {
+			return false
 		}
 	}
 
@@ -383,8 +358,7 @@ func (s *Service) createAttestation(subject types.VehicleHealthVCSubject) (*clou
 			ID:              ksuid.New().String(),
 			Time:            issuanceDate,
 			Source:          sources.DINCSource.String(),
-			Subject:         subject.VehicleDID,
-			Producer:        subject.RecordedBy,
+			Subject:         subject.VehicleDID.String(),
 			Type:            cloudevent.TypeAttestation,
 			DataContentType: "application/json",
 			DataVersion:     s.dataVersion,

@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"time"
+
+	"github.com/DIMO-Network/cloudevent"
 )
 
 // Credential represents a verifiable credential.
@@ -125,13 +127,8 @@ func (l *Location) UnmarshalJSON(data []byte) error {
 
 // VehiclePositionVCSubject represents the subject of the VehiclePositionVC.
 type VehiclePositionVCSubject struct {
-	VehicleDID string `json:"id,omitempty"`
-	// VehicleTokenID is the token ID of the vehicle NFT.
-	VehicleTokenID uint32 `json:"vehicleTokenId,omitempty"`
-	// VehicleContractAddress is the address of the vehicle contract.
-	VehicleContractAddress string `json:"vehicleContractAddress,omitempty"`
-	// RecordedBy is the entity that recorded the location.
-	RecordedBy string `json:"recordedBy,omitempty"`
+	// VehicleDID is the DID of the vehicle.
+	VehicleDID string `json:"vehicleDID,omitempty"`
 	// Location is the location data.
 	Location Location `json:"location"`
 	// RequestedTimestamp is the timestamp that was requested.
@@ -146,13 +143,10 @@ type TimeRange struct {
 
 // OdometerStatementVCSubject represents the subject of the OdometerStatementVC.
 type OdometerStatementVCSubject struct {
-	VehicleDID string `json:"id,omitempty"`
-	// VehicleTokenID is the token ID of the vehicle NFT.
-	VehicleTokenID uint32 `json:"vehicleTokenId,omitempty"`
-	// VehicleContractAddress is the address of the vehicle contract.
-	VehicleContractAddress string `json:"vehicleContractAddress,omitempty"`
-	// RecordedBy is the entity that recorded the odometer reading.
-	RecordedBy string `json:"recordedBy,omitempty"`
+	// VehicleDID is the DID of the vehicle.
+	VehicleDID cloudevent.ERC721DID `json:"vehicleDID,omitempty"`
+	// Source is the connections source of the odometer reading.
+	Source string `json:"source,omitempty"`
 	// OdometerReading is the odometer value.
 	OdometerReading OdometerReading `json:"odometerReading"`
 	// RequestedTimestamp is the timestamp that was requested (if any).
@@ -168,13 +162,7 @@ type OdometerReading struct {
 
 // VehicleHealthVCSubject represents the subject of the VehicleHealthVC.
 type VehicleHealthVCSubject struct {
-	VehicleDID string `json:"id,omitempty"`
-	// VehicleTokenID is the token ID of the vehicle NFT.
-	VehicleTokenID uint32 `json:"vehicleTokenId,omitempty"`
-	// VehicleContractAddress is the address of the vehicle contract.
-	VehicleContractAddress string `json:"vehicleContractAddress,omitempty"`
-	// RecordedBy is the entity that recorded the health data.
-	RecordedBy string `json:"recordedBy,omitempty"`
+	VehicleDID cloudevent.ERC721DID `json:"vehicleDID,omitempty"`
 	// HealthStatus contains the vehicle health information.
 	HealthStatus VehicleHealthStatus `json:"healthStatus"`
 	// SearchedTimeRange is the time range that was searched.

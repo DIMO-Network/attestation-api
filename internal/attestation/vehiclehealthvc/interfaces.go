@@ -20,5 +20,5 @@ type IdentityAPI interface {
 
 // TelemetryAPI defines the interface for fetching telemetry data.
 type TelemetryAPI interface {
-	GetHistoricalDataWithAuth(ctx context.Context, options telemetryapi.TelemetryQueryOptions, jwtToken string) ([]telemetryapi.TelemetryRecord, error)
+	GetHistoricalDataWithAuth(ctx context.Context, options telemetryapi.TelemetryQueryOptions, jwtToken string) ([]telemetryapi.Signal, error)
 }

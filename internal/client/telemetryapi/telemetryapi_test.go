@@ -18,7 +18,7 @@ func TestService_GetLatestSignals(t *testing.T) {
 	ctx := context.Background()
 	tests := []struct {
 		name             string
-		tokenID          int
+		tokenID          *big.Int
 		mockResponseBody string
 		mockStatusCode   int
 		expectedSignals  int
@@ -26,7 +26,7 @@ func TestService_GetLatestSignals(t *testing.T) {
 	}{
 		{
 			name:    "successful response with signals",
-			tokenID: 123,
+			tokenID: big.NewInt(123),
 			mockResponseBody: `
 			{
 				"data": {
@@ -49,7 +49,7 @@ func TestService_GetLatestSignals(t *testing.T) {
 		},
 		{
 			name:    "successful response with no signals",
-			tokenID: 124,
+			tokenID: big.NewInt(124),
 			mockResponseBody: `
 			{
 				"data": {
@@ -64,7 +64,7 @@ func TestService_GetLatestSignals(t *testing.T) {
 		},
 		{
 			name:    "GraphQL API error",
-			tokenID: 125,
+			tokenID: big.NewInt(125),
 			mockResponseBody: `
 			{
 				"errors": [
@@ -76,7 +76,7 @@ func TestService_GetLatestSignals(t *testing.T) {
 		},
 		{
 			name:             "non-200 response",
-			tokenID:          126,
+			tokenID:          big.NewInt(126),
 			mockResponseBody: "",
 			mockStatusCode:   http.StatusInternalServerError,
 			expectedError:    true,

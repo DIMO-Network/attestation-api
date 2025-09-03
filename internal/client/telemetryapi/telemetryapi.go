@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"math/big"
 	"net/http"
 	"net/url"
 	"time"
@@ -45,7 +46,7 @@ func NewService(apiBaseURL string, certPool *x509.CertPool) (*Service, error) {
 }
 
 // GetLatestSignalsWithAuth fetches the latest telemetry signals for a vehicle with JWT authentication.
-func (s *Service) GetLatestSignalsWithAuth(ctx context.Context, tokenID int, jwtToken string) ([]Signal, error) {
+func (s *Service) GetLatestSignalsWithAuth(ctx context.Context, tokenID *big.Int, jwtToken string) ([]Signal, error) {
 	requestBody := map[string]any{
 		"query": latestSignalsQuery,
 		"variables": map[string]any{
