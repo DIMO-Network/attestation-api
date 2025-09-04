@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"math/big"
+	"slices"
 	"strings"
 	"time"
 
@@ -119,6 +120,10 @@ func (s *Service) analyzeVehicleHealth(ctx context.Context, vehicleDID *cloudeve
 	if len(signals) == 0 {
 		return nil, fmt.Errorf("no health data found in the specified time range")
 	}
+	slices.SortFunc(signals, func(i, j telemetryapi.Signal) int {
+		// sort in descending order
+		return -i.Timestamp.Compare(j.Timestamp)
+	})
 
 	// Process records to extract health information
 	healthStatus := processHealthTelemetrySignals(signals)
@@ -136,7 +141,6 @@ func processHealthTelemetrySignals(signals []telemetryapi.Signal) *types.Vehicle
 	var lastUpdated time.Time
 
 	for _, signal := range signals {
-
 		// Update last timestamp
 		if signal.Timestamp.After(lastUpdated) {
 			lastUpdated = signal.Timestamp
@@ -152,16 +156,18 @@ func processHealthTelemetrySignals(signals []telemetryapi.Signal) *types.Vehicle
 		}
 
 		// Extract tire pressure
-		tirePressure := extractTirePressureFromTelemetry(signal)
-		if tirePressure != nil {
-			latestTirePressure = tirePressure
-		}
+		latestTirePressure = updateTirePressureFromTelemetry(signal, latestTirePressure)
 	}
 
 	// Convert DTCs map to slice
 	dtcs := make([]types.DiagnosticTroubleCode, 0, len(dtcMap))
 	for _, dtc := range dtcMap {
 		dtcs = append(dtcs, dtc)
+	}
+
+	// Check if all pressures are normal
+	if latestTirePressure != nil {
+		latestTirePressure.IsNormal = isTirePressureNormal(latestTirePressure)
 	}
 
 	return &types.VehicleHealthStatus{
@@ -215,45 +221,47 @@ func extractDTCsFromTelemetry(signal telemetryapi.Signal) []types.DiagnosticTrou
 	return dtcs
 }
 
-// extractTirePressureFromTelemetry extracts tire pressure data from a telemetry record.
-func extractTirePressureFromTelemetry(signal telemetryapi.Signal) *types.TirePressureStatus {
-	tirePressure := &types.TirePressureStatus{
-		Unit:      defaultTirePressureUnit, // Default to kpa
-		Timestamp: time.Now(),              // Default timestamp
+// updateTirePressureFromTelemetry updates tire pressure data from a telemetry record.
+func updateTirePressureFromTelemetry(signal telemetryapi.Signal, tirePressure *types.TirePressureStatus) *types.TirePressureStatus {
+	if tirePressure == nil {
+		tirePressure = &types.TirePressureStatus{
+			Unit: defaultTirePressureUnit, // Default to kpa
+		}
 	}
 
 	// Check for specific tire pressure signals from schema
 	switch signal.Name {
 	case vss.FieldChassisAxleRow1WheelLeftTirePressure:
 		pressureValue, ok := signal.Value.(float64)
-		if !ok {
-			return nil
+		if !ok || tirePressure.FrontLeft != nil {
+			return tirePressure
 		}
 		tirePressure.FrontLeft = &pressureValue
+		tirePressure.Timestamp = signal.Timestamp
 	case vss.FieldChassisAxleRow1WheelRightTirePressure:
 		pressureValue, ok := signal.Value.(float64)
-		if !ok {
-			return nil
+		if !ok || tirePressure.FrontRight != nil {
+			return tirePressure
 		}
 		tirePressure.FrontRight = &pressureValue
+		tirePressure.Timestamp = signal.Timestamp
 	case vss.FieldChassisAxleRow2WheelLeftTirePressure:
 		pressureValue, ok := signal.Value.(float64)
-		if !ok {
-			return nil
+		if !ok || tirePressure.RearLeft != nil {
+			return tirePressure
 		}
 		tirePressure.RearLeft = &pressureValue
+		tirePressure.Timestamp = signal.Timestamp
 	case vss.FieldChassisAxleRow2WheelRightTirePressure:
 		pressureValue, ok := signal.Value.(float64)
-		if !ok {
-			return nil
+		if !ok || tirePressure.RearRight != nil {
+			return tirePressure
 		}
 		tirePressure.RearRight = &pressureValue
+		tirePressure.Timestamp = signal.Timestamp
 	default:
-		return nil
+		return tirePressure
 	}
-
-	// Check if all pressures are normal
-	tirePressure.IsNormal = isTirePressureNormal(tirePressure)
 
 	return tirePressure
 }
