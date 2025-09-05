@@ -24,8 +24,6 @@ import (
 
 const odometerUnit = "km"
 
-var notFoundError = errors.New("not found")
-
 // Service handles OdometerStatementVC-related operations.
 type Service struct {
 	vcRepo                 VCRepo
@@ -155,7 +153,7 @@ func (s *Service) findClosestOdometerFromTelemetry(signals []telemetryapi.Signal
 	if closestSignal == nil {
 		return nil, richerrors.Error{
 			Code:        http.StatusNotFound,
-			Err:         notFoundError,
+			Err:         errors.New("no odometer data found"),
 			ExternalMsg: "No odometer data found",
 		}
 	}

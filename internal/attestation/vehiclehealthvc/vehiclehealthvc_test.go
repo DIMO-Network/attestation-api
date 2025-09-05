@@ -7,6 +7,7 @@ import (
 	"crypto/elliptic"
 	"crypto/rand"
 	"encoding/json"
+	"net/http"
 	"testing"
 	"time"
 
@@ -261,7 +262,7 @@ func TestCreateVehicleHealthVC_TelemetryAPIError(t *testing.T) {
 	assert.Error(t, err)
 	var richErr richerrors.Error
 	assert.ErrorAs(t, err, &richErr)
-	assert.Equal(t, "Failed to analyze vehicle health", richErr.ExternalMsg)
+	assert.Equal(t, http.StatusInternalServerError, richErr.Code)
 }
 
 func TestCreateVehicleHealthVC_NoHealthData(t *testing.T) {
@@ -285,7 +286,7 @@ func TestCreateVehicleHealthVC_NoHealthData(t *testing.T) {
 	assert.Error(t, err)
 	var richErr richerrors.Error
 	assert.ErrorAs(t, err, &richErr)
-	assert.Equal(t, "Failed to analyze vehicle health", richErr.ExternalMsg)
+	assert.Equal(t, http.StatusNotFound, richErr.Code)
 }
 
 func TestCreateVehicleHealthVC_VCRepoError(t *testing.T) {
@@ -321,5 +322,5 @@ func TestCreateVehicleHealthVC_VCRepoError(t *testing.T) {
 	assert.Error(t, err)
 	var richErr richerrors.Error
 	assert.ErrorAs(t, err, &richErr)
-	assert.Equal(t, "Failed to store VehicleHealthVC", richErr.ExternalMsg)
+	assert.Equal(t, http.StatusInternalServerError, richErr.Code)
 }

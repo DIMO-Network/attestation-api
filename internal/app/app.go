@@ -101,11 +101,6 @@ func setupRPCServer(logger *zerolog.Logger, rpcCtrl *rpc.Server) *grpc.Server {
 	return server
 }
 
-type codeResp struct {
-	Message string `json:"message"`
-	Code    int    `json:"code"`
-}
-
 // HealthCheck godoc
 // @Summary Show the status of server.
 // @Description get the status of server.
