@@ -1,4 +1,27 @@
 definitions:
+  internal_controllers_httphandlers.CreateOdometerStatementVCRequest:
+    properties:
+      timestamp:
+        description: Optional timestamp
+        type: string
+    type: object
+  internal_controllers_httphandlers.CreateVehicleHealthVCRequest:
+    properties:
+      endTime:
+        type: string
+      startTime:
+        type: string
+    required:
+    - endTime
+    - startTime
+    type: object
+  internal_controllers_httphandlers.CreateVehiclePositionVCRequest:
+    properties:
+      timestamp:
+        type: string
+    required:
+    - timestamp
+    type: object
   internal_controllers_httphandlers.getVCResponse:
     properties:
       message:
@@ -29,6 +52,95 @@ paths:
       summary: Show the status of server.
       tags:
       - root
+  /v2/attestation/odometer-statement/{tokenId}:
+    post:
+      consumes:
+      - application/json
+      description: Generate a new Odometer Statement attestation for a given token
+        Id. If timestamp is not provided, uses the latest odometer reading.
+      parameters:
+      - description: token Id of the vehicle NFT
+        in: path
+        name: tokenId
+        required: true
+        type: integer
+      - description: Request body
+        in: body
+        name: request
+        schema:
+          $ref: '#/definitions/internal_controllers_httphandlers.CreateOdometerStatementVCRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_controllers_httphandlers.getVCResponse'
+      security:
+      - BearerAuth: []
+      summary: Create Odometer Statement Attestation
+      tags:
+      - OdometerStatementVC
+  /v2/attestation/vehicle-health/{tokenId}:
+    post:
+      consumes:
+      - application/json
+      description: Generate a new Vehicle Health attestation for a given token Id
+        and time range. The time range cannot exceed 30 days.
+      parameters:
+      - description: token Id of the vehicle NFT
+        in: path
+        name: tokenId
+        required: true
+        type: integer
+      - description: Request body
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_controllers_httphandlers.CreateVehicleHealthVCRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_controllers_httphandlers.getVCResponse'
+      security:
+      - BearerAuth: []
+      summary: Create Vehicle Health Attestation
+      tags:
+      - VehicleHealthVC
+  /v2/attestation/vehicle-position/{tokenId}:
+    post:
+      consumes:
+      - application/json
+      description: Generate a new Vehicle Position attestation for a given token Id
+        and timestamp.
+      parameters:
+      - description: token Id of the vehicle NFT
+        in: path
+        name: tokenId
+        required: true
+        type: integer
+      - description: Request body
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_controllers_httphandlers.CreateVehiclePositionVCRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_controllers_httphandlers.getVCResponse'
+      security:
+      - BearerAuth: []
+      summary: Create Vehicle Position Attestation
+      tags:
+      - VehiclePositionVC
   /v2/attestation/vin/{tokenId}:
     post:
       consumes:

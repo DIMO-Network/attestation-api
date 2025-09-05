@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"time"
+
+	"github.com/DIMO-Network/cloudevent"
 )
 
 // Credential represents a verifiable credential.
@@ -121,4 +123,81 @@ func (l *Location) UnmarshalJSON(data []byte) error {
 	}
 
 	return nil
+}
+
+// VehiclePositionVCSubject represents the subject of the VehiclePositionVC.
+type VehiclePositionVCSubject struct {
+	// VehicleDID is the DID of the vehicle.
+	VehicleDID string `json:"vehicleDID,omitempty"`
+	// Location is the location data.
+	Location Location `json:"location"`
+	// RequestedTimestamp is the timestamp that was requested.
+	RequestedTimestamp time.Time `json:"requestedTimestamp"`
+}
+
+// TimeRange represents a time range.
+type TimeRange struct {
+	Start time.Time `json:"start"`
+	End   time.Time `json:"end"`
+}
+
+// OdometerStatementVCSubject represents the subject of the OdometerStatementVC.
+type OdometerStatementVCSubject struct {
+	// VehicleDID is the DID of the vehicle.
+	VehicleDID cloudevent.ERC721DID `json:"vehicleDID,omitempty"`
+	// Source is the connections source of the odometer reading.
+	Source string `json:"source,omitempty"`
+	// OdometerReading is the odometer value.
+	OdometerReading OdometerReading `json:"odometerReading"`
+	// RequestedTimestamp is the timestamp that was requested (if any).
+	RequestedTimestamp *time.Time `json:"requestedTimestamp,omitempty"`
+}
+
+// OdometerReading represents an odometer reading with metadata.
+type OdometerReading struct {
+	Value     float64   `json:"value"`
+	Unit      string    `json:"unit"` // "km" or "miles"
+	Timestamp time.Time `json:"timestamp"`
+}
+
+// VehicleHealthVCSubject represents the subject of the VehicleHealthVC.
+type VehicleHealthVCSubject struct {
+	VehicleDID cloudevent.ERC721DID `json:"vehicleDID,omitempty"`
+	// HealthStatus contains the vehicle health information.
+	HealthStatus VehicleHealthStatus `json:"healthStatus"`
+	// SearchedTimeRange is the time range that was searched.
+	SearchedTimeRange TimeRange `json:"searchedTimeRange"`
+}
+
+// VehicleHealthStatus represents the health status of a vehicle.
+type VehicleHealthStatus struct {
+	// DTCs contains diagnostic trouble codes found.
+	DTCs []DiagnosticTroubleCode `json:"dtcs"`
+	// TirePressure contains tire pressure readings.
+	TirePressure *TirePressureStatus `json:"tirePressure,omitempty"`
+	// HealthScore is an overall health score (0-100).
+	HealthScore int `json:"healthScore"`
+	// IsHealthy indicates if the vehicle is considered healthy.
+	IsHealthy bool `json:"isHealthy"`
+	// LastUpdated is when this health status was last updated.
+	LastUpdated time.Time `json:"lastUpdated"`
+}
+
+// DiagnosticTroubleCode represents a DTC.
+type DiagnosticTroubleCode struct {
+	Code        string    `json:"code"`
+	Description string    `json:"description,omitempty"`
+	Severity    string    `json:"severity"` // "info", "warning", "critical"
+	Timestamp   time.Time `json:"timestamp"`
+}
+
+// TirePressureStatus represents tire pressure readings.
+type TirePressureStatus struct {
+	FrontLeft  *float64  `json:"frontLeft,omitempty"`
+	FrontRight *float64  `json:"frontRight,omitempty"`
+	RearLeft   *float64  `json:"rearLeft,omitempty"`
+	RearRight  *float64  `json:"rearRight,omitempty"`
+	Unit       string    `json:"unit"` // "psi" or "kpa"
+	IsNormal   bool      `json:"isNormal"`
+	Timestamp  time.Time `json:"timestamp"`
 }

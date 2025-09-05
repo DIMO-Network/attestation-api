@@ -4,12 +4,16 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/DIMO-Network/attestation-api/internal/attestation/odometerstatementvc"
 	"github.com/DIMO-Network/attestation-api/internal/attestation/repos/fingerprint"
 	"github.com/DIMO-Network/attestation-api/internal/attestation/repos/vcrepo"
+	"github.com/DIMO-Network/attestation-api/internal/attestation/vehiclehealthvc"
+	"github.com/DIMO-Network/attestation-api/internal/attestation/vehiclepositionvc"
 	"github.com/DIMO-Network/attestation-api/internal/attestation/vinvc"
 	"github.com/DIMO-Network/attestation-api/internal/client/dex"
 	"github.com/DIMO-Network/attestation-api/internal/client/fetchapi"
 	"github.com/DIMO-Network/attestation-api/internal/client/identity"
+	"github.com/DIMO-Network/attestation-api/internal/client/telemetryapi"
 	"github.com/DIMO-Network/attestation-api/internal/client/tokencache"
 	"github.com/DIMO-Network/attestation-api/internal/client/vinvalidator"
 	"github.com/DIMO-Network/attestation-api/internal/config"
@@ -64,8 +68,23 @@ func createControllers(logger *zerolog.Logger, settings *config.Settings) (*http
 		return nil, nil, fmt.Errorf("failed to create identity service: %w", err)
 	}
 
+	// Initialize telemetry API client
+	telemetryAPI, err := telemetryapi.NewService(settings.TelemetryURL, nil)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to create telemetry service: %w", err)
+	}
+
 	// Initialize VC service using the initialized services
 	vinvcService := vinvc.NewService(logger, vcRepo, identityAPI, fingerprintRepo, vinValidateSerivce, settings, privateKey)
+
+	// Initialize VehiclePositionVC service
+	vehiclePositionService := vehiclepositionvc.NewService(vcRepo, identityAPI, telemetryAPI, settings, privateKey)
+
+	// Initialize OdometerStatementVC service
+	odometerStatementService := odometerstatementvc.NewService(vcRepo, identityAPI, telemetryAPI, settings, privateKey)
+
+	// Initialize VehicleHealthVC service
+	vehicleHealthService := vehiclehealthvc.NewService(vcRepo, identityAPI, telemetryAPI, settings, privateKey)
 
 	// conRepo := connectivity.NewConnectivityRepo(chConn, s3Client, settings.AutoPiDataType, settings.AutoPiBucketName, settings.HashDogDataType, settings.HashDogBucketName, settings.StatusDataType, settings.StatusBucketName, settings.CloudEventBucket)
 
@@ -74,7 +93,7 @@ func createControllers(logger *zerolog.Logger, settings *config.Settings) (*http
 	// 	return nil, nil, fmt.Errorf("failed to create POM service: %w", err)
 	// }
 
-	ctrl, err := httphandlers.NewVCController(vinvcService, nil, settings.TelemetryURL)
+	ctrl, err := httphandlers.NewVCController(vinvcService, nil, vehiclePositionService, odometerStatementService, vehicleHealthService, settings.TelemetryURL)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to create VC controller: %w", err)
 	}

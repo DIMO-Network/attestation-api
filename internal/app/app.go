@@ -75,6 +75,19 @@ func setupHttpServer(logger *zerolog.Logger, settings *config.Settings, httpCtrl
 	}))
 	app.Post("/v2/attestation/vin/:"+httphandlers.TokenIDParam, jwtAuth, vinMiddleware, httpCtrl.CreateVINAttestation)
 
+	// Vehicle position attestation endpoint
+	locationMiddleware := auth.AllOf(vehicleAddr, "tokenId", []privileges.Privilege{privileges.VehicleAllTimeLocation})
+	app.Post("/v2/attestation/position/:"+httphandlers.TokenIDParam, jwtAuth, locationMiddleware, httpCtrl.CreateVehiclePositionAttestation)
+
+	// Odometer and health attestation endpoints
+	// OdometerStatement requires basic vehicle access
+	odometerMiddleware := auth.AllOf(vehicleAddr, "tokenId", []privileges.Privilege{privileges.VehicleNonLocationData})
+	app.Post("/v2/attestation/odometer-statement/:"+httphandlers.TokenIDParam, jwtAuth, odometerMiddleware, httpCtrl.CreateOdometerStatementAttestation)
+
+	// VehicleHealth requires location privilege as it includes health data over time
+	healthMiddleware := auth.AllOf(vehicleAddr, "tokenId", []privileges.Privilege{privileges.VehicleNonLocationData, privileges.VehicleAllTimeLocation})
+	app.Post("/v2/attestation/vehicle-health/:"+httphandlers.TokenIDParam, jwtAuth, healthMiddleware, httpCtrl.CreateVehicleHealthAttestation)
+
 	// pomMiddleware := auth.AllOf(vehicleAddr, "tokenId", []privileges.Privilege{privileges.VehicleAllTimeLocation})
 	// app.Post("/v1/vc/pom/:"+httphandlers.TokenIDParam, jwtAuth, pomMiddleware, httpCtrl.GetPOMVC)
 
