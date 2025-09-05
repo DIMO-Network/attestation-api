@@ -7,11 +7,11 @@ import (
 	"strings"
 
 	"github.com/DIMO-Network/attestation-api/internal/client/fetchapi"
-	"github.com/DIMO-Network/attestation-api/internal/controllers/ctrlerrors"
 	"github.com/DIMO-Network/attestation-api/internal/models"
 	"github.com/DIMO-Network/cloudevent"
 	"github.com/DIMO-Network/fetch-api/pkg/grpc"
 	"github.com/DIMO-Network/model-garage/pkg/modules"
+	"github.com/DIMO-Network/server-garage/pkg/richerrors"
 	"github.com/DIMO-Network/shared/pkg/vin"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -47,10 +47,10 @@ func (s *Service) GetLatestFingerprintMessages(ctx context.Context, vehicleDID c
 	dataObj, err := s.fetchService.GetLatestCloudEvent(ctx, opts)
 	if err != nil {
 		if status.Code(err) == codes.NotFound {
-			return nil, ctrlerrors.Error{
-				Code:          http.StatusBadRequest,
-				InternalError: err,
-				ExternalMsg:   "No fingerprint message found",
+			return nil, richerrors.Error{
+				Code:        http.StatusBadRequest,
+				Err:         err,
+				ExternalMsg: "No fingerprint message found",
 			}
 		}
 		return nil, fmt.Errorf("failed to get fingerprint message: %w", err)
@@ -67,19 +67,19 @@ func (s *Service) decodeFingerprintMessage(ctx context.Context, msg cloudevent.R
 	var err error
 	fp, err := modules.ConvertToFingerprint(ctx, msg.Source, msg)
 	if err != nil {
-		return nil, ctrlerrors.Error{
-			Code:          http.StatusBadRequest,
-			InternalError: err,
-			ExternalMsg:   "Failed to extract VIN from vehicle payload",
+		return nil, richerrors.Error{
+			Code:        http.StatusBadRequest,
+			Err:         err,
+			ExternalMsg: "Failed to extract VIN from vehicle payload",
 		}
 	}
 	vinVal = fp.VIN
 
 	if vinVal == "" {
-		return nil, ctrlerrors.Error{
-			Code:          http.StatusBadRequest,
-			InternalError: decodeError("missing vin"),
-			ExternalMsg:   "Vehicle payload was missing VIN",
+		return nil, richerrors.Error{
+			Code:        http.StatusBadRequest,
+			Err:         decodeError("missing vin"),
+			ExternalMsg: "Vehicle payload was missing VIN",
 		}
 	}
 	// Minor cleaning.
@@ -87,10 +87,10 @@ func (s *Service) decodeFingerprintMessage(ctx context.Context, msg cloudevent.R
 
 	// We have seen crazy VINs like "\u000" before.
 	if !validateVIN(vinVal) {
-		return nil, ctrlerrors.Error{
-			Code:          http.StatusBadRequest,
-			InternalError: decodeError("invalid vin " + vinVal),
-			ExternalMsg:   fmt.Sprintf("VIN in vehicle payload failed validation rules %s", vinVal),
+		return nil, richerrors.Error{
+			Code:        http.StatusBadRequest,
+			Err:         decodeError("invalid vin " + vinVal),
+			ExternalMsg: fmt.Sprintf("VIN in vehicle payload failed validation rules %s", vinVal),
 		}
 	}
 	return &models.DecodedFingerprintData{

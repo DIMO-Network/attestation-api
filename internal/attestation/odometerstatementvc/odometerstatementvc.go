@@ -4,18 +4,20 @@ import (
 	"context"
 	"crypto/ecdsa"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"math/big"
+	"net/http"
 	"time"
 
 	"github.com/DIMO-Network/attestation-api/internal/client/telemetryapi"
 	"github.com/DIMO-Network/attestation-api/internal/config"
-	"github.com/DIMO-Network/attestation-api/internal/controllers/ctrlerrors"
 	"github.com/DIMO-Network/attestation-api/internal/erc191"
 	"github.com/DIMO-Network/attestation-api/internal/sources"
 	"github.com/DIMO-Network/attestation-api/pkg/types"
 	"github.com/DIMO-Network/cloudevent"
 	"github.com/DIMO-Network/model-garage/pkg/vss"
+	"github.com/DIMO-Network/server-garage/pkg/richerrors"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/segmentio/ksuid"
 )
@@ -63,7 +65,7 @@ func (s *Service) CreateOdometerStatementVC(ctx context.Context, tokenID uint32,
 
 	odometerReading, err := s.getOdometerReading(ctx, vehicleDID, timestamp, jwtToken)
 	if err != nil {
-		return ctrlerrors.Error{InternalError: err, ExternalMsg: "Failed to get odometer reading"}
+		return err
 	}
 
 	subject := types.OdometerStatementVCSubject{
@@ -74,11 +76,11 @@ func (s *Service) CreateOdometerStatementVC(ctx context.Context, tokenID uint32,
 
 	vc, err := s.createAttestation(subject)
 	if err != nil {
-		return ctrlerrors.Error{InternalError: err, ExternalMsg: "Failed to create OdometerStatementVC"}
+		return richerrors.Error{Err: err, ExternalMsg: "Failed to create OdometerStatementVC", Code: http.StatusInternalServerError}
 	}
 
 	if err = s.vcRepo.UploadAttestation(ctx, vc); err != nil {
-		return ctrlerrors.Error{InternalError: err, ExternalMsg: "Failed to store OdometerStatementVC"}
+		return richerrors.Error{Err: err, ExternalMsg: "Failed to store OdometerStatementVC", Code: http.StatusInternalServerError}
 	}
 
 	return nil
@@ -104,7 +106,11 @@ func (s *Service) getOdometerReading(ctx context.Context, vehicleInfo cloudevent
 
 		records, err = s.telemetryAPI.GetHistoricalDataWithAuth(ctx, options, jwtToken)
 		if err != nil {
-			return nil, fmt.Errorf("failed to get odometer telemetry data: %w", err)
+			return nil, richerrors.Error{
+				Code:        http.StatusInternalServerError,
+				Err:         err,
+				ExternalMsg: "Failed to get odometer telemetry data",
+			}
 		}
 
 		// Find closest odometer reading
@@ -118,7 +124,11 @@ func (s *Service) getOdometerReading(ctx context.Context, vehicleInfo cloudevent
 		Signals:  []string{vss.FieldPowertrainTransmissionTravelledDistance},
 	})
 	if err != nil {
-		return nil, fmt.Errorf("failed to get latest telemetry data: %w", err)
+		return nil, richerrors.Error{
+			Code:        http.StatusInternalServerError,
+			Err:         err,
+			ExternalMsg: "Failed to get latest telemetry data",
+		}
 	}
 
 	return s.findClosestOdometerFromTelemetry(records, time.Now())
@@ -141,7 +151,11 @@ func (s *Service) findClosestOdometerFromTelemetry(signals []telemetryapi.Signal
 	}
 
 	if closestSignal == nil {
-		return nil, fmt.Errorf("no odometer data found")
+		return nil, richerrors.Error{
+			Code:        http.StatusNotFound,
+			Err:         errors.New("no odometer data found"),
+			ExternalMsg: "No odometer data found",
+		}
 	}
 
 	return &types.OdometerReading{

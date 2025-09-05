@@ -8,17 +8,17 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"net/http"
 	"time"
 
 	"github.com/DIMO-Network/attestation-api/internal/config"
-	"github.com/DIMO-Network/attestation-api/internal/controllers/ctrlerrors"
 	"github.com/DIMO-Network/attestation-api/internal/erc191"
 	"github.com/DIMO-Network/attestation-api/internal/models"
 	"github.com/DIMO-Network/attestation-api/internal/sources"
 	"github.com/DIMO-Network/attestation-api/pkg/types"
 	"github.com/DIMO-Network/cloudevent"
+	"github.com/DIMO-Network/server-garage/pkg/richerrors"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/gofiber/fiber/v2"
 	"github.com/rs/zerolog"
 	"github.com/segmentio/ksuid"
 )
@@ -81,7 +81,7 @@ func (v *Service) CreateAndStoreVINAttestation(ctx context.Context, tokenID uint
 	}
 	err = v.vcRepo.UploadAttestation(ctx, rawVC)
 	if err != nil {
-		return nil, ctrlerrors.Error{InternalError: err, ExternalMsg: "Failed to store VC"}
+		return nil, richerrors.Error{Err: err, ExternalMsg: "Failed to store VC", Code: http.StatusInternalServerError}
 	}
 	return rawVC, nil
 }
@@ -95,7 +95,7 @@ func (v *Service) createVINAttestation(ctx context.Context, tokenID uint32) (*cl
 	}
 	vehicleInfo, err := v.identityAPI.GetVehicleInfo(ctx, vehicleDID)
 	if err != nil {
-		return nil, ctrlerrors.Error{InternalError: err, ExternalMsg: "Failed to get vehicle info"}
+		return nil, richerrors.Error{Err: err, ExternalMsg: "Failed to get vehicle info", Code: http.StatusInternalServerError}
 	}
 
 	// get a valid VIN for the vehilce
@@ -119,7 +119,7 @@ func (v *Service) createVINAttestation(ctx context.Context, tokenID uint32) (*cl
 	expTime := time.Now().AddDate(0, 0, daysInWeek-int(time.Now().Weekday())).UTC().Truncate(time.Hour * 24)
 	rawVC, err := v.compileVINAttestation(vinSubject, expTime)
 	if err != nil {
-		return nil, ctrlerrors.Error{InternalError: err, ExternalMsg: "Failed to create VC"}
+		return nil, richerrors.Error{Err: err, ExternalMsg: "Failed to create VC", Code: http.StatusInternalServerError}
 	}
 
 	return rawVC, nil
@@ -128,7 +128,7 @@ func (v *Service) createVINAttestation(ctx context.Context, tokenID uint32) (*cl
 // getValidFingerPrint validates and reconciles VINs from the paired devices.
 func (v *Service) getValidFingerPrint(ctx context.Context, vehicleInfo *models.VehicleInfo, countryCode string) (*models.DecodedFingerprintData, error) {
 	if len(vehicleInfo.PairedDevices) == 0 {
-		return nil, fiber.NewError(fiber.StatusBadRequest, "No paired devices")
+		return nil, richerrors.Error{Err: errors.New("no paired devices"), ExternalMsg: "No paired devices", Code: http.StatusBadRequest}
 	}
 	var latestFP *models.DecodedFingerprintData
 
@@ -136,11 +136,11 @@ func (v *Service) getValidFingerPrint(ctx context.Context, vehicleInfo *models.V
 	for _, device := range vehicleInfo.PairedDevices {
 		fingerprint, err := v.fingerprintRepo.GetLatestFingerprintMessages(ctx, vehicleInfo.DID, device)
 		if err != nil {
-			var ctrlErr ctrlerrors.Error
-			if !errors.As(err, &ctrlErr) {
+			var richErr richerrors.Error
+			if !errors.As(err, &richErr) {
 				// log the error and continue to the next device if possible
 				msg := fmt.Sprintf("Failed to get latest vin message for device %s", device.DID.String())
-				err = ctrlerrors.Error{InternalError: err, ExternalMsg: msg}
+				err = richerrors.Error{Err: err, ExternalMsg: msg, Code: http.StatusInternalServerError}
 			}
 			fingerprintErr = errors.Join(fingerprintErr, err)
 			continue
@@ -157,12 +157,12 @@ func (v *Service) getValidFingerPrint(ctx context.Context, vehicleInfo *models.V
 	}
 	decodedNameSlug, err := v.vinAPI.DecodeVIN(ctx, latestFP.VIN, countryCode)
 	if err != nil {
-		return nil, ctrlerrors.Error{InternalError: err, ExternalMsg: "Server failed to decode VIN"}
+		return nil, richerrors.Error{Err: err, ExternalMsg: "Server failed to decode VIN", Code: http.StatusInternalServerError}
 	}
 	if decodedNameSlug != vehicleInfo.NameSlug {
 		message := fmt.Sprintf("Invalid VIN Decoding expected: %s got: %s", vehicleInfo.NameSlug, decodedNameSlug)
 		err := fmt.Errorf("decodedNameSlug: %s != identityNameSlug: %s vin = %s", decodedNameSlug, vehicleInfo.NameSlug, latestFP.VIN)
-		return nil, ctrlerrors.Error{InternalError: err, ExternalMsg: message, Code: fiber.StatusBadRequest}
+		return nil, richerrors.Error{Err: err, ExternalMsg: message, Code: http.StatusBadRequest}
 	}
 
 	return latestFP, nil
@@ -192,12 +192,12 @@ func (v *Service) CreateManualVINAttestation(ctx context.Context, tokenID uint32
 	expTime := time.Now().AddDate(10, 0, 0).UTC().Truncate(time.Hour * 24)
 	rawVC, err := v.compileVINAttestation(vinSubject, expTime)
 	if err != nil {
-		return nil, ctrlerrors.Error{InternalError: err, ExternalMsg: "Failed to create VC"}
+		return nil, richerrors.Error{Err: err, ExternalMsg: "Failed to create VC", Code: http.StatusInternalServerError}
 	}
 
 	err = v.vcRepo.UploadAttestation(ctx, rawVC)
 	if err != nil {
-		return nil, ctrlerrors.Error{InternalError: err, ExternalMsg: "Failed to store VC"}
+		return nil, richerrors.Error{Err: err, ExternalMsg: "Failed to store VC", Code: http.StatusInternalServerError}
 	}
 	return rawVC, nil
 }

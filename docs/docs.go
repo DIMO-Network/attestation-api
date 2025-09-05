@@ -78,7 +78,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_controllers_httphandlers.getVCResponse"
+                            "$ref": "#/definitions/internal_controllers_httphandlers.successResponse"
                         }
                     }
                 }
@@ -124,7 +124,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_controllers_httphandlers.getVCResponse"
+                            "$ref": "#/definitions/internal_controllers_httphandlers.successResponse"
                         }
                     }
                 }
@@ -170,7 +170,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_controllers_httphandlers.getVCResponse"
+                            "$ref": "#/definitions/internal_controllers_httphandlers.successResponse"
                         }
                     }
                 }
@@ -220,7 +220,8 @@ const docTemplate = `{
             "properties": {
                 "timestamp": {
                     "description": "Optional timestamp",
-                    "type": "string"
+                    "type": "string",
+                    "example": "2021-01-01T00:00:00Z"
                 }
             }
         },
@@ -232,10 +233,12 @@ const docTemplate = `{
             ],
             "properties": {
                 "endTime": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "2021-01-15T00:00:00Z"
                 },
                 "startTime": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "2021-01-01T00:00:00Z"
                 }
             }
         },
@@ -246,7 +249,8 @@ const docTemplate = `{
             ],
             "properties": {
                 "timestamp": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "2021-01-01T00:00:00Z"
                 }
             }
         },
@@ -263,6 +267,9 @@ const docTemplate = `{
                     "type": "string"
                 }
             }
+        },
+        "internal_controllers_httphandlers.successResponse": {
+            "type": "object"
         }
     },
     "securityDefinitions": {

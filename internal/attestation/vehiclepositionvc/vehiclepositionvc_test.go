@@ -7,16 +7,17 @@ import (
 	"crypto/elliptic"
 	"crypto/rand"
 	"encoding/json"
+	"net/http"
 	"testing"
 	"time"
 
 	"github.com/DIMO-Network/attestation-api/internal/attestation/vehiclepositionvc"
 	"github.com/DIMO-Network/attestation-api/internal/client/telemetryapi"
 	"github.com/DIMO-Network/attestation-api/internal/config"
-	"github.com/DIMO-Network/attestation-api/internal/controllers/ctrlerrors"
 	"github.com/DIMO-Network/attestation-api/pkg/types"
 	"github.com/DIMO-Network/cloudevent"
 	"github.com/DIMO-Network/model-garage/pkg/vss"
+	"github.com/DIMO-Network/server-garage/pkg/richerrors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
@@ -222,9 +223,9 @@ func TestCreateVehiclePositionVC_TelemetryAPIError(t *testing.T) {
 
 	// Assert
 	assert.Error(t, err)
-	var ctrlErr ctrlerrors.Error
-	assert.ErrorAs(t, err, &ctrlErr)
-	assert.Equal(t, "Failed to find location data", ctrlErr.ExternalMsg)
+	var richErr richerrors.Error
+	assert.ErrorAs(t, err, &richErr)
+	assert.Equal(t, http.StatusInternalServerError, richErr.Code)
 }
 
 func TestCreateVehiclePositionVC_NoLocationData(t *testing.T) {
@@ -245,9 +246,9 @@ func TestCreateVehiclePositionVC_NoLocationData(t *testing.T) {
 
 	// Assert
 	assert.Error(t, err)
-	var ctrlErr ctrlerrors.Error
-	assert.ErrorAs(t, err, &ctrlErr)
-	assert.Equal(t, "Failed to find location data", ctrlErr.ExternalMsg)
+	var richErr richerrors.Error
+	assert.ErrorAs(t, err, &richErr)
+	assert.Equal(t, http.StatusNotFound, richErr.Code)
 }
 
 func TestCreateVehiclePositionVC_VCRepoError(t *testing.T) {
@@ -285,7 +286,7 @@ func TestCreateVehiclePositionVC_VCRepoError(t *testing.T) {
 
 	// Assert
 	assert.Error(t, err)
-	var ctrlErr ctrlerrors.Error
-	assert.ErrorAs(t, err, &ctrlErr)
-	assert.Equal(t, "Failed to store VehiclePositionVC", ctrlErr.ExternalMsg)
+	var richErr richerrors.Error
+	assert.ErrorAs(t, err, &richErr)
+	assert.Equal(t, http.StatusInternalServerError, richErr.Code)
 }
