@@ -3,13 +3,16 @@ definitions:
     properties:
       timestamp:
         description: Optional timestamp
+        example: "2021-01-01T00:00:00Z"
         type: string
     type: object
   internal_controllers_httphandlers.CreateVehicleHealthVCRequest:
     properties:
       endTime:
+        example: "2021-01-15T00:00:00Z"
         type: string
       startTime:
+        example: "2021-01-01T00:00:00Z"
         type: string
     required:
     - endTime
@@ -18,6 +21,7 @@ definitions:
   internal_controllers_httphandlers.CreateVehiclePositionVCRequest:
     properties:
       timestamp:
+        example: "2021-01-01T00:00:00Z"
         type: string
     required:
     - timestamp
@@ -30,6 +34,8 @@ definitions:
         type: string
       vcUrl:
         type: string
+    type: object
+  internal_controllers_httphandlers.successResponse:
     type: object
 info:
   contact: {}
@@ -75,7 +81,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/internal_controllers_httphandlers.getVCResponse'
+            $ref: '#/definitions/internal_controllers_httphandlers.successResponse'
       security:
       - BearerAuth: []
       summary: Create Odometer Statement Attestation
@@ -105,7 +111,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/internal_controllers_httphandlers.getVCResponse'
+            $ref: '#/definitions/internal_controllers_httphandlers.successResponse'
       security:
       - BearerAuth: []
       summary: Create Vehicle Health Attestation
@@ -135,7 +141,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/internal_controllers_httphandlers.getVCResponse'
+            $ref: '#/definitions/internal_controllers_httphandlers.successResponse'
       security:
       - BearerAuth: []
       summary: Create Vehicle Position Attestation

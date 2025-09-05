@@ -19,9 +19,14 @@ const (
 	// StatusGroupParam is the parameter name for the status group.
 	StatusGroupParam = "group"
 
-	vinvcQuery = "query {vinVCLatest(tokenId: %d) {rawVC}}"
-	pomQuery   = "query {pomVCLatest(tokenId: %d) {rawVC}}"
+	vinvcQuery     = "query {vinVCLatest(tokenId: %d) {rawVC}}"
+	pomQuery       = "query {pomVCLatest(tokenId: %d) {rawVC}}"
+	successMessage = "VC generated successfully, retrieve using the provided telemetry-api."
 )
+
+type successResponse struct {
+	message string
+}
 
 type getVCResponse struct {
 	VCURL   string `json:"vcUrl"`
@@ -160,7 +165,7 @@ func sanitizeTelemetryURL(telemetryURL string) (*url.URL, error) {
 
 // CreateVehiclePositionVCRequest represents the request body for creating a VehiclePositionVC.
 type CreateVehiclePositionVCRequest struct {
-	Timestamp time.Time `json:"timestamp" validate:"required"`
+	Timestamp time.Time `json:"timestamp" validate:"required" example:"2021-01-01T00:00:00Z"`
 }
 
 // @Summary Create Vehicle Position Attestation
@@ -170,7 +175,7 @@ type CreateVehiclePositionVCRequest struct {
 // @Produce json
 // @Param  tokenId path int true "token Id of the vehicle NFT"
 // @Param  request body CreateVehiclePositionVCRequest true "Request body"
-// @Success 200 {object} getVCResponse
+// @Success 200 {object} successResponse
 // @Security     BearerAuth
 // @Router /v2/attestation/vehicle-position/{tokenId} [post]
 func (v *HTTPController) CreateVehiclePositionAttestation(fiberCtx *fiber.Ctx) error {
@@ -206,13 +211,12 @@ func (v *HTTPController) CreateVehiclePositionAttestation(fiberCtx *fiber.Ctx) e
 		return fmt.Errorf("failed to create VehiclePositionVC: %w", err)
 	}
 
-	vehiclePositionQuery := fmt.Sprintf("query {vehiclePositionVCLatest(tokenId: %d) {rawVC}}", tokenID)
-	return fiberCtx.Status(fiber.StatusOK).JSON(v.successResponse(tokenID, vehiclePositionQuery))
+	return fiberCtx.Status(fiber.StatusOK).JSON(successResponse{message: successMessage})
 }
 
 // CreateOdometerStatementVCRequest represents the request body for creating an OdometerStatementVC.
 type CreateOdometerStatementVCRequest struct {
-	Timestamp *time.Time `json:"timestamp,omitempty"` // Optional timestamp
+	Timestamp *time.Time `json:"timestamp,omitempty" example:"2021-01-01T00:00:00Z"` // Optional timestamp
 }
 
 // @Summary Create Odometer Statement Attestation
@@ -222,7 +226,7 @@ type CreateOdometerStatementVCRequest struct {
 // @Produce json
 // @Param  tokenId path int true "token Id of the vehicle NFT"
 // @Param  request body CreateOdometerStatementVCRequest false "Request body"
-// @Success 200 {object} getVCResponse
+// @Success 200 {object} successResponse
 // @Security     BearerAuth
 // @Router /v2/attestation/odometer-statement/{tokenId} [post]
 func (v *HTTPController) CreateOdometerStatementAttestation(fiberCtx *fiber.Ctx) error {
@@ -257,14 +261,13 @@ func (v *HTTPController) CreateOdometerStatementAttestation(fiberCtx *fiber.Ctx)
 		return fmt.Errorf("failed to create OdometerStatementVC: %w", err)
 	}
 
-	odometerQuery := fmt.Sprintf("query {odometerStatementVCLatest(tokenId: %d) {rawVC}}", tokenID)
-	return fiberCtx.Status(fiber.StatusOK).JSON(v.successResponse(tokenID, odometerQuery))
+	return fiberCtx.Status(fiber.StatusOK).JSON(successResponse{message: successMessage})
 }
 
 // CreateVehicleHealthVCRequest represents the request body for creating a VehicleHealthVC.
 type CreateVehicleHealthVCRequest struct {
-	StartTime time.Time `json:"startTime" validate:"required"`
-	EndTime   time.Time `json:"endTime" validate:"required"`
+	StartTime time.Time `json:"startTime" validate:"required" example:"2021-01-01T00:00:00Z"`
+	EndTime   time.Time `json:"endTime" validate:"required" example:"2021-01-15T00:00:00Z"`
 }
 
 // @Summary Create Vehicle Health Attestation
@@ -274,7 +277,7 @@ type CreateVehicleHealthVCRequest struct {
 // @Produce json
 // @Param  tokenId path int true "token Id of the vehicle NFT"
 // @Param  request body CreateVehicleHealthVCRequest true "Request body"
-// @Success 200 {object} getVCResponse
+// @Success 200 {object} successResponse
 // @Security     BearerAuth
 // @Router /v2/attestation/vehicle-health/{tokenId} [post]
 func (v *HTTPController) CreateVehicleHealthAttestation(fiberCtx *fiber.Ctx) error {
@@ -321,6 +324,5 @@ func (v *HTTPController) CreateVehicleHealthAttestation(fiberCtx *fiber.Ctx) err
 		return fmt.Errorf("failed to create VehicleHealthVC: %w", err)
 	}
 
-	vehicleHealthQuery := fmt.Sprintf("query {vehicleHealthVCLatest(tokenId: %d) {rawVC}}", tokenID)
-	return fiberCtx.Status(fiber.StatusOK).JSON(v.successResponse(tokenID, vehicleHealthQuery))
+	return fiberCtx.Status(fiber.StatusOK).JSON(successResponse{message: successMessage})
 }

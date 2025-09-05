@@ -69,7 +69,7 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_controllers_httphandlers.getVCResponse"
+                            "$ref": "#/definitions/internal_controllers_httphandlers.successResponse"
                         }
                     }
                 }
@@ -115,7 +115,7 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_controllers_httphandlers.getVCResponse"
+                            "$ref": "#/definitions/internal_controllers_httphandlers.successResponse"
                         }
                     }
                 }
@@ -161,7 +161,7 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_controllers_httphandlers.getVCResponse"
+                            "$ref": "#/definitions/internal_controllers_httphandlers.successResponse"
                         }
                     }
                 }
@@ -211,7 +211,8 @@
             "properties": {
                 "timestamp": {
                     "description": "Optional timestamp",
-                    "type": "string"
+                    "type": "string",
+                    "example": "2021-01-01T00:00:00Z"
                 }
             }
         },
@@ -223,10 +224,12 @@
             ],
             "properties": {
                 "endTime": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "2021-01-15T00:00:00Z"
                 },
                 "startTime": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "2021-01-01T00:00:00Z"
                 }
             }
         },
@@ -237,7 +240,8 @@
             ],
             "properties": {
                 "timestamp": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "2021-01-01T00:00:00Z"
                 }
             }
         },
@@ -254,6 +258,9 @@
                     "type": "string"
                 }
             }
+        },
+        "internal_controllers_httphandlers.successResponse": {
+            "type": "object"
         }
     },
     "securityDefinitions": {
