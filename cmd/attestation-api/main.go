@@ -14,6 +14,7 @@ import (
 	_ "github.com/DIMO-Network/attestation-api/docs"
 	"github.com/DIMO-Network/attestation-api/internal/app"
 	"github.com/DIMO-Network/attestation-api/internal/config"
+	"github.com/DIMO-Network/server-garage/pkg/env"
 	"github.com/DIMO-Network/server-garage/pkg/monserver"
 	"github.com/DIMO-Network/server-garage/pkg/runner"
 	"github.com/rs/zerolog"
@@ -46,9 +47,9 @@ func main() {
 
 	runnerGroup, runnerCtx := errgroup.WithContext(mainCtx)
 	// create a flag for the settings file
-	settingsFile := flag.String("settings", "settings.yaml", "settings file")
+	settingsFile := flag.String("settings", ".env", "settings file")
 	flag.Parse()
-	settings, err := config.LoadSettings(*settingsFile)
+	settings, err := env.LoadSettings[config.Settings](*settingsFile)
 	if err != nil {
 		logger.Fatal().Err(err).Msg("Couldn't load settings.")
 	}
@@ -57,7 +58,7 @@ func main() {
 	logger.Info().Str("port", strconv.Itoa(settings.MonPort)).Msgf("Starting monitoring server")
 	runner.RunHandler(runnerCtx, runnerGroup, monApp, ":"+strconv.Itoa(settings.MonPort))
 
-	webServer, rpcServer, err := app.CreateServers(&logger, settings)
+	webServer, rpcServer, err := app.CreateServers(&logger, &settings)
 	if err != nil {
 		logger.Fatal().Err(err).Msg("Failed to create servers.")
 	}
