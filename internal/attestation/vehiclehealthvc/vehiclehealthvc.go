@@ -12,12 +12,12 @@ import (
 
 	"github.com/DIMO-Network/attestation-api/internal/client/telemetryapi"
 	"github.com/DIMO-Network/attestation-api/internal/config"
-	"github.com/DIMO-Network/attestation-api/internal/controllers/ctrlerrors"
 	"github.com/DIMO-Network/attestation-api/internal/erc191"
 	"github.com/DIMO-Network/attestation-api/internal/sources"
 	"github.com/DIMO-Network/attestation-api/pkg/types"
 	"github.com/DIMO-Network/cloudevent"
 	"github.com/DIMO-Network/model-garage/pkg/vss"
+	"github.com/DIMO-Network/server-garage/pkg/richerrors"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/segmentio/ksuid"
 )
@@ -70,7 +70,7 @@ func (s *Service) CreateVehicleHealthVC(ctx context.Context, tokenID uint32, sta
 
 	healthStatus, err := s.analyzeVehicleHealth(ctx, &vehicleDID, startTime, endTime, jwtToken)
 	if err != nil {
-		return ctrlerrors.Error{InternalError: err, ExternalMsg: "Failed to analyze vehicle health"}
+		return richerrors.Error{Err: err, ExternalMsg: "Failed to analyze vehicle health"}
 	}
 
 	subject := types.VehicleHealthVCSubject{
@@ -84,11 +84,11 @@ func (s *Service) CreateVehicleHealthVC(ctx context.Context, tokenID uint32, sta
 
 	vc, err := s.createAttestation(subject)
 	if err != nil {
-		return ctrlerrors.Error{InternalError: err, ExternalMsg: "Failed to create VehicleHealthVC"}
+		return richerrors.Error{Err: err, ExternalMsg: "Failed to create VehicleHealthVC"}
 	}
 
 	if err = s.vcRepo.UploadAttestation(ctx, vc); err != nil {
-		return ctrlerrors.Error{InternalError: err, ExternalMsg: "Failed to store VehicleHealthVC"}
+		return richerrors.Error{Err: err, ExternalMsg: "Failed to store VehicleHealthVC"}
 	}
 
 	return nil

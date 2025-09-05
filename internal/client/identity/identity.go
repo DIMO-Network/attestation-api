@@ -82,13 +82,13 @@ func (s *Service) GetVehicleInfo(ctx context.Context, vehicleDID cloudevent.ERC7
 	}
 	defer resp.Body.Close() //nolint:errcheck // ignore error
 
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("non-200 response from GraphQL API: %d", resp.StatusCode)
-	}
-
 	bodyBytes, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read GraphQL response body: %w", err)
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("non-200 response from GraphQL API %d; %s", resp.StatusCode, string(bodyBytes))
 	}
 
 	var respBody graphQLResponse

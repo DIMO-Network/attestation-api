@@ -8,7 +8,6 @@ type Settings struct {
 	GRPCPort                  int    `env:"GRPC_PORT"`
 	DefinitionsGRPCAddr       string `env:"DEFINITIONS_GRPC_ADDR"`
 	TokenExchangeJWTKeySetURL string `env:"TOKEN_EXCHANGE_JWK_KEY_SET_URL"`
-	TokenExchangeIssuer       string `env:"TOKEN_EXCHANGE_ISSUER_URL"`
 	VehicleNFTAddress         string `env:"VEHICLE_NFT_ADDRESS"`
 	AfterMarketNFTAddress     string `env:"AFTERMARKET_NFT_ADDRESS"`
 	SyntheticNFTAddress       string `env:"SYNTHETIC_NFT_ADDRESS"`

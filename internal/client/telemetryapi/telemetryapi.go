@@ -124,13 +124,12 @@ func (s *Service) executeQueryWithAuth(ctx context.Context, requestBody map[stri
 	}
 	defer resp.Body.Close() //nolint:errcheck // ignore error
 
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("non-200 response from GraphQL API: %d", resp.StatusCode)
-	}
-
 	bodyBytes, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return fmt.Errorf("failed to read GraphQL response body: %w", err)
+	}
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("non-200 response from GraphQL API %d; %s", resp.StatusCode, string(bodyBytes))
 	}
 
 	if err := json.Unmarshal(bodyBytes, response); err != nil {

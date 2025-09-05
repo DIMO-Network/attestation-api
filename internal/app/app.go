@@ -1,15 +1,12 @@
 package app
 
 import (
-	"errors"
-	"strings"
-
 	"github.com/DIMO-Network/attestation-api/internal/config"
-	"github.com/DIMO-Network/attestation-api/internal/controllers/ctrlerrors"
 	"github.com/DIMO-Network/attestation-api/internal/controllers/httphandlers"
 	"github.com/DIMO-Network/attestation-api/internal/controllers/rpc"
 	"github.com/DIMO-Network/attestation-api/pkg/auth"
 	attgrpc "github.com/DIMO-Network/attestation-api/pkg/grpc"
+	"github.com/DIMO-Network/server-garage/pkg/fibercommon"
 	"github.com/DIMO-Network/shared/pkg/middleware/metrics"
 	"github.com/DIMO-Network/shared/pkg/middleware/privilegetoken"
 	"github.com/DIMO-Network/shared/pkg/privileges"
@@ -40,9 +37,7 @@ func CreateServers(logger *zerolog.Logger, settings *config.Settings) (*fiber.Ap
 }
 func setupHttpServer(logger *zerolog.Logger, settings *config.Settings, httpCtrl *httphandlers.HTTPController) *fiber.App {
 	app := fiber.New(fiber.Config{
-		ErrorHandler: func(c *fiber.Ctx, err error) error {
-			return ErrorHandler(c, err, logger)
-		},
+		ErrorHandler:          fibercommon.ErrorHandler,
 		DisableStartupMessage: true,
 	})
 
@@ -65,7 +60,7 @@ func setupHttpServer(logger *zerolog.Logger, settings *config.Settings, httpCtrl
 
 	vehicleAddr := common.HexToAddress(settings.VehicleNFTAddress)
 
-	vinMiddleware := auth.AllOf(vehicleAddr, "tokenId", []privileges.Privilege{privileges.VehicleVinCredential})
+	vinMiddleware := auth.AllOf(vehicleAddr, httphandlers.TokenIDParam, []privileges.Privilege{privileges.VehicleVinCredential})
 	// redirect v1 to v2
 	app.Use(redirect.New(redirect.Config{
 		Rules: map[string]string{
@@ -76,20 +71,17 @@ func setupHttpServer(logger *zerolog.Logger, settings *config.Settings, httpCtrl
 	app.Post("/v2/attestation/vin/:"+httphandlers.TokenIDParam, jwtAuth, vinMiddleware, httpCtrl.CreateVINAttestation)
 
 	// Vehicle position attestation endpoint
-	locationMiddleware := auth.AllOf(vehicleAddr, "tokenId", []privileges.Privilege{privileges.VehicleAllTimeLocation})
-	app.Post("/v2/attestation/position/:"+httphandlers.TokenIDParam, jwtAuth, locationMiddleware, httpCtrl.CreateVehiclePositionAttestation)
+	locationMiddleware := auth.AllOf(vehicleAddr, httphandlers.TokenIDParam, []privileges.Privilege{privileges.VehicleAllTimeLocation})
+	app.Post("/v2/attestation/vehicle-position/:"+httphandlers.TokenIDParam, jwtAuth, locationMiddleware, httpCtrl.CreateVehiclePositionAttestation)
 
 	// Odometer and health attestation endpoints
 	// OdometerStatement requires basic vehicle access
-	odometerMiddleware := auth.AllOf(vehicleAddr, "tokenId", []privileges.Privilege{privileges.VehicleNonLocationData})
+	odometerMiddleware := auth.AllOf(vehicleAddr, httphandlers.TokenIDParam, []privileges.Privilege{privileges.VehicleNonLocationData})
 	app.Post("/v2/attestation/odometer-statement/:"+httphandlers.TokenIDParam, jwtAuth, odometerMiddleware, httpCtrl.CreateOdometerStatementAttestation)
 
 	// VehicleHealth requires location privilege as it includes health data over time
-	healthMiddleware := auth.AllOf(vehicleAddr, "tokenId", []privileges.Privilege{privileges.VehicleNonLocationData, privileges.VehicleAllTimeLocation})
+	healthMiddleware := auth.AllOf(vehicleAddr, httphandlers.TokenIDParam, []privileges.Privilege{privileges.VehicleNonLocationData, privileges.VehicleAllTimeLocation})
 	app.Post("/v2/attestation/vehicle-health/:"+httphandlers.TokenIDParam, jwtAuth, healthMiddleware, httpCtrl.CreateVehicleHealthAttestation)
-
-	// pomMiddleware := auth.AllOf(vehicleAddr, "tokenId", []privileges.Privilege{privileges.VehicleAllTimeLocation})
-	// app.Post("/v1/vc/pom/:"+httphandlers.TokenIDParam, jwtAuth, pomMiddleware, httpCtrl.GetPOMVC)
 
 	return app
 }
@@ -107,34 +99,6 @@ func setupRPCServer(logger *zerolog.Logger, rpcCtrl *rpc.Server) *grpc.Server {
 	)
 	attgrpc.RegisterAttestationServiceServer(server, rpcCtrl)
 	return server
-}
-
-// ErrorHandler custom handler to log recovered errors using our logger and return json instead of string
-func ErrorHandler(ctx *fiber.Ctx, err error, logger *zerolog.Logger) error {
-	code := fiber.StatusInternalServerError // Default 500 statuscode
-	message := "Internal error."
-
-	var fiberErr *fiber.Error
-	var ctrlErr ctrlerrors.Error
-	if errors.As(err, &fiberErr) {
-		code = fiberErr.Code
-		message = fiberErr.Message
-	} else if errors.As(err, &ctrlErr) {
-		message = ctrlErr.ExternalMsg
-		if ctrlErr.Code != 0 {
-			code = ctrlErr.Code
-		}
-	}
-
-	// log all errors except 404
-	if code != fiber.StatusNotFound {
-		logger.Err(err).Int("httpStatusCode", code).
-			Str("httpPath", strings.TrimPrefix(ctx.Path(), "/")).
-			Str("httpMethod", ctx.Method()).
-			Msg("caught an error from http request")
-	}
-
-	return ctx.Status(code).JSON(codeResp{Code: code, Message: message})
 }
 
 type codeResp struct {
