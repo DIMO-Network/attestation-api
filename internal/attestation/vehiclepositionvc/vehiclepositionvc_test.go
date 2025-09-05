@@ -7,6 +7,7 @@ import (
 	"crypto/elliptic"
 	"crypto/rand"
 	"encoding/json"
+	"net/http"
 	"testing"
 	"time"
 
@@ -224,7 +225,7 @@ func TestCreateVehiclePositionVC_TelemetryAPIError(t *testing.T) {
 	assert.Error(t, err)
 	var richErr richerrors.Error
 	assert.ErrorAs(t, err, &richErr)
-	assert.Equal(t, "Failed to find location data", richErr.ExternalMsg)
+	assert.Equal(t, http.StatusInternalServerError, richErr.Code)
 }
 
 func TestCreateVehiclePositionVC_NoLocationData(t *testing.T) {
@@ -247,7 +248,7 @@ func TestCreateVehiclePositionVC_NoLocationData(t *testing.T) {
 	assert.Error(t, err)
 	var richErr richerrors.Error
 	assert.ErrorAs(t, err, &richErr)
-	assert.Equal(t, "Failed to find location data", richErr.ExternalMsg)
+	assert.Equal(t, http.StatusNotFound, richErr.Code)
 }
 
 func TestCreateVehiclePositionVC_VCRepoError(t *testing.T) {
@@ -287,5 +288,5 @@ func TestCreateVehiclePositionVC_VCRepoError(t *testing.T) {
 	assert.Error(t, err)
 	var richErr richerrors.Error
 	assert.ErrorAs(t, err, &richErr)
-	assert.Equal(t, "Failed to store VehiclePositionVC", richErr.ExternalMsg)
+	assert.Equal(t, http.StatusInternalServerError, richErr.Code)
 }

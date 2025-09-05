@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"math/big"
+	"net/http"
 	"time"
 
 	"github.com/DIMO-Network/attestation-api/internal/client/telemetryapi"
@@ -66,7 +67,7 @@ func (s *Service) CreateVehiclePositionVC(ctx context.Context, tokenID uint32, r
 
 	location, err := s.findClosestLocation(ctx, vehicleDID, requestedTimestamp, jwtToken)
 	if err != nil {
-		return richerrors.Error{Err: err, ExternalMsg: "Failed to find location data"}
+		return err
 	}
 
 	subject := types.VehiclePositionVCSubject{
@@ -77,11 +78,11 @@ func (s *Service) CreateVehiclePositionVC(ctx context.Context, tokenID uint32, r
 
 	vc, err := s.createAttestation(subject)
 	if err != nil {
-		return richerrors.Error{Err: err, ExternalMsg: "Failed to create VehiclePositionVC"}
+		return richerrors.Error{Err: err, ExternalMsg: "Failed to create VehiclePositionVC", Code: http.StatusInternalServerError}
 	}
 
 	if err = s.vcRepo.UploadAttestation(ctx, vc); err != nil {
-		return richerrors.Error{Err: err, ExternalMsg: "Failed to store VehiclePositionVC"}
+		return richerrors.Error{Err: err, ExternalMsg: "Failed to store VehiclePositionVC", Code: http.StatusInternalServerError}
 	}
 
 	return nil
@@ -104,7 +105,7 @@ func (s *Service) findClosestLocation(ctx context.Context, vehicleInfo cloudeven
 	// Get historical telemetry data
 	signals, err := s.telemetryAPI.GetHistoricalDataWithAuth(ctx, options, jwtToken)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get telemetry data: %w", err)
+		return nil, richerrors.Error{Err: err, ExternalMsg: "Failed to get telemetry data", Code: http.StatusInternalServerError}
 	}
 
 	// Find the location closest to requested timestamp
@@ -122,7 +123,7 @@ func (s *Service) findClosestLocation(ctx context.Context, vehicleInfo cloudeven
 	}
 
 	if closestLocation == nil {
-		return nil, fmt.Errorf("no location data found in telemetry")
+		return nil, richerrors.Error{Err: err, ExternalMsg: "No location data found in telemetry", Code: http.StatusNotFound}
 	}
 
 	return closestLocation, nil

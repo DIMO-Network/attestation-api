@@ -7,6 +7,7 @@ import (
 	"crypto/elliptic"
 	"crypto/rand"
 	"encoding/json"
+	"net/http"
 	"testing"
 	"time"
 
@@ -335,7 +336,7 @@ func TestCreateOdometerStatementVC_TelemetryAPIError(t *testing.T) {
 	assert.Error(t, err)
 	var ctrlErr richerrors.Error
 	assert.ErrorAs(t, err, &ctrlErr)
-	assert.Equal(t, "Failed to get odometer reading", ctrlErr.ExternalMsg)
+	assert.Equal(t, http.StatusInternalServerError, ctrlErr.Code)
 }
 
 func TestCreateOdometerStatementVC_NoOdometerData(t *testing.T) {
@@ -358,7 +359,7 @@ func TestCreateOdometerStatementVC_NoOdometerData(t *testing.T) {
 	assert.Error(t, err)
 	var ctrlErr richerrors.Error
 	assert.ErrorAs(t, err, &ctrlErr)
-	assert.Equal(t, "Failed to get odometer reading", ctrlErr.ExternalMsg)
+	assert.Equal(t, http.StatusNotFound, ctrlErr.Code)
 }
 
 func TestCreateOdometerStatementVC_VCRepoError(t *testing.T) {
@@ -396,5 +397,5 @@ func TestCreateOdometerStatementVC_VCRepoError(t *testing.T) {
 	assert.Error(t, err)
 	var ctrlErr richerrors.Error
 	assert.ErrorAs(t, err, &ctrlErr)
-	assert.Equal(t, "Failed to store OdometerStatementVC", ctrlErr.ExternalMsg)
+	assert.Equal(t, http.StatusInternalServerError, ctrlErr.Code)
 }

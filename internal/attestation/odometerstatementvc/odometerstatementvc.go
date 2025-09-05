@@ -78,11 +78,11 @@ func (s *Service) CreateOdometerStatementVC(ctx context.Context, tokenID uint32,
 
 	vc, err := s.createAttestation(subject)
 	if err != nil {
-		return richerrors.Error{Err: err, ExternalMsg: "Failed to create OdometerStatementVC"}
+		return richerrors.Error{Err: err, ExternalMsg: "Failed to create OdometerStatementVC", Code: http.StatusInternalServerError}
 	}
 
 	if err = s.vcRepo.UploadAttestation(ctx, vc); err != nil {
-		return richerrors.Error{Err: err, ExternalMsg: "Failed to store OdometerStatementVC"}
+		return richerrors.Error{Err: err, ExternalMsg: "Failed to store OdometerStatementVC", Code: http.StatusInternalServerError}
 	}
 
 	return nil

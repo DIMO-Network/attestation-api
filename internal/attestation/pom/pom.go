@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"math"
 	"math/big"
+	"net/http"
 	"slices"
 	"time"
 
@@ -63,7 +64,7 @@ func (s *Service) CreatePOMVC(ctx context.Context, tokenID uint32) error {
 
 	vehicleInfo, err := s.identityAPI.GetVehicleInfo(ctx, vehicleDID)
 	if err != nil {
-		return richerrors.Error{Err: err, ExternalMsg: "Failed to get vehicle info"}
+		return richerrors.Error{Err: err, ExternalMsg: "Failed to get vehicle info", Code: http.StatusInternalServerError}
 	}
 
 	pairedDevice, locations, err := s.getLocationForVehicle(ctx, vehicleInfo)
@@ -72,7 +73,7 @@ func (s *Service) CreatePOMVC(ctx context.Context, tokenID uint32) error {
 		if errors.Is(err, errNoLocation) {
 			msg = "No movement detected in the last 7 days"
 		}
-		return richerrors.Error{Err: err, ExternalMsg: msg}
+		return richerrors.Error{Err: err, ExternalMsg: msg, Code: http.StatusNotFound}
 	}
 
 	pomSubject := types.POMSubject{
@@ -84,11 +85,11 @@ func (s *Service) CreatePOMVC(ctx context.Context, tokenID uint32) error {
 
 	vc, err := s.issuer.CreatePOMVC(pomSubject)
 	if err != nil {
-		return richerrors.Error{Err: err, ExternalMsg: "Failed to create POM VC"}
+		return richerrors.Error{Err: err, ExternalMsg: "Failed to create POM VC", Code: http.StatusInternalServerError}
 	}
 
 	if err = s.vcRepo.StorePOMVC(ctx, vehicleDID.String(), pairedDevice.DID.String(), vc); err != nil {
-		return richerrors.Error{Err: err, ExternalMsg: "Failed to create POM VC"}
+		return richerrors.Error{Err: err, ExternalMsg: "Failed to create POM VC", Code: http.StatusInternalServerError}
 	}
 
 	return nil

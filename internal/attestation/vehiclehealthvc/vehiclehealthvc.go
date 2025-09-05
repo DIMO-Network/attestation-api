@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"math/big"
+	"net/http"
 	"slices"
 	"strings"
 	"time"
@@ -70,7 +71,7 @@ func (s *Service) CreateVehicleHealthVC(ctx context.Context, tokenID uint32, sta
 
 	healthStatus, err := s.analyzeVehicleHealth(ctx, &vehicleDID, startTime, endTime, jwtToken)
 	if err != nil {
-		return richerrors.Error{Err: err, ExternalMsg: "Failed to analyze vehicle health"}
+		return err
 	}
 
 	subject := types.VehicleHealthVCSubject{
@@ -84,11 +85,11 @@ func (s *Service) CreateVehicleHealthVC(ctx context.Context, tokenID uint32, sta
 
 	vc, err := s.createAttestation(subject)
 	if err != nil {
-		return richerrors.Error{Err: err, ExternalMsg: "Failed to create VehicleHealthVC"}
+		return richerrors.Error{Err: err, ExternalMsg: "Failed to create VehicleHealthVC", Code: http.StatusInternalServerError}
 	}
 
 	if err = s.vcRepo.UploadAttestation(ctx, vc); err != nil {
-		return richerrors.Error{Err: err, ExternalMsg: "Failed to store VehicleHealthVC"}
+		return richerrors.Error{Err: err, ExternalMsg: "Failed to store VehicleHealthVC", Code: http.StatusInternalServerError}
 	}
 
 	return nil
@@ -115,11 +116,11 @@ func (s *Service) analyzeVehicleHealth(ctx context.Context, vehicleDID *cloudeve
 	// Get health data from telemetry API
 	signals, err := s.telemetryAPI.GetHistoricalDataWithAuth(ctx, options, jwtToken)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get health telemetry data: %w", err)
+		return nil, richerrors.Error{Err: err, ExternalMsg: "Failed to get health telemetry data", Code: http.StatusInternalServerError}
 	}
 
 	if len(signals) == 0 {
-		return nil, fmt.Errorf("no health data found in the specified time range")
+		return nil, richerrors.Error{Err: err, ExternalMsg: "No health data found in the specified time range", Code: http.StatusNotFound}
 	}
 	slices.SortFunc(signals, func(i, j telemetryapi.Signal) int {
 		// sort in descending order
@@ -224,15 +225,14 @@ func extractDTCsFromTelemetry(signal telemetryapi.Signal) []types.DiagnosticTrou
 
 // updateTirePressureFromTelemetry updates tire pressure data from a telemetry record.
 func updateTirePressureFromTelemetry(signal telemetryapi.Signal, tirePressure *types.TirePressureStatus) *types.TirePressureStatus {
-	if tirePressure == nil {
-		tirePressure = &types.TirePressureStatus{
-			Unit: defaultTirePressureUnit, // Default to kpa
-		}
-	}
-
 	// Check for specific tire pressure signals from schema
 	switch signal.Name {
 	case vss.FieldChassisAxleRow1WheelLeftTirePressure:
+		if tirePressure == nil {
+			tirePressure = &types.TirePressureStatus{
+				Unit: defaultTirePressureUnit, // Default to kpa
+			}
+		}
 		pressureValue, ok := signal.Value.(float64)
 		if !ok || tirePressure.FrontLeft != nil {
 			return tirePressure
@@ -240,6 +240,11 @@ func updateTirePressureFromTelemetry(signal telemetryapi.Signal, tirePressure *t
 		tirePressure.FrontLeft = &pressureValue
 		tirePressure.Timestamp = signal.Timestamp
 	case vss.FieldChassisAxleRow1WheelRightTirePressure:
+		if tirePressure == nil {
+			tirePressure = &types.TirePressureStatus{
+				Unit: defaultTirePressureUnit, // Default to kpa
+			}
+		}
 		pressureValue, ok := signal.Value.(float64)
 		if !ok || tirePressure.FrontRight != nil {
 			return tirePressure
@@ -247,6 +252,11 @@ func updateTirePressureFromTelemetry(signal telemetryapi.Signal, tirePressure *t
 		tirePressure.FrontRight = &pressureValue
 		tirePressure.Timestamp = signal.Timestamp
 	case vss.FieldChassisAxleRow2WheelLeftTirePressure:
+		if tirePressure == nil {
+			tirePressure = &types.TirePressureStatus{
+				Unit: defaultTirePressureUnit, // Default to kpa
+			}
+		}
 		pressureValue, ok := signal.Value.(float64)
 		if !ok || tirePressure.RearLeft != nil {
 			return tirePressure
@@ -254,6 +264,11 @@ func updateTirePressureFromTelemetry(signal telemetryapi.Signal, tirePressure *t
 		tirePressure.RearLeft = &pressureValue
 		tirePressure.Timestamp = signal.Timestamp
 	case vss.FieldChassisAxleRow2WheelRightTirePressure:
+		if tirePressure == nil {
+			tirePressure = &types.TirePressureStatus{
+				Unit: defaultTirePressureUnit, // Default to kpa
+			}
+		}
 		pressureValue, ok := signal.Value.(float64)
 		if !ok || tirePressure.RearRight != nil {
 			return tirePressure
