@@ -1,51 +1,52 @@
 package telemetryapi
 
 import (
+	"fmt"
 	"math/big"
+	"strings"
 	"time"
 )
 
-// GraphQL query to fetch latest telemetry signals.
-const latestSignalsQuery = `
-	query ($tokenId: Int!) {
-		signalsLatest(tokenId: $tokenId) {
-			lastSeen
-			currentLocationLatitude { timestamp value }
-			currentLocationLongitude { timestamp value }
-			currentLocationApproximateLatitude { timestamp value }
-			currentLocationApproximateLongitude { timestamp value }
-			powertrainTransmissionTravelledDistance { timestamp value }
-			speed { timestamp value }
-			obdDTCList { timestamp value }
-			obdStatusDTCCount { timestamp value }
-			chassisAxleRow1WheelLeftTirePressure { timestamp value }
-			chassisAxleRow1WheelRightTirePressure { timestamp value }
-			chassisAxleRow2WheelLeftTirePressure { timestamp value }
-			chassisAxleRow2WheelRightTirePressure { timestamp value }
-		}
+// GenerateLatestSignalsQuery generates a GraphQL query for latest signals based on requested signal names.
+func GenerateLatestSignalsQuery(signals []string) string {
+	if len(signals) == 0 {
+		// Return empty query if no signals requested
+		return `query ($tokenId: Int!) { signalsLatest(tokenId: $tokenId) { lastSeen } }`
 	}
-`
 
-// GraphQL query to fetch historical telemetry data.
-const historicalQuery = `
-	query ($tokenId: Int!, $from: String!, $to: String!) {
-		signals(tokenId: $tokenId, from: $from, to: $to) {
-			timestamp
-			currentLocationLatitude
-			currentLocationLongitude
-			currentLocationApproximateLatitude
-			currentLocationApproximateLongitude
-			powertrainTransmissionTravelledDistance
-			speed
-			obdDTCList
-			obdStatusDTCCount
-			chassisAxleRow1WheelLeftTirePressure
-			chassisAxleRow1WheelRightTirePressure
-			chassisAxleRow2WheelLeftTirePressure
-			chassisAxleRow2WheelRightTirePressure
-		}
+	var builder strings.Builder
+	_, _ = builder.WriteString(`query ($tokenId: Int!) {
+	signalsLatest(tokenId: $tokenId) {
+		lastSeen
+`)
+	for _, signal := range signals {
+		_, _ = builder.WriteString(fmt.Sprintf("\t\t%s { timestamp value }\n", signal))
 	}
-`
+
+	_, _ = builder.WriteString("\t}\n}")
+	return builder.String()
+}
+
+// GenerateHistoricalQuery generates a GraphQL query for historical signals based on requested signal names.
+func GenerateHistoricalQuery(signals []string) string {
+	if len(signals) == 0 {
+		// Return empty query if no signals requested
+		return `query ($tokenId: Int!, $from: Time!, $to: Time!, $interval: String!) { signals(tokenId: $tokenId, from: $from, to: $to, interval: $interval) { timestamp } }`
+	}
+
+	var builder strings.Builder
+	_, _ = builder.WriteString(`query ($tokenId: Int!, $from: Time!, $to: Time!, $interval: String!) {
+	signals(tokenId: $tokenId, from: $from, to: $to, interval: $interval) {
+		timestamp
+`)
+
+	for _, signal := range signals {
+		_, _ = builder.WriteString(fmt.Sprintf("\t\t%s(agg:LAST)\n", signal))
+	}
+	_, _ = builder.WriteString("\t}\n}")
+
+	return builder.String()
+}
 
 // graphQLResponse represents the structure of the GraphQL response.
 type graphQLResponse struct {
@@ -117,11 +118,17 @@ type graphQLError struct {
 	Message string `json:"message"`
 }
 
-// TelemetryQueryOptions represents options for querying telemetry data.
-type TelemetryQueryOptions struct {
+// TelemetryHistoricalOptions represents options for querying telemetry data.
+type TelemetryHistoricalOptions struct {
 	TokenID   *big.Int  `json:"tokenId"`
 	StartDate time.Time `json:"startDate,omitempty"`
 	EndDate   time.Time `json:"endDate,omitempty"`
 	Interval  string    `json:"interval,omitempty"`
 	Signals   []string  `json:"signals,omitempty"`
+}
+
+type TelemetryLatestOptions struct {
+	TokenID  *big.Int `json:"tokenId"`
+	JWTToken string   `json:"jwtToken"`
+	Signals  []string `json:"signals"`
 }

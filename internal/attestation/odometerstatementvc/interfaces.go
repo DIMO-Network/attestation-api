@@ -2,7 +2,6 @@ package odometerstatementvc
 
 import (
 	"context"
-	"math/big"
 
 	"github.com/DIMO-Network/attestation-api/internal/client/telemetryapi"
 	"github.com/DIMO-Network/attestation-api/internal/models"
@@ -21,6 +20,6 @@ type IdentityAPI interface {
 
 // TelemetryAPI defines the interface for fetching telemetry data.
 type TelemetryAPI interface {
-	GetLatestSignalsWithAuth(ctx context.Context, tokenID *big.Int, jwtToken string) ([]telemetryapi.Signal, error)
-	GetHistoricalDataWithAuth(ctx context.Context, options telemetryapi.TelemetryQueryOptions, jwtToken string) ([]telemetryapi.Signal, error)
+	GetLatestSignalsWithAuth(ctx context.Context, options telemetryapi.TelemetryLatestOptions) ([]telemetryapi.Signal, error)
+	GetHistoricalDataWithAuth(ctx context.Context, options telemetryapi.TelemetryHistoricalOptions, jwtToken string) ([]telemetryapi.Signal, error)
 }

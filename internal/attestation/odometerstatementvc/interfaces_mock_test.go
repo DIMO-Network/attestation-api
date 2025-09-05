@@ -11,7 +11,6 @@ package odometerstatementvc_test
 
 import (
 	context "context"
-	big "math/big"
 	reflect "reflect"
 
 	telemetryapi "github.com/DIMO-Network/attestation-api/internal/client/telemetryapi"
@@ -122,7 +121,7 @@ func (m *MockTelemetryAPI) EXPECT() *MockTelemetryAPIMockRecorder {
 }
 
 // GetHistoricalDataWithAuth mocks base method.
-func (m *MockTelemetryAPI) GetHistoricalDataWithAuth(ctx context.Context, options telemetryapi.TelemetryQueryOptions, jwtToken string) ([]telemetryapi.Signal, error) {
+func (m *MockTelemetryAPI) GetHistoricalDataWithAuth(ctx context.Context, options telemetryapi.TelemetryHistoricalOptions, jwtToken string) ([]telemetryapi.Signal, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetHistoricalDataWithAuth", ctx, options, jwtToken)
 	ret0, _ := ret[0].([]telemetryapi.Signal)
@@ -137,16 +136,16 @@ func (mr *MockTelemetryAPIMockRecorder) GetHistoricalDataWithAuth(ctx, options, 
 }
 
 // GetLatestSignalsWithAuth mocks base method.
-func (m *MockTelemetryAPI) GetLatestSignalsWithAuth(ctx context.Context, tokenID *big.Int, jwtToken string) ([]telemetryapi.Signal, error) {
+func (m *MockTelemetryAPI) GetLatestSignalsWithAuth(ctx context.Context, options telemetryapi.TelemetryLatestOptions) ([]telemetryapi.Signal, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetLatestSignalsWithAuth", ctx, tokenID, jwtToken)
+	ret := m.ctrl.Call(m, "GetLatestSignalsWithAuth", ctx, options)
 	ret0, _ := ret[0].([]telemetryapi.Signal)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetLatestSignalsWithAuth indicates an expected call of GetLatestSignalsWithAuth.
-func (mr *MockTelemetryAPIMockRecorder) GetLatestSignalsWithAuth(ctx, tokenID, jwtToken any) *gomock.Call {
+func (mr *MockTelemetryAPIMockRecorder) GetLatestSignalsWithAuth(ctx, options any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetLatestSignalsWithAuth", reflect.TypeOf((*MockTelemetryAPI)(nil).GetLatestSignalsWithAuth), ctx, tokenID, jwtToken)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetLatestSignalsWithAuth", reflect.TypeOf((*MockTelemetryAPI)(nil).GetLatestSignalsWithAuth), ctx, options)
 }

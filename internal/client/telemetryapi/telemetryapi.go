@@ -9,12 +9,16 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"math/big"
 	"net/http"
 	"net/url"
 	"time"
 
 	"github.com/DIMO-Network/model-garage/pkg/vss"
+)
+
+const (
+	// DefaultTimeout is the default timeout for telemetry queries.
+	DefaultTimeout = 30 * time.Second
 )
 
 // Service interacts with the telemetry GraphQL API.
@@ -27,7 +31,7 @@ type Service struct {
 func NewService(apiBaseURL string, certPool *x509.CertPool) (*Service, error) {
 	// Configure HTTP client with optional TLS certificate pool.
 	httpClient := &http.Client{
-		Timeout: 30 * time.Second, // Longer timeout for telemetry queries
+		Timeout: DefaultTimeout, // Longer timeout for telemetry queries
 		Transport: &http.Transport{
 			TLSClientConfig: &tls.Config{
 				MinVersion: tls.VersionTLS12,
@@ -46,21 +50,23 @@ func NewService(apiBaseURL string, certPool *x509.CertPool) (*Service, error) {
 }
 
 // GetLatestSignalsWithAuth fetches the latest telemetry signals for a vehicle with JWT authentication.
-func (s *Service) GetLatestSignalsWithAuth(ctx context.Context, tokenID *big.Int, jwtToken string) ([]Signal, error) {
+func (s *Service) GetLatestSignalsWithAuth(ctx context.Context, options TelemetryLatestOptions) ([]Signal, error) {
+	// Generate dynamic query based on requested signals
+	query := GenerateLatestSignalsQuery(options.Signals)
 	requestBody := map[string]any{
-		"query": latestSignalsQuery,
+		"query": query,
 		"variables": map[string]any{
-			"tokenId": tokenID,
+			"tokenId": options.TokenID,
 		},
 	}
 
 	var response graphQLResponse
-	if err := s.executeQueryWithAuth(ctx, requestBody, &response, jwtToken); err != nil {
+	if err := s.executeQueryWithAuth(ctx, requestBody, &response, options.JWTToken); err != nil {
 		return nil, err
 	}
 
 	if len(response.Errors) > 0 {
-		return nil, fmt.Errorf("GraphQL API error: %s", response.Errors[0].Message)
+		return nil, fmt.Errorf("graphQL API error: %s", response.Errors[0].Message)
 	}
 
 	if response.Data.SignalsLatest == nil {
@@ -72,23 +78,25 @@ func (s *Service) GetLatestSignalsWithAuth(ctx context.Context, tokenID *big.Int
 }
 
 // GetHistoricalDataWithAuth fetches historical telemetry data for a vehicle with JWT authentication.
-func (s *Service) GetHistoricalDataWithAuth(ctx context.Context, options TelemetryQueryOptions, jwtToken string) ([]Signal, error) {
+func (s *Service) GetHistoricalDataWithAuth(ctx context.Context, options TelemetryHistoricalOptions, jwtToken string) ([]Signal, error) {
+	// Generate dynamic query based on requested signals
+	query := GenerateHistoricalQuery(options.Signals)
 	requestBody := map[string]any{
-		"query": historicalQuery,
+		"query": query,
 		"variables": map[string]any{
-			"tokenId": options.TokenID,
-			"from":    options.StartDate,
-			"to":      options.EndDate,
+			"tokenId":  options.TokenID,
+			"from":     options.StartDate,
+			"to":       options.EndDate,
+			"interval": options.Interval,
 		},
 	}
-
 	var response graphQLResponse
 	if err := s.executeQueryWithAuth(ctx, requestBody, &response, jwtToken); err != nil {
 		return nil, err
 	}
 
 	if len(response.Errors) > 0 {
-		return nil, fmt.Errorf("GraphQL API error: %s", response.Errors[0].Message)
+		return nil, fmt.Errorf("graphQL API error: %s", response.Errors[0].Message)
 	}
 
 	// Convert SignalAggregations to TelemetryRecord format
@@ -108,7 +116,7 @@ func (s *Service) executeQueryWithAuth(ctx context.Context, requestBody map[stri
 	}
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept", "application/json")
-	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", jwtToken))
+	req.Header.Set("Authorization", "Bearer "+jwtToken)
 
 	resp, err := s.httpClient.Do(req)
 	if err != nil {
@@ -228,7 +236,6 @@ func (s *Service) convertSignalCollectionToRecords(collection SignalCollection) 
 // convertSignalAggregationsToRecords converts SignalAggregations to TelemetryRecord format.
 func (s *Service) convertSignalAggregationsToRecords(aggregations []SignalAggregations) []Signal {
 	var signals []Signal
-
 	for _, agg := range aggregations {
 		// Convert each aggregation field to Signal format
 		if agg.CurrentLocationLatitude != nil {

@@ -93,10 +93,11 @@ func (s *Service) findClosestLocation(ctx context.Context, vehicleInfo cloudeven
 	startTime := requestedTime.Add(-time.Hour)
 	endTime := requestedTime.Add(time.Hour)
 
-	options := telemetryapi.TelemetryQueryOptions{
+	options := telemetryapi.TelemetryHistoricalOptions{
 		TokenID:   vehicleInfo.TokenID,
 		StartDate: startTime,
 		EndDate:   endTime,
+		Interval:  "5m",
 		Signals:   []string{"currentLocationLatitude", "currentLocationLongitude", "currentLocationApproximateLatitude", "currentLocationApproximateLongitude"},
 	}
 

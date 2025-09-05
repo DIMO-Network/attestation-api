@@ -97,10 +97,11 @@ func (s *Service) CreateVehicleHealthVC(ctx context.Context, tokenID uint32, sta
 // analyzeVehicleHealth analyzes vehicle health data within the time range using telemetry API.
 func (s *Service) analyzeVehicleHealth(ctx context.Context, vehicleDID *cloudevent.ERC721DID, startTime, endTime time.Time, jwtToken string) (*types.VehicleHealthStatus, error) {
 	// Query telemetry data for health-related signals
-	options := telemetryapi.TelemetryQueryOptions{
+	options := telemetryapi.TelemetryHistoricalOptions{
 		TokenID:   vehicleDID.TokenID,
 		StartDate: startTime,
 		EndDate:   endTime,
+		Interval:  "5m",
 		Signals: []string{
 			vss.FieldOBDDTCList,
 			vss.FieldOBDStatusDTCCount,

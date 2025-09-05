@@ -94,10 +94,11 @@ func (s *Service) getOdometerReading(ctx context.Context, vehicleInfo cloudevent
 		startTime := requestTime.Add(-time.Hour)
 		endTime := requestTime.Add(time.Hour)
 
-		options := telemetryapi.TelemetryQueryOptions{
+		options := telemetryapi.TelemetryHistoricalOptions{
 			TokenID:   vehicleInfo.TokenID,
 			StartDate: startTime,
 			EndDate:   endTime,
+			Interval:  "5m",
 			Signals:   []string{vss.FieldPowertrainTransmissionTravelledDistance},
 		}
 
@@ -111,7 +112,11 @@ func (s *Service) getOdometerReading(ctx context.Context, vehicleInfo cloudevent
 	}
 
 	// Get latest odometer reading
-	records, err = s.telemetryAPI.GetLatestSignalsWithAuth(ctx, vehicleInfo.TokenID, jwtToken)
+	records, err = s.telemetryAPI.GetLatestSignalsWithAuth(ctx, telemetryapi.TelemetryLatestOptions{
+		TokenID:  vehicleInfo.TokenID,
+		JWTToken: jwtToken,
+		Signals:  []string{vss.FieldPowertrainTransmissionTravelledDistance},
+	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to get latest telemetry data: %w", err)
 	}

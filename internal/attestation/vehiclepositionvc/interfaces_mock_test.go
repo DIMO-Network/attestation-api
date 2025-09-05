@@ -121,7 +121,7 @@ func (m *MockTelemetryAPI) EXPECT() *MockTelemetryAPIMockRecorder {
 }
 
 // GetHistoricalDataWithAuth mocks base method.
-func (m *MockTelemetryAPI) GetHistoricalDataWithAuth(ctx context.Context, options telemetryapi.TelemetryQueryOptions, jwtToken string) ([]telemetryapi.Signal, error) {
+func (m *MockTelemetryAPI) GetHistoricalDataWithAuth(ctx context.Context, options telemetryapi.TelemetryHistoricalOptions, jwtToken string) ([]telemetryapi.Signal, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetHistoricalDataWithAuth", ctx, options, jwtToken)
 	ret0, _ := ret[0].([]telemetryapi.Signal)

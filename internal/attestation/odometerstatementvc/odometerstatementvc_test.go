@@ -7,7 +7,6 @@ import (
 	"crypto/elliptic"
 	"crypto/rand"
 	"encoding/json"
-	"math/big"
 	"testing"
 	"time"
 
@@ -264,8 +263,12 @@ func TestCreateOdometerStatementVC_WithoutTimestamp(t *testing.T) {
 			jwtToken := "test-jwt-token"
 
 			mockTelemetryAPI.EXPECT().
-				GetLatestSignalsWithAuth(gomock.Any(), big.NewInt(int64(tokenID)), jwtToken).
-				Return(tt.signals, nil)
+				GetLatestSignalsWithAuth(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, options telemetryapi.TelemetryLatestOptions) ([]telemetryapi.Signal, error) {
+				require.Equal(t, uint64(tokenID), options.TokenID.Uint64())
+				require.Equal(t, jwtToken, options.JWTToken)
+				require.Equal(t, []string{vss.FieldPowertrainTransmissionTravelledDistance}, options.Signals)
+				return tt.signals, nil
+			})
 
 			var uploadedAttestation *cloudevent.RawEvent
 			if !tt.expectedError {
@@ -362,8 +365,8 @@ func TestCreateOdometerStatementVC_VCRepoError(t *testing.T) {
 	service, mockVCRepo, _, mockTelemetryAPI, ctrl := setupTestService(t)
 	defer ctrl.Finish()
 
-	tokenID := uint32(123)
 	jwtToken := "test-jwt-token"
+	tokenID := uint32(123)
 
 	// Mock telemetry data
 	expectedSignals := []telemetryapi.Signal{
@@ -375,8 +378,12 @@ func TestCreateOdometerStatementVC_VCRepoError(t *testing.T) {
 	}
 
 	mockTelemetryAPI.EXPECT().
-		GetLatestSignalsWithAuth(gomock.Any(), big.NewInt(int64(tokenID)), jwtToken).
-		Return(expectedSignals, nil)
+		GetLatestSignalsWithAuth(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, options telemetryapi.TelemetryLatestOptions) ([]telemetryapi.Signal, error) {
+		require.Equal(t, uint64(tokenID), options.TokenID.Uint64())
+		require.Equal(t, jwtToken, options.JWTToken)
+		require.Equal(t, []string{vss.FieldPowertrainTransmissionTravelledDistance}, options.Signals)
+		return expectedSignals, nil
+	})
 
 	mockVCRepo.EXPECT().
 		UploadAttestation(gomock.Any(), gomock.Any()).

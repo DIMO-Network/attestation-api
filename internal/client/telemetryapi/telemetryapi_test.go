@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/DIMO-Network/attestation-api/internal/client/telemetryapi"
+	"github.com/DIMO-Network/model-garage/pkg/vss"
 	"github.com/stretchr/testify/require"
 )
 
@@ -106,7 +107,11 @@ func TestService_GetLatestSignals(t *testing.T) {
 			require.NoError(t, err)
 
 			// Run the test with JWT auth (using empty token for test)
-			signals, err := service.GetLatestSignalsWithAuth(ctx, tt.tokenID, "test-jwt-token")
+			signals, err := service.GetLatestSignalsWithAuth(ctx, telemetryapi.TelemetryLatestOptions{
+				TokenID:  tt.tokenID,
+				JWTToken: "test-jwt-token",
+				Signals:  []string{vss.FieldCurrentLocationLatitude, vss.FieldSpeed},
+			})
 			if tt.expectedError {
 				require.Error(t, err)
 				require.Nil(t, signals)
@@ -155,7 +160,7 @@ func TestService_GetHistoricalData(t *testing.T) {
 
 	startTime, _ := time.Parse(time.RFC3339, "2024-01-15T00:00:00Z")
 	endTime, _ := time.Parse(time.RFC3339, "2024-01-15T23:59:59Z")
-	options := telemetryapi.TelemetryQueryOptions{
+	options := telemetryapi.TelemetryHistoricalOptions{
 		TokenID:   big.NewInt(123),
 		StartDate: startTime,
 		EndDate:   endTime,
