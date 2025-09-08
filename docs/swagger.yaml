@@ -36,6 +36,9 @@ definitions:
         type: string
     type: object
   internal_controllers_httphandlers.successResponse:
+    properties:
+      message:
+        type: string
     type: object
 info:
   contact: {}

@@ -269,7 +269,12 @@ const docTemplate = `{
             }
         },
         "internal_controllers_httphandlers.successResponse": {
-            "type": "object"
+            "type": "object",
+            "properties": {
+                "message": {
+                    "type": "string"
+                }
+            }
         }
     },
     "securityDefinitions": {

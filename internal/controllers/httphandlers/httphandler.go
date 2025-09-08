@@ -25,7 +25,7 @@ const (
 )
 
 type successResponse struct {
-	message string
+	Message string `json:"message"`
 }
 
 type getVCResponse struct {
@@ -211,7 +211,7 @@ func (v *HTTPController) CreateVehiclePositionAttestation(fiberCtx *fiber.Ctx) e
 		return fmt.Errorf("failed to create VehiclePositionVC: %w", err)
 	}
 
-	return fiberCtx.Status(fiber.StatusOK).JSON(successResponse{message: successMessage})
+	return fiberCtx.Status(fiber.StatusOK).JSON(successResponse{Message: successMessage})
 }
 
 // CreateOdometerStatementVCRequest represents the request body for creating an OdometerStatementVC.
@@ -261,7 +261,7 @@ func (v *HTTPController) CreateOdometerStatementAttestation(fiberCtx *fiber.Ctx)
 		return fmt.Errorf("failed to create OdometerStatementVC: %w", err)
 	}
 
-	return fiberCtx.Status(fiber.StatusOK).JSON(successResponse{message: successMessage})
+	return fiberCtx.Status(fiber.StatusOK).JSON(successResponse{Message: successMessage})
 }
 
 // CreateVehicleHealthVCRequest represents the request body for creating a VehicleHealthVC.
@@ -324,5 +324,5 @@ func (v *HTTPController) CreateVehicleHealthAttestation(fiberCtx *fiber.Ctx) err
 		return fmt.Errorf("failed to create VehicleHealthVC: %w", err)
 	}
 
-	return fiberCtx.Status(fiber.StatusOK).JSON(successResponse{message: successMessage})
+	return fiberCtx.Status(fiber.StatusOK).JSON(successResponse{Message: successMessage})
 }
