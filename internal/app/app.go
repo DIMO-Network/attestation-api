@@ -13,7 +13,6 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	jwtware "github.com/gofiber/contrib/jwt"
 	"github.com/gofiber/fiber/v2"
-	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/gofiber/fiber/v2/middleware/recover"
 	"github.com/gofiber/fiber/v2/middleware/redirect"
 	"github.com/gofiber/swagger"
@@ -40,20 +39,18 @@ func setupHttpServer(logger *zerolog.Logger, settings *config.Settings, httpCtrl
 		ErrorHandler:          fibercommon.ErrorHandler,
 		DisableStartupMessage: true,
 	})
-
-	jwtAuth := jwtware.New(jwtware.Config{
-		JWKSetURLs: []string{settings.TokenExchangeJWTKeySetURL},
-		Claims:     &privilegetoken.Token{},
-	})
-
 	app.Use(recover.New(recover.Config{
 		Next:              nil,
 		EnableStackTrace:  true,
 		StackTraceHandler: nil,
 	}))
-	app.Use(cors.New())
+	app.Use(fibercommon.ContextLoggerMiddleware)
 	app.Get("/", HealthCheck)
 
+	jwtAuth := jwtware.New(jwtware.Config{
+		JWKSetURLs: []string{settings.TokenExchangeJWTKeySetURL},
+		Claims:     &privilegetoken.Token{},
+	})
 	// add v1 swagger to align with other services
 	app.Get("/v1/swagger/*", swagger.HandlerDefault)
 	app.Get("/swagger/*", swagger.HandlerDefault)
