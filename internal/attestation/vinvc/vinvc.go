@@ -238,6 +238,7 @@ func (v *Service) compileVINAttestation(subject types.VINSubject, expirationDate
 			DataContentType: "application/json",
 			DataVersion:     v.VINVCDataVersion,
 			Signature:       signature,
+			Tags:            []string{"vehicle.vin", "vehicle"},
 		},
 		Data: marshaledCreds,
 	}
