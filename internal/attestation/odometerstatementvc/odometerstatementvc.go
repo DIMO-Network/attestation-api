@@ -222,6 +222,7 @@ func (s *Service) createAttestation(subject types.OdometerStatementVCSubject) (*
 			DataContentType: "application/json",
 			DataVersion:     s.dataVersion,
 			Signature:       signature,
+			Tags:            []string{"vehicle.odometer", "vehicle"},
 		},
 		Data: marshaledCreds,
 	}

@@ -166,6 +166,7 @@ func (s *Service) createAttestation(subject types.VehiclePositionVCSubject) (*cl
 			DataContentType: "application/json",
 			DataVersion:     s.dataVersion,
 			Signature:       signature,
+			Tags:            []string{"vehicle.position", "vehicle"},
 		},
 		Data: marshaledCreds,
 	}

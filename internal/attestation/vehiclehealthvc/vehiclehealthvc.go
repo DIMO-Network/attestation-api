@@ -387,6 +387,7 @@ func (s *Service) createAttestation(subject types.VehicleHealthVCSubject) (*clou
 			DataContentType: "application/json",
 			DataVersion:     s.dataVersion,
 			Signature:       signature,
+			Tags:            []string{"vehicle.health", "vehicle"},
 		},
 		Data: marshaledCreds,
 	}
