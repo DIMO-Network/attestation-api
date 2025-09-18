@@ -2,7 +2,7 @@ replicaCount: 1
 image:
   repository: dimozone/attestation-api
   pullPolicy: IfNotPresent
-  tag: 0a1822c
+  tag: ce68717
 imagePullSecrets: []
 nameOverride: ''
 fullnameOverride: ''
