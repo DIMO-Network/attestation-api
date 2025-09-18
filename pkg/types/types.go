@@ -133,6 +133,8 @@ type VehiclePositionVCSubject struct {
 	Location Location `json:"location"`
 	// RequestedTimestamp is the timestamp that was requested.
 	RequestedTimestamp time.Time `json:"requestedTimestamp"`
+	// Producer is the entity that produced the location data.
+	Producer string `json:"producer,omitempty"`
 }
 
 // TimeRange represents a time range.
@@ -151,6 +153,8 @@ type OdometerStatementVCSubject struct {
 	OdometerReading OdometerReading `json:"odometerReading"`
 	// RequestedTimestamp is the timestamp that was requested (if any).
 	RequestedTimestamp *time.Time `json:"requestedTimestamp,omitempty"`
+	// Producer is the entity that produced the odometer data.
+	Producer string `json:"producer,omitempty"`
 }
 
 // OdometerReading represents an odometer reading with metadata.
@@ -167,6 +171,8 @@ type VehicleHealthVCSubject struct {
 	HealthStatus VehicleHealthStatus `json:"healthStatus"`
 	// SearchedTimeRange is the time range that was searched.
 	SearchedTimeRange TimeRange `json:"searchedTimeRange"`
+	// Producer is the entity that produced the health data.
+	Producer string `json:"producer,omitempty"`
 }
 
 // VehicleHealthStatus represents the health status of a vehicle.

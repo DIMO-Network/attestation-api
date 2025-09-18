@@ -13,6 +13,7 @@ import (
 	"github.com/DIMO-Network/attestation-api/internal/client/telemetryapi"
 	"github.com/DIMO-Network/attestation-api/internal/config"
 	"github.com/DIMO-Network/attestation-api/internal/erc191"
+	"github.com/DIMO-Network/attestation-api/internal/models"
 	"github.com/DIMO-Network/attestation-api/internal/sources"
 	"github.com/DIMO-Network/attestation-api/pkg/types"
 	"github.com/DIMO-Network/cloudevent"
@@ -50,7 +51,7 @@ func NewService(
 		vehicleContractAddress: common.HexToAddress(settings.VehicleNFTAddress),
 		chainID:                uint64(settings.DIMORegistryChainID),
 		privateKey:             privateKey,
-		dataVersion:            "1.0.0", // You may want to add this to settings
+		dataVersion:            "vehicleodometer/v1.0.0", // You may want to add this to settings
 	}
 }
 
@@ -63,15 +64,33 @@ func (s *Service) CreateOdometerStatementVC(ctx context.Context, tokenID uint32,
 		ContractAddress: s.vehicleContractAddress,
 	}
 
+	// Get vehicle information to determine producer
+	vehicleInfo, err := s.identityAPI.GetVehicleInfo(ctx, vehicleDID)
+	if err != nil {
+		return richerrors.Error{Err: err, ExternalMsg: "Failed to get vehicle info", Code: http.StatusInternalServerError}
+	}
+
 	odometerReading, err := s.getOdometerReading(ctx, vehicleDID, timestamp, jwtToken)
 	if err != nil {
 		return err
+	}
+
+	// Determine producer from paired devices (prefer aftermarket, then synthetic)
+	producer := ""
+	for _, device := range vehicleInfo.PairedDevices {
+		if device.Type == models.DeviceTypeAftermarket {
+			producer = device.DID.String()
+			break
+		} else if device.Type == models.DeviceTypeSynthetic && producer == "" {
+			producer = device.DID.String()
+		}
 	}
 
 	subject := types.OdometerStatementVCSubject{
 		VehicleDID:         vehicleDID,
 		OdometerReading:    *odometerReading,
 		RequestedTimestamp: timestamp,
+		Producer:           producer,
 	}
 
 	vc, err := s.createAttestation(subject)
@@ -188,7 +207,7 @@ func (s *Service) isOdometerSignal(signal telemetryapi.Signal) bool {
 // createAttestation creates the attestation cloud event.
 func (s *Service) createAttestation(subject types.OdometerStatementVCSubject) (*cloudevent.RawEvent, error) {
 	issuanceDate := time.Now().UTC()
-	expirationDate := issuanceDate.Add(30 * 24 * time.Hour) // Valid for 30 days
+	expirationDate := issuanceDate.Add(1 * time.Hour) // Valid for 1 hour
 
 	credential := types.Credential{
 		ValidFrom: issuanceDate,
@@ -218,6 +237,7 @@ func (s *Service) createAttestation(subject types.OdometerStatementVCSubject) (*
 			Time:            issuanceDate,
 			Source:          sources.DINCSource.String(),
 			Subject:         subject.VehicleDID.String(),
+			Producer:        subject.Producer,
 			Type:            cloudevent.TypeAttestation,
 			DataContentType: "application/json",
 			DataVersion:     s.dataVersion,

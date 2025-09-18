@@ -7,6 +7,7 @@ import (
 	"crypto/elliptic"
 	"crypto/rand"
 	"encoding/json"
+	"math/big"
 	"net/http"
 	"testing"
 	"time"
@@ -14,10 +15,12 @@ import (
 	"github.com/DIMO-Network/attestation-api/internal/attestation/odometerstatementvc"
 	"github.com/DIMO-Network/attestation-api/internal/client/telemetryapi"
 	"github.com/DIMO-Network/attestation-api/internal/config"
+	"github.com/DIMO-Network/attestation-api/internal/models"
 	"github.com/DIMO-Network/attestation-api/pkg/types"
 	"github.com/DIMO-Network/cloudevent"
 	"github.com/DIMO-Network/model-garage/pkg/vss"
 	"github.com/DIMO-Network/server-garage/pkg/richerrors"
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
@@ -164,11 +167,23 @@ func TestCreateOdometerStatementVC_WithTimestamp(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			service, mockVCRepo, _, mockTelemetryAPI, ctrl := setupTestService(t)
+			service, mockVCRepo, mockIdentityAPI, mockTelemetryAPI, ctrl := setupTestService(t)
 			defer ctrl.Finish()
 
 			tokenID := uint32(123)
 			jwtToken := "test-jwt-token"
+
+			// Mock GetVehicleInfo call for producer information
+			mockIdentityAPI.EXPECT().
+				GetVehicleInfo(gomock.Any(), gomock.Any()).
+				Return(&models.VehicleInfo{
+					PairedDevices: []models.PairedDevice{
+						{
+							DID:  cloudevent.ERC721DID{TokenID: big.NewInt(456), ChainID: 137, ContractAddress: common.HexToAddress("0xabcd")},
+							Type: models.DeviceTypeAftermarket,
+						},
+					},
+				}, nil)
 
 			mockTelemetryAPI.EXPECT().
 				GetHistoricalDataWithAuth(gomock.Any(), gomock.Any(), jwtToken).
@@ -257,11 +272,23 @@ func TestCreateOdometerStatementVC_WithoutTimestamp(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			service, mockVCRepo, _, mockTelemetryAPI, ctrl := setupTestService(t)
+			service, mockVCRepo, mockIdentityAPI, mockTelemetryAPI, ctrl := setupTestService(t)
 			defer ctrl.Finish()
 
 			tokenID := uint32(123)
 			jwtToken := "test-jwt-token"
+
+			// Mock GetVehicleInfo call for producer information
+			mockIdentityAPI.EXPECT().
+				GetVehicleInfo(gomock.Any(), gomock.Any()).
+				Return(&models.VehicleInfo{
+					PairedDevices: []models.PairedDevice{
+						{
+							DID:  cloudevent.ERC721DID{TokenID: big.NewInt(456), ChainID: 137, ContractAddress: common.HexToAddress("0xabcd")},
+							Type: models.DeviceTypeAftermarket,
+						},
+					},
+				}, nil)
 
 			mockTelemetryAPI.EXPECT().
 				GetLatestSignalsWithAuth(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, options telemetryapi.TelemetryLatestOptions) ([]telemetryapi.Signal, error) {
@@ -317,12 +344,24 @@ func TestCreateOdometerStatementVC_WithoutTimestamp(t *testing.T) {
 }
 
 func TestCreateOdometerStatementVC_TelemetryAPIError(t *testing.T) {
-	service, _, _, mockTelemetryAPI, ctrl := setupTestService(t)
+	service, _, mockIdentityAPI, mockTelemetryAPI, ctrl := setupTestService(t)
 	defer ctrl.Finish()
 
 	tokenID := uint32(123)
 	requestedTime := time.Date(2024, 1, 15, 12, 0, 0, 0, time.UTC)
 	jwtToken := "test-jwt-token"
+
+	// Mock GetVehicleInfo call for producer information
+	mockIdentityAPI.EXPECT().
+		GetVehicleInfo(gomock.Any(), gomock.Any()).
+		Return(&models.VehicleInfo{
+			PairedDevices: []models.PairedDevice{
+				{
+					DID:  cloudevent.ERC721DID{TokenID: big.NewInt(456), ChainID: 137, ContractAddress: common.HexToAddress("0xabcd")},
+					Type: models.DeviceTypeAftermarket,
+				},
+			},
+		}, nil)
 
 	// Mock telemetry API error
 	mockTelemetryAPI.EXPECT().
@@ -340,12 +379,24 @@ func TestCreateOdometerStatementVC_TelemetryAPIError(t *testing.T) {
 }
 
 func TestCreateOdometerStatementVC_NoOdometerData(t *testing.T) {
-	service, _, _, mockTelemetryAPI, ctrl := setupTestService(t)
+	service, _, mockIdentityAPI, mockTelemetryAPI, ctrl := setupTestService(t)
 	defer ctrl.Finish()
 
 	tokenID := uint32(123)
 	requestedTime := time.Date(2024, 1, 15, 12, 0, 0, 0, time.UTC)
 	jwtToken := "test-jwt-token"
+
+	// Mock GetVehicleInfo call for producer information
+	mockIdentityAPI.EXPECT().
+		GetVehicleInfo(gomock.Any(), gomock.Any()).
+		Return(&models.VehicleInfo{
+			PairedDevices: []models.PairedDevice{
+				{
+					DID:  cloudevent.ERC721DID{TokenID: big.NewInt(456), ChainID: 137, ContractAddress: common.HexToAddress("0xabcd")},
+					Type: models.DeviceTypeAftermarket,
+				},
+			},
+		}, nil)
 
 	// Mock empty telemetry data
 	mockTelemetryAPI.EXPECT().
@@ -363,11 +414,23 @@ func TestCreateOdometerStatementVC_NoOdometerData(t *testing.T) {
 }
 
 func TestCreateOdometerStatementVC_VCRepoError(t *testing.T) {
-	service, mockVCRepo, _, mockTelemetryAPI, ctrl := setupTestService(t)
+	service, mockVCRepo, mockIdentityAPI, mockTelemetryAPI, ctrl := setupTestService(t)
 	defer ctrl.Finish()
 
 	jwtToken := "test-jwt-token"
 	tokenID := uint32(123)
+
+	// Mock GetVehicleInfo call for producer information
+	mockIdentityAPI.EXPECT().
+		GetVehicleInfo(gomock.Any(), gomock.Any()).
+		Return(&models.VehicleInfo{
+			PairedDevices: []models.PairedDevice{
+				{
+					DID:  cloudevent.ERC721DID{TokenID: big.NewInt(456), ChainID: 137, ContractAddress: common.HexToAddress("0xabcd")},
+					Type: models.DeviceTypeAftermarket,
+				},
+			},
+		}, nil)
 
 	// Mock telemetry data
 	expectedSignals := []telemetryapi.Signal{
