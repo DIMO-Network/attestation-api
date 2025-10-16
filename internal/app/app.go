@@ -4,14 +4,12 @@ import (
 	"github.com/DIMO-Network/attestation-api/internal/config"
 	"github.com/DIMO-Network/attestation-api/internal/controllers/httphandlers"
 	"github.com/DIMO-Network/attestation-api/internal/controllers/rpc"
-	"github.com/DIMO-Network/attestation-api/pkg/auth"
 	attgrpc "github.com/DIMO-Network/attestation-api/pkg/grpc"
 	"github.com/DIMO-Network/server-garage/pkg/fibercommon"
+	"github.com/DIMO-Network/server-garage/pkg/fibercommon/jwtmiddleware"
 	"github.com/DIMO-Network/shared/pkg/middleware/metrics"
-	"github.com/DIMO-Network/shared/pkg/middleware/privilegetoken"
-	"github.com/DIMO-Network/shared/pkg/privileges"
+	"github.com/DIMO-Network/token-exchange-api/pkg/tokenclaims"
 	"github.com/ethereum/go-ethereum/common"
-	jwtware "github.com/gofiber/contrib/jwt"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/recover"
 	"github.com/gofiber/fiber/v2/middleware/redirect"
@@ -47,17 +45,15 @@ func setupHttpServer(logger *zerolog.Logger, settings *config.Settings, httpCtrl
 	app.Use(fibercommon.ContextLoggerMiddleware)
 	app.Get("/", HealthCheck)
 
-	jwtAuth := jwtware.New(jwtware.Config{
-		JWKSetURLs: []string{settings.TokenExchangeJWTKeySetURL},
-		Claims:     &privilegetoken.Token{},
-	})
+	jwtAuth := jwtmiddleware.NewJWTMiddleware(settings.TokenExchangeJWTKeySetURL)
 	// add v1 swagger to align with other services
 	app.Get("/v1/swagger/*", swagger.HandlerDefault)
 	app.Get("/swagger/*", swagger.HandlerDefault)
 
 	vehicleAddr := common.HexToAddress(settings.VehicleNFTAddress)
 
-	vinMiddleware := auth.AllOf(vehicleAddr, httphandlers.TokenIDParam, []privileges.Privilege{privileges.VehicleVinCredential})
+	vinMiddleware := jwtmiddleware.AllOfPermissions(vehicleAddr, httphandlers.TokenIDParam, []string{tokenclaims.PermissionGetVINCredential})
+
 	// redirect v1 to v2
 	app.Use(redirect.New(redirect.Config{
 		Rules: map[string]string{
@@ -68,16 +64,16 @@ func setupHttpServer(logger *zerolog.Logger, settings *config.Settings, httpCtrl
 	app.Post("/v2/attestation/vin/:"+httphandlers.TokenIDParam, jwtAuth, vinMiddleware, httpCtrl.CreateVINAttestation)
 
 	// Vehicle position attestation endpoint
-	locationMiddleware := auth.AllOf(vehicleAddr, httphandlers.TokenIDParam, []privileges.Privilege{privileges.VehicleAllTimeLocation})
+	locationMiddleware := jwtmiddleware.AllOfPermissions(vehicleAddr, httphandlers.TokenIDParam, []string{tokenclaims.PermissionGetLocationHistory})
 	app.Post("/v2/attestation/vehicle-position/:"+httphandlers.TokenIDParam, jwtAuth, locationMiddleware, httpCtrl.CreateVehiclePositionAttestation)
 
 	// Odometer and health attestation endpoints
 	// OdometerStatement requires basic vehicle access
-	odometerMiddleware := auth.AllOf(vehicleAddr, httphandlers.TokenIDParam, []privileges.Privilege{privileges.VehicleNonLocationData})
+	odometerMiddleware := jwtmiddleware.AllOfPermissions(vehicleAddr, httphandlers.TokenIDParam, []string{tokenclaims.PermissionGetNonLocationHistory})
 	app.Post("/v2/attestation/odometer-statement/:"+httphandlers.TokenIDParam, jwtAuth, odometerMiddleware, httpCtrl.CreateOdometerStatementAttestation)
 
 	// VehicleHealth requires location privilege as it includes health data over time
-	healthMiddleware := auth.AllOf(vehicleAddr, httphandlers.TokenIDParam, []privileges.Privilege{privileges.VehicleNonLocationData, privileges.VehicleAllTimeLocation})
+	healthMiddleware := jwtmiddleware.AllOfPermissions(vehicleAddr, httphandlers.TokenIDParam, []string{tokenclaims.PermissionGetNonLocationHistory, tokenclaims.PermissionGetLocationHistory})
 	app.Post("/v2/attestation/vehicle-health/:"+httphandlers.TokenIDParam, jwtAuth, healthMiddleware, httpCtrl.CreateVehicleHealthAttestation)
 
 	return app
