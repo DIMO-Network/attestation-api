@@ -7,7 +7,7 @@ require (
 	github.com/DIMO-Network/device-definitions-api v1.5.6
 	github.com/DIMO-Network/fetch-api v0.0.12
 	github.com/DIMO-Network/model-garage v0.7.2
-	github.com/DIMO-Network/server-garage v0.0.6-0.20251016141333-d527e8947711
+	github.com/DIMO-Network/server-garage v0.0.8
 	github.com/DIMO-Network/shared v1.0.7
 	github.com/DIMO-Network/token-exchange-api v0.3.7
 	github.com/ethereum/go-ethereum v1.16.4
