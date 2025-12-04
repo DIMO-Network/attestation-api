@@ -2,7 +2,7 @@ replicaCount: 1
 image:
   repository: dimozone/attestation-api
   pullPolicy: IfNotPresent
-  tag: 81cca4f
+  tag: ab4f1d1
 imagePullSecrets: []
 nameOverride: ''
 fullnameOverride: ''
@@ -19,7 +19,7 @@ securityContext:
   allowPrivilegeEscalation: false
   capabilities:
     drop:
-    - all
+      - all
 cronJob:
   enabled: false
   schedule: 0 0 * * 0
@@ -61,15 +61,15 @@ service:
       targetPort: grpc
       protocol: TCP
 ports:
-- name: mon-http
-  containerPort: 8888
-  protocol: TCP
-- name: http
-  containerPort: 8080
-  protocol: TCP
-- name: grpc
-  containerPort: 8086
-  protocol: TCP
+  - name: mon-http
+    containerPort: 8888
+    protocol: TCP
+  - name: http
+    containerPort: 8080
+    protocol: TCP
+  - name: grpc
+    containerPort: 8086
+    protocol: TCP
 ingress:
   enabled: true
   className: nginx
@@ -81,10 +81,10 @@ ingress:
     nginx.ingress.kubernetes.io/limit-rps: '25'
     external-dns.alpha.kubernetes.io/hostname: attestation-api.dev.dimo.zone
   hosts:
-  - host: attestation-api.dev.dimo.zone
-    paths:
-    - path: /
-      pathType: ImplementationSpecific
+    - host: attestation-api.dev.dimo.zone
+      paths:
+        - path: /
+          pathType: ImplementationSpecific
   tls: []
 resources:
   limits:
