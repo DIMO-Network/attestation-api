@@ -11,7 +11,7 @@ require (
 	github.com/DIMO-Network/shared v1.0.7
 	github.com/DIMO-Network/token-exchange-api v0.3.7
 	github.com/ethereum/go-ethereum v1.16.4
-	github.com/gofiber/fiber/v2 v2.52.9
+	github.com/gofiber/fiber/v2 v2.52.11
 	github.com/gofiber/swagger v1.1.1
 	github.com/golang-jwt/jwt/v5 v5.3.0
 	github.com/grpc-ecosystem/go-grpc-middleware v1.4.0
