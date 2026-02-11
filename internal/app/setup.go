@@ -15,15 +15,11 @@ import (
 	"github.com/DIMO-Network/attestation-api/internal/client/identity"
 	"github.com/DIMO-Network/attestation-api/internal/client/telemetryapi"
 	"github.com/DIMO-Network/attestation-api/internal/client/tokencache"
-	"github.com/DIMO-Network/attestation-api/internal/client/vinvalidator"
 	"github.com/DIMO-Network/attestation-api/internal/config"
 	"github.com/DIMO-Network/attestation-api/internal/controllers/httphandlers"
 	"github.com/DIMO-Network/attestation-api/internal/controllers/rpc"
-	ddgrpc "github.com/DIMO-Network/device-definitions-api/pkg/grpc"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/rs/zerolog"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
 )
 
 // createControllers creates a new controllers with the given settings.
@@ -34,13 +30,6 @@ func createControllers(logger *zerolog.Logger, settings *config.Settings) (*http
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to decode private key: %w", err)
 	}
-
-	// Initialize device definition API client
-	deviceDefGRPCClient, err := deviceDefAPIClientFromSettings(settings)
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to create device definition API client: %w", err)
-	}
-	vinValidateSerivce := vinvalidator.New(deviceDefGRPCClient)
 
 	// Initialize fingerprint repository
 	fingerprintRepo := fingerprint.New(fetchAPIClient)
@@ -75,7 +64,7 @@ func createControllers(logger *zerolog.Logger, settings *config.Settings) (*http
 	}
 
 	// Initialize VC service using the initialized services
-	vinvcService := vinvc.NewService(logger, vcRepo, identityAPI, fingerprintRepo, vinValidateSerivce, settings, privateKey)
+	vinvcService := vinvc.NewService(logger, vcRepo, identityAPI, fingerprintRepo, settings, privateKey)
 
 	// Initialize VehiclePositionVC service
 	vehiclePositionService := vehiclepositionvc.NewService(vcRepo, identityAPI, telemetryAPI, settings, privateKey)
@@ -101,14 +90,4 @@ func createControllers(logger *zerolog.Logger, settings *config.Settings) (*http
 	server := rpc.NewServer(vinvcService, settings)
 
 	return ctrl, server, nil
-
-}
-
-func deviceDefAPIClientFromSettings(settings *config.Settings) (ddgrpc.VinDecoderServiceClient, error) {
-	conn, err := grpc.NewClient(settings.DefinitionsGRPCAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
-	if err != nil {
-		return nil, fmt.Errorf("failed to create gRPC client: %w", err)
-	}
-	definitionsClient := ddgrpc.NewVinDecoderServiceClient(conn)
-	return definitionsClient, nil
 }

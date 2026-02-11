@@ -21,8 +21,3 @@ type IdentityAPI interface {
 type FingerprintRepo interface {
 	GetLatestFingerprintMessages(ctx context.Context, vehicle cloudevent.ERC721DID, pairedDeviceAddr models.PairedDevice) (*models.DecodedFingerprintData, error)
 }
-
-// VINAPI defines the interface for VIN validation.
-type VINAPI interface {
-	DecodeVIN(ctx context.Context, vin, countryCode string) (string, error)
-}
