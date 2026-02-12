@@ -33,7 +33,6 @@ type Service struct {
 	vcRepo            VCRepo
 	identityAPI       IdentityAPI
 	fingerprintRepo   FingerprintRepo
-	vinAPI            VINAPI
 	vehicleNFTAddress string
 	chainID           uint64
 	VINVCDataVersion  string
@@ -46,7 +45,6 @@ func NewService(
 	vcRepo VCRepo,
 	identityService IdentityAPI,
 	fingerprintService FingerprintRepo,
-	vinService VINAPI,
 	settings *config.Settings,
 	privateKey *ecdsa.PrivateKey,
 ) *Service {
@@ -56,7 +54,6 @@ func NewService(
 		vcRepo:            vcRepo,
 		identityAPI:       identityService,
 		fingerprintRepo:   fingerprintService,
-		vinAPI:            vinService,
 		vehicleNFTAddress: settings.VehicleNFTAddress,
 		chainID:           uint64(settings.DIMORegistryChainID),
 		privateKey:        privateKey,
@@ -154,15 +151,6 @@ func (v *Service) getValidFingerPrint(ctx context.Context, vehicleInfo *models.V
 	// return error to the user if no VINs were found
 	if (latestFP == nil || latestFP.VIN == "") && fingerprintErr != nil {
 		return nil, fingerprintErr
-	}
-	decodedNameSlug, err := v.vinAPI.DecodeVIN(ctx, latestFP.VIN, countryCode)
-	if err != nil {
-		return nil, richerrors.Error{Err: err, ExternalMsg: "Server failed to decode VIN", Code: http.StatusInternalServerError}
-	}
-	if decodedNameSlug != vehicleInfo.NameSlug {
-		message := fmt.Sprintf("Invalid VIN Decoding expected: %s got: %s", vehicleInfo.NameSlug, decodedNameSlug)
-		err := fmt.Errorf("decodedNameSlug: %s != identityNameSlug: %s vin = %s", decodedNameSlug, vehicleInfo.NameSlug, latestFP.VIN)
-		return nil, richerrors.Error{Err: err, ExternalMsg: message, Code: http.StatusBadRequest}
 	}
 
 	return latestFP, nil
