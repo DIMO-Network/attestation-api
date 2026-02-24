@@ -45,7 +45,8 @@ func (c *FetchAPIService) GetLatestCloudEvent(ctx context.Context, filter *pb.Se
 	if err != nil {
 		return cloudevent.CloudEvent[json.RawMessage]{}, fmt.Errorf("failed to get latest file: %w", err)
 	}
-	return resp.GetCloudEvent().AsCloudEvent(), nil
+	raw := resp.GetCloudEvent().AsRawCloudEvent()
+	return cloudevent.CloudEvent[json.RawMessage]{CloudEventHeader: raw.CloudEventHeader, Data: raw.Data}, nil
 }
 
 // GetAllCloudEvents retrieves the most recent file content matching the provided search criteria
@@ -65,9 +66,47 @@ func (c *FetchAPIService) GetAllCloudEvents(ctx context.Context, filter *pb.Sear
 
 	cldEvts := []cloudevent.CloudEvent[json.RawMessage]{}
 	for _, ce := range resp.GetCloudEvents() {
-		cldEvts = append(cldEvts, ce.AsCloudEvent())
+		raw := ce.AsRawCloudEvent()
+		cldEvts = append(cldEvts, cloudevent.CloudEvent[json.RawMessage]{CloudEventHeader: raw.CloudEventHeader, Data: raw.Data})
 	}
 
+	return cldEvts, nil
+}
+
+// GetLatestCloudEventAdvanced retrieves the most recent event matching the advanced search criteria (e.g. with tag filters).
+func (c *FetchAPIService) GetLatestCloudEventAdvanced(ctx context.Context, advancedOpts *pb.AdvancedSearchOptions) (cloudevent.CloudEvent[json.RawMessage], error) {
+	client, err := c.getClient()
+	if err != nil {
+		return cloudevent.CloudEvent[json.RawMessage]{}, err
+	}
+	resp, err := client.GetLatestCloudEvent(ctx, &pb.GetLatestCloudEventRequest{
+		AdvancedOptions: advancedOpts,
+	})
+	if err != nil {
+		return cloudevent.CloudEvent[json.RawMessage]{}, fmt.Errorf("failed to get latest file: %w", err)
+	}
+	raw := resp.GetCloudEvent().AsRawCloudEvent()
+	return cloudevent.CloudEvent[json.RawMessage]{CloudEventHeader: raw.CloudEventHeader, Data: raw.Data}, nil
+}
+
+// GetAllCloudEventsAdvanced retrieves events matching the advanced search criteria (e.g. with tag filters).
+func (c *FetchAPIService) GetAllCloudEventsAdvanced(ctx context.Context, advancedOpts *pb.AdvancedSearchOptions, limit int32) ([]cloudevent.CloudEvent[json.RawMessage], error) {
+	client, err := c.getClient()
+	if err != nil {
+		return nil, err
+	}
+	resp, err := client.ListCloudEvents(ctx, &pb.ListCloudEventsRequest{
+		AdvancedOptions: advancedOpts,
+		Limit:           limit,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to get files: %w", err)
+	}
+	cldEvts := make([]cloudevent.CloudEvent[json.RawMessage], 0, len(resp.GetCloudEvents()))
+	for _, ce := range resp.GetCloudEvents() {
+		raw := ce.AsRawCloudEvent()
+		cldEvts = append(cldEvts, cloudevent.CloudEvent[json.RawMessage]{CloudEventHeader: raw.CloudEventHeader, Data: raw.Data})
+	}
 	return cldEvts, nil
 }
 

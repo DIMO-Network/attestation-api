@@ -7,7 +7,7 @@ VEHICLE_NFT_ADDRESS: 0x90c4d6113ec88dd4bdf12f26db2b3998fd13a144
 TELEMETRY_URL: http://localhost:8087
 FINGERPRINT_BUCKET: dimo-network-fingerprint-dev
 FINGERPRINT_DATA_TYPE: "FP_v0.0.1"
-VINVC_BUCKET: dimo-network-vinvc-dev
+PARQUET_BUCKET: dimo-iceberg-prod
 VINVC_DATA_TYPE: "VINVCv0.0"
 IDENTITY_API_URL: idenity-api.dimo.zone
 VIN_ISSUER_PRIVATE_KEY: 3f1e1d4c2b1a59683f1e1d4c2b1a59683f1e1d4c2b1a59683f1e1d4c2b1a5968 # Not a real key

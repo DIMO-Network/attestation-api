@@ -15,13 +15,11 @@ import (
 	"github.com/DIMO-Network/attestation-api/internal/models"
 	"github.com/DIMO-Network/attestation-api/pkg/types"
 	"github.com/DIMO-Network/cloudevent"
-	"github.com/DIMO-Network/fetch-api/pkg/grpc"
 	"github.com/DIMO-Network/model-garage/pkg/modules"
 	"github.com/DIMO-Network/model-garage/pkg/vss"
 	"github.com/DIMO-Network/server-garage/pkg/richerrors"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/uber/h3-go/v4"
-	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
 const (
@@ -41,7 +39,7 @@ type Service struct {
 	fetchService *fetchapi.FetchAPIService
 }
 
-func NewService(identityAPI IdentityAPI, vcRepo VCRepo, issuer Issuer, vehicleContractAddress string, chainID int64) (*Service, error) {
+func NewService(identityAPI IdentityAPI, vcRepo VCRepo, issuer Issuer, fetchService *fetchapi.FetchAPIService, vehicleContractAddress string, chainID int64) (*Service, error) {
 	if !common.IsHexAddress(vehicleContractAddress) {
 		return nil, fmt.Errorf("invalid vehicle contract address: %s", vehicleContractAddress)
 	}
@@ -49,6 +47,7 @@ func NewService(identityAPI IdentityAPI, vcRepo VCRepo, issuer Issuer, vehicleCo
 		identityAPI:            identityAPI,
 		vcRepo:                 vcRepo,
 		issuer:                 issuer,
+		fetchService:           fetchService,
 		vehicleContractAddress: common.HexToAddress(vehicleContractAddress),
 		chainID:                uint64(chainID),
 	}, nil
@@ -113,18 +112,16 @@ func (s *Service) getLocationForVehicle(ctx context.Context, vehicleInfo *models
 }
 
 func (s *Service) fetchEvents(ctx context.Context, vehicleDID, deviceDID cloudevent.ERC721DID, after, before time.Time, limit int) ([]cloudevent.RawEvent, error) {
-	statusType := cloudevent.TypeStatus
-	opts := &grpc.SearchOptions{
-		Subject:  wrapperspb.String(vehicleDID.String()),
-		Producer: wrapperspb.String(deviceDID.String()),
-		// Source:   wrapperspb.String(source),
-		Type: wrapperspb.String(statusType),
-	}
-	dataObj, err := s.fetchService.GetAllCloudEvents(ctx, opts, int32(limit))
+	advancedOpts := fetchapi.BuildAdvancedOptionsForStatus(vehicleDID.String(), deviceDID.String(), nil)
+	events, err := s.fetchService.GetAllCloudEventsAdvanced(ctx, advancedOpts, int32(limit))
 	if err != nil {
-		return nil, fmt.Errorf("failed to get fingerprint message: %w", err)
+		return nil, fmt.Errorf("failed to get status events: %w", err)
 	}
-	return dataObj, nil
+	out := make([]cloudevent.RawEvent, len(events))
+	for i := range events {
+		out[i] = cloudevent.RawEvent{CloudEventHeader: events[i].CloudEventHeader, Data: events[i].Data}
+	}
+	return out, nil
 }
 
 // pullEvents is a generic function for fetching events and extracting locations.

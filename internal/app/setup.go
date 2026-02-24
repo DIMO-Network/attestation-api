@@ -75,12 +75,10 @@ func createControllers(logger *zerolog.Logger, settings *config.Settings) (*http
 	// Initialize VehicleHealthVC service
 	vehicleHealthService := vehiclehealthvc.NewService(vcRepo, identityAPI, telemetryAPI, settings, privateKey)
 
-	// conRepo := connectivity.NewConnectivityRepo(chConn, s3Client, settings.AutoPiDataType, settings.AutoPiBucketName, settings.HashDogDataType, settings.HashDogBucketName, settings.StatusDataType, settings.StatusBucketName, settings.CloudEventBucket)
-
-	// pomService, err := pom.NewService(logger, identityAPI, conRepo, vcRepo, settings.VehicleNFTAddress, settings.DIMORegistryChainID)
-	// if err != nil {
-	// 	return nil, nil, fmt.Errorf("failed to create POM service: %w", err)
-	// }
+	// POM (Proof of Movement) can be wired when an Issuer implementation and vcRepo.StorePOMVC are available:
+	// pomService, err := pom.NewService(identityAPI, vcRepo, pomIssuer, fetchAPIClient, settings.VehicleNFTAddress, settings.DIMORegistryChainID)
+	// if err != nil { ... }
+	// Then pass pomService to NewVCController instead of nil.
 
 	ctrl, err := httphandlers.NewVCController(vinvcService, nil, vehiclePositionService, odometerStatementService, vehicleHealthService, settings.TelemetryURL)
 	if err != nil {
