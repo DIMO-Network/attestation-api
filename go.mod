@@ -6,7 +6,7 @@ require (
 	github.com/DIMO-Network/cloudevent v0.1.4
 	github.com/DIMO-Network/device-definitions-api v1.5.6
 	github.com/DIMO-Network/fetch-api v0.0.12
-	github.com/DIMO-Network/model-garage v0.8.9
+	github.com/DIMO-Network/model-garage v0.8.16
 	github.com/DIMO-Network/server-garage v0.0.8
 	github.com/DIMO-Network/shared v1.0.7
 	github.com/DIMO-Network/token-exchange-api v0.3.7
