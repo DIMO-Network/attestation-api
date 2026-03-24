@@ -14,7 +14,6 @@ import (
 	"github.com/DIMO-Network/attestation-api/internal/config"
 	"github.com/DIMO-Network/attestation-api/internal/erc191"
 	"github.com/DIMO-Network/attestation-api/internal/models"
-	"github.com/DIMO-Network/attestation-api/internal/sources"
 	"github.com/DIMO-Network/attestation-api/pkg/types"
 	"github.com/DIMO-Network/cloudevent"
 	"github.com/DIMO-Network/model-garage/pkg/vss"
@@ -34,6 +33,7 @@ type Service struct {
 	chainID                uint64
 	privateKey             *ecdsa.PrivateKey
 	dataVersion            string
+	devLicense             common.Address
 }
 
 // NewService creates a new Service for OdometerStatementVC operations.
@@ -52,6 +52,7 @@ func NewService(
 		chainID:                uint64(settings.DIMORegistryChainID),
 		privateKey:             privateKey,
 		dataVersion:            "vehicleodometer/v1.0.0", // You may want to add this to settings
+		devLicense:             common.HexToAddress(settings.DevLicense),
 	}
 }
 
@@ -235,7 +236,7 @@ func (s *Service) createAttestation(subject types.OdometerStatementVCSubject) (*
 			SpecVersion:     "1.0",
 			ID:              ksuid.New().String(),
 			Time:            issuanceDate,
-			Source:          sources.DINCSource.String(),
+			Source:          s.devLicense.Hex(),
 			Subject:         subject.VehicleDID.String(),
 			Producer:        subject.Producer,
 			Type:            cloudevent.TypeAttestation,
