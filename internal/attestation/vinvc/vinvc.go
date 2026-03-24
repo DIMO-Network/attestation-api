@@ -38,6 +38,7 @@ type Service struct {
 	chainID           uint64
 	VINVCDataVersion  string
 	privateKey        *ecdsa.PrivateKey
+	devLicense        common.Address
 }
 
 // NewService creates a new Service for VIN VC operations.
@@ -61,6 +62,7 @@ func NewService(
 		chainID:           uint64(settings.DIMORegistryChainID),
 		privateKey:        privateKey,
 		VINVCDataVersion:  settings.VINDataVersion,
+		devLicense:        common.HexToAddress(settings.DevLicense),
 	}
 }
 
@@ -231,7 +233,7 @@ func (v *Service) compileVINAttestation(subject types.VINSubject, expirationDate
 			SpecVersion:     "1.0",
 			ID:              ksuid.New().String(),
 			Time:            issuanceDate,
-			Source:          sources.DINCSource.String(),
+			Source:          v.devLicense.Hex(),
 			Subject:         subject.VehicleDID,
 			Producer:        subject.RecordedBy,
 			Type:            cloudevent.TypeAttestation,

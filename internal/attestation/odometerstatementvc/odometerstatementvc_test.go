@@ -36,6 +36,7 @@ func setupTestService(t *testing.T) (*odometerstatementvc.Service, *MockVCRepo, 
 	settings := &config.Settings{
 		VehicleNFTAddress:   "0x1234567890123456789012345678901234567890",
 		DIMORegistryChainID: 137,
+		DevLicense:          "0x49eAf63eD94FEf3d40692862Eee2C8dB416B1a5f",
 	}
 
 	privateKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
@@ -211,7 +212,7 @@ func TestCreateOdometerStatementVC_WithTimestamp(t *testing.T) {
 
 			// Verify cloud event structure
 			assert.NotEmpty(t, uploadedAttestation.ID)
-			assert.NotEmpty(t, uploadedAttestation.Source)
+			assert.Equal(t, common.HexToAddress("0x49eAf63eD94FEf3d40692862Eee2C8dB416B1a5f").Hex(), uploadedAttestation.Source)
 			assert.Equal(t, cloudevent.TypeAttestation, uploadedAttestation.Type)
 			assert.Equal(t, "application/json", uploadedAttestation.DataContentType)
 			assert.NotEmpty(t, uploadedAttestation.Signature)
@@ -319,7 +320,7 @@ func TestCreateOdometerStatementVC_WithoutTimestamp(t *testing.T) {
 
 			// Verify cloud event structure
 			assert.NotEmpty(t, uploadedAttestation.ID)
-			assert.NotEmpty(t, uploadedAttestation.Source)
+			assert.Equal(t, common.HexToAddress("0x49eAf63eD94FEf3d40692862Eee2C8dB416B1a5f").Hex(), uploadedAttestation.Source)
 			assert.Equal(t, cloudevent.TypeAttestation, uploadedAttestation.Type)
 			assert.Equal(t, "application/json", uploadedAttestation.DataContentType)
 			assert.NotEmpty(t, uploadedAttestation.Signature)

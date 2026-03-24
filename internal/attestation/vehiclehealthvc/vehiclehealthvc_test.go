@@ -36,6 +36,7 @@ func setupTestService(t *testing.T) (*vehiclehealthvc.Service, *MockVCRepo, *Moc
 	settings := &config.Settings{
 		VehicleNFTAddress:   "0x1234567890123456789012345678901234567890",
 		DIMORegistryChainID: 137,
+		DevLicense:          "0x49eAf63eD94FEf3d40692862Eee2C8dB416B1a5f",
 	}
 
 	privateKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
@@ -232,6 +233,7 @@ func TestCreateVehicleHealthVC_Success(t *testing.T) {
 			// Verify cloud event structure
 			assert.Equal(t, "1.0", uploadedAttestation.SpecVersion)
 			assert.NotEmpty(t, uploadedAttestation.ID)
+			assert.Equal(t, common.HexToAddress("0x49eAf63eD94FEf3d40692862Eee2C8dB416B1a5f").Hex(), uploadedAttestation.Source)
 			assert.Equal(t, cloudevent.TypeAttestation, uploadedAttestation.Type)
 			assert.Equal(t, "application/json", uploadedAttestation.DataContentType)
 			assert.Equal(t, "vehiclehealth/v1.0.0", uploadedAttestation.DataVersion)

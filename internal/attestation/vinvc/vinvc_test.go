@@ -30,6 +30,7 @@ const (
 	defaultNameSlug   = "toyota_tacoma-4wd_2023"
 	defaultNFTAddress = "0x1234567890abcdef"
 	polygonChainID    = 137
+	testDevLicense    = "0x49eAf63eD94FEf3d40692862Eee2C8dB416B1a5f"
 )
 
 type Mocks struct {
@@ -419,6 +420,7 @@ func TestVCController_GetVINVC(t *testing.T) {
 				VehicleNFTAddress:   defaultNFTAddress,
 				DIMORegistryChainID: polygonChainID,
 				VINDataVersion:      "vin/v1.0",
+				DevLicense:          testDevLicense,
 			}
 
 			// Create a new VCController instance for this test
@@ -459,7 +461,8 @@ func (m *vinSubjectMatcher) Matches(x interface{}) bool {
 		return false
 	}
 
-	return actual.VehicleDID == m.expected.VehicleDID &&
+	return rawEvent.Source == common.HexToAddress(testDevLicense).Hex() &&
+		actual.VehicleDID == m.expected.VehicleDID &&
 		actual.VehicleIdentificationNumber == m.expected.VehicleIdentificationNumber &&
 		actual.VehicleTokenID == m.expected.VehicleTokenID &&
 		actual.RecordedBy == m.expected.RecordedBy &&
