@@ -20,7 +20,7 @@ func GenerateLatestSignalsQuery(signals []string) string {
 		lastSeen
 `)
 	for _, signal := range signals {
-		_, _ = builder.WriteString(fmt.Sprintf("\t\t%s { timestamp value }\n", signal))
+		_, _ = fmt.Fprintf(&builder, "\t\t%s { timestamp value }\n", signal)
 	}
 
 	_, _ = builder.WriteString("\t}\n}")
@@ -41,7 +41,7 @@ func GenerateHistoricalQuery(signals []string) string {
 `)
 
 	for _, signal := range signals {
-		_, _ = builder.WriteString(fmt.Sprintf("\t\t%s(agg:LAST)\n", signal))
+		_, _ = fmt.Fprintf(&builder, "\t\t%s(agg:LAST)\n", signal)
 	}
 	_, _ = builder.WriteString("\t}\n}")
 
