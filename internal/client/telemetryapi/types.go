@@ -127,7 +127,7 @@ type SignalLocation struct {
 type Location struct {
 	Latitude  float64 `json:"latitude"`
 	Longitude float64 `json:"longitude"`
-	Hdop      float64 `json:"hdop"`
+	HDOP      float64 `json:"hdop"`
 }
 
 // Signal represents a telemetry signal (for backward compatibility).
