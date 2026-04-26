@@ -144,32 +144,18 @@ func (s *Service) convertSignalCollectionToRecords(collection SignalCollection) 
 	var signals []Signal
 
 	// Convert each signal field to Signal format
-	if collection.CurrentLocationLatitude != nil {
+	if collection.CurrentLocationCoordinates != nil {
 		signals = append(signals, Signal{
-			Name:      vss.FieldCurrentLocationLatitude,
-			Value:     collection.CurrentLocationLatitude.Value,
-			Timestamp: collection.CurrentLocationLatitude.Timestamp,
+			Name:      vss.FieldCurrentLocationCoordinates,
+			Value:     collection.CurrentLocationCoordinates.Value,
+			Timestamp: collection.CurrentLocationCoordinates.Timestamp,
 		})
 	}
-	if collection.CurrentLocationLongitude != nil {
+	if collection.CurrentLocationApproximateCoordinates != nil {
 		signals = append(signals, Signal{
-			Name:      vss.FieldCurrentLocationLongitude,
-			Value:     collection.CurrentLocationLongitude.Value,
-			Timestamp: collection.CurrentLocationLongitude.Timestamp,
-		})
-	}
-	if collection.CurrentLocationApproximateLatitude != nil {
-		signals = append(signals, Signal{
-			Name:      "currentLocationApproximateLatitude",
-			Value:     collection.CurrentLocationApproximateLatitude.Value,
-			Timestamp: collection.CurrentLocationApproximateLatitude.Timestamp,
-		})
-	}
-	if collection.CurrentLocationApproximateLongitude != nil {
-		signals = append(signals, Signal{
-			Name:      "currentLocationApproximateLongitude",
-			Value:     collection.CurrentLocationApproximateLongitude.Value,
-			Timestamp: collection.CurrentLocationApproximateLongitude.Timestamp,
+			Name:      "currentLocationApproximateCoordinates",
+			Value:     collection.CurrentLocationApproximateCoordinates.Value,
+			Timestamp: collection.CurrentLocationApproximateCoordinates.Timestamp,
 		})
 	}
 	if collection.PowertrainTransmissionTravelledDistance != nil {
@@ -237,31 +223,17 @@ func (s *Service) convertSignalAggregationsToRecords(aggregations []SignalAggreg
 	var signals []Signal
 	for _, agg := range aggregations {
 		// Convert each aggregation field to Signal format
-		if agg.CurrentLocationLatitude != nil {
+		if agg.CurrentLocationCoordinates != nil {
 			signals = append(signals, Signal{
-				Name:      vss.FieldCurrentLocationLatitude,
-				Value:     *agg.CurrentLocationLatitude,
+				Name:      vss.FieldCurrentLocationCoordinates,
+				Value:     *agg.CurrentLocationCoordinates,
 				Timestamp: agg.Timestamp,
 			})
 		}
-		if agg.CurrentLocationLongitude != nil {
+		if agg.CurrentLocationApproximateCoordinates != nil {
 			signals = append(signals, Signal{
-				Name:      vss.FieldCurrentLocationLongitude,
-				Value:     *agg.CurrentLocationLongitude,
-				Timestamp: agg.Timestamp,
-			})
-		}
-		if agg.CurrentLocationApproximateLatitude != nil {
-			signals = append(signals, Signal{
-				Name:      "currentLocationApproximateLatitude",
-				Value:     *agg.CurrentLocationApproximateLatitude,
-				Timestamp: agg.Timestamp,
-			})
-		}
-		if agg.CurrentLocationApproximateLongitude != nil {
-			signals = append(signals, Signal{
-				Name:      "currentLocationApproximateLongitude",
-				Value:     *agg.CurrentLocationApproximateLongitude,
+				Name:      "currentLocationApproximateCoordinates",
+				Value:     *agg.CurrentLocationApproximateCoordinates,
 				Timestamp: agg.Timestamp,
 			})
 		}

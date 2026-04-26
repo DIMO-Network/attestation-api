@@ -73,24 +73,14 @@ func TestCreateVehiclePositionVC_Success(t *testing.T) {
 			name: "closest location before requested time",
 			signals: []telemetryapi.Signal{
 				{
-					Name:      vss.FieldCurrentLocationLatitude,
-					Value:     37.7749,
+					Name:      vss.FieldCurrentLocationCoordinates,
+					Value:     telemetryapi.Location{Latitude: 37.7749, Longitude: -122.4194},
 					Timestamp: time.Date(2024, 1, 15, 11, 30, 0, 0, time.UTC), // 30 minutes before
 				},
 				{
-					Name:      vss.FieldCurrentLocationLongitude,
-					Value:     -122.4194,
-					Timestamp: time.Date(2024, 1, 15, 11, 30, 0, 0, time.UTC),
-				},
-				{
-					Name:      vss.FieldCurrentLocationLatitude,
-					Value:     37.7849,
+					Name:      vss.FieldCurrentLocationCoordinates,
+					Value:     telemetryapi.Location{Latitude: 37.7849, Longitude: -122.4094},
 					Timestamp: time.Date(2024, 1, 15, 12, 30, 0, 0, time.UTC), // 30 minutes after
-				},
-				{
-					Name:      vss.FieldCurrentLocationLongitude,
-					Value:     -122.4094,
-					Timestamp: time.Date(2024, 1, 15, 12, 30, 0, 0, time.UTC),
 				},
 			},
 			expectedLat:  37.7749,
@@ -101,24 +91,14 @@ func TestCreateVehiclePositionVC_Success(t *testing.T) {
 			name: "closest location after requested time",
 			signals: []telemetryapi.Signal{
 				{
-					Name:      vss.FieldCurrentLocationLatitude,
-					Value:     37.7649,
+					Name:      vss.FieldCurrentLocationCoordinates,
+					Value:     telemetryapi.Location{Latitude: 37.7649, Longitude: -122.4294},
 					Timestamp: time.Date(2024, 1, 15, 11, 0, 0, 0, time.UTC), // 1 hour before
 				},
 				{
-					Name:      vss.FieldCurrentLocationLongitude,
-					Value:     -122.4294,
-					Timestamp: time.Date(2024, 1, 15, 11, 0, 0, 0, time.UTC),
-				},
-				{
-					Name:      vss.FieldCurrentLocationLatitude,
-					Value:     37.7849,
+					Name:      vss.FieldCurrentLocationCoordinates,
+					Value:     telemetryapi.Location{Latitude: 37.7849, Longitude: -122.4094},
 					Timestamp: time.Date(2024, 1, 15, 12, 15, 0, 0, time.UTC), // 15 minutes after (closest)
-				},
-				{
-					Name:      vss.FieldCurrentLocationLongitude,
-					Value:     -122.4094,
-					Timestamp: time.Date(2024, 1, 15, 12, 15, 0, 0, time.UTC),
 				},
 			},
 			expectedLat:  37.7849,
@@ -129,13 +109,8 @@ func TestCreateVehiclePositionVC_Success(t *testing.T) {
 			name: "approximate location signals",
 			signals: []telemetryapi.Signal{
 				{
-					Name:      "currentLocationApproximateLatitude",
-					Value:     37.7949,
-					Timestamp: time.Date(2024, 1, 15, 11, 45, 0, 0, time.UTC),
-				},
-				{
-					Name:      "currentLocationApproximateLongitude",
-					Value:     -122.3994,
+					Name:      "currentLocationApproximateCoordinates",
+					Value:     telemetryapi.Location{Latitude: 37.7949, Longitude: -122.3994},
 					Timestamp: time.Date(2024, 1, 15, 11, 45, 0, 0, time.UTC),
 				},
 			},
@@ -315,13 +290,8 @@ func TestCreateVehiclePositionVC_VCRepoError(t *testing.T) {
 	// Mock telemetry data with location signals
 	expectedSignals := []telemetryapi.Signal{
 		{
-			Name:      vss.FieldCurrentLocationLatitude,
-			Value:     37.7749,
-			Timestamp: requestedTimestamp.Add(-30 * time.Minute),
-		},
-		{
-			Name:      vss.FieldCurrentLocationLongitude,
-			Value:     -122.4194,
+			Name:      vss.FieldCurrentLocationCoordinates,
+			Value:     telemetryapi.Location{Latitude: 37.7749, Longitude: -122.4194},
 			Timestamp: requestedTimestamp.Add(-30 * time.Minute),
 		},
 	}
