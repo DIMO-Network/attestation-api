@@ -203,6 +203,7 @@ func signalsToH3Values(signals []telemetryapi.Signal) []types.Location {
 		}
 		loc, ok := signal.Value.(telemetryapi.Location)
 		if !ok {
+			// TODO(elffjs): Doesn't feel good to be silent here.
 			continue
 		}
 		cell, err := h3.LatLngToCell(h3.NewLatLng(loc.Latitude, loc.Longitude), h3Resolution)

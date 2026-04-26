@@ -217,36 +217,16 @@ func parseEvent(ctx context.Context, event cloudevent.RawEvent) (cloudevent.Clou
 }
 
 func getH3Cells(signals []vss.Signal) ([]h3.Cell, bool) {
-	latLongPairs := map[int64]LatLng{}
-	for _, signal := range signals {
-		timeInSecs := signal.Timestamp.Unix()
-		switch signal.Name {
-		case vss.FieldCurrentLocationLatitude:
-			latLng := latLongPairs[timeInSecs]
-			latLng.Latitude = &signal.ValueNumber
-			latLongPairs[timeInSecs] = latLng
-		case vss.FieldCurrentLocationLongitude:
-			latLng := latLongPairs[timeInSecs]
-			latLng.Longitude = &signal.ValueNumber
-			latLongPairs[timeInSecs] = latLng
-		}
-	}
 	var cells []h3.Cell
-	for _, latLng := range latLongPairs {
-		if latLng.Latitude != nil && latLng.Longitude != nil {
-			h3LatLng := h3.NewLatLng(*latLng.Latitude, *latLng.Longitude)
-			cell, err := h3.LatLngToCell(h3LatLng, h3Resolution)
-			if err != nil {
-				return nil, false
-			}
-			cells = append(cells, cell)
+	for _, signal := range signals {
+		if signal.Name != vss.FieldCurrentLocationCoordinates {
+			continue
 		}
+		cell, err := h3.LatLngToCell(h3.NewLatLng(signal.ValueLocation.Latitude, signal.ValueLocation.Longitude), h3Resolution)
+		if err != nil {
+			return nil, false
+		}
+		cells = append(cells, cell)
 	}
-
 	return cells, len(cells) > 0
-}
-
-type LatLng struct {
-	Latitude  *float64 `json:"latitude"`
-	Longitude *float64 `json:"longitude"`
 }
