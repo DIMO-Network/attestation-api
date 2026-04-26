@@ -119,7 +119,7 @@ func (s *Service) findClosestLocation(ctx context.Context, vehicleInfo cloudeven
 		StartDate: startTime,
 		EndDate:   endTime,
 		Interval:  "5m",
-		Signals:   []string{"currentLocationLatitude", "currentLocationLongitude", "currentLocationApproximateLatitude", "currentLocationApproximateLongitude"},
+		Signals:   []string{vss.FieldCurrentLocationCoordinates, "currentLocationApproximateCoordinates"},
 	}
 
 	// Get historical telemetry data
@@ -196,33 +196,24 @@ func (s *Service) createAttestation(subject types.VehiclePositionVCSubject) (*cl
 }
 
 func signalsToH3Values(signals []telemetryapi.Signal) []types.Location {
-	pairs := map[time.Time]vss.Location{}
+	h3Locations := make([]types.Location, 0, len(signals))
 	for _, signal := range signals {
-		location := pairs[signal.Timestamp]
-		switch signal.Name {
-		case vss.FieldCurrentLocationLatitude, "currentLocationApproximateLatitude":
-			if lat, ok := signal.Value.(float64); ok {
-				location.Latitude = lat
-			}
-		case vss.FieldCurrentLocationLongitude, "currentLocationApproximateLongitude":
-			if lng, ok := signal.Value.(float64); ok {
-				location.Longitude = lng
-			}
+		if signal.Name != vss.FieldCurrentLocationCoordinates && signal.Name != "currentLocationApproximateCoordinates" {
+			continue
 		}
-		pairs[signal.Timestamp] = location
-	}
-	h3Locations := make([]types.Location, 0, len(pairs))
-	for timestamp, pair := range pairs {
-		cell, err := h3.LatLngToCell(h3.NewLatLng(pair.Latitude, pair.Longitude), h3Resolution)
+		loc, ok := signal.Value.(telemetryapi.Location)
+		if !ok {
+			continue
+		}
+		cell, err := h3.LatLngToCell(h3.NewLatLng(loc.Latitude, loc.Longitude), h3Resolution)
 		if err != nil {
 			continue
 		}
-		location := types.Location{
+		h3Locations = append(h3Locations, types.Location{
 			LocationType:  types.LocationTypeH3Cell,
 			LocationValue: types.H3Cell{CellID: cell.String()},
-			Timestamp:     timestamp,
-		}
-		h3Locations = append(h3Locations, location)
+			Timestamp:     signal.Timestamp,
+		})
 	}
 	return h3Locations
 }

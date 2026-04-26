@@ -7,6 +7,13 @@ import (
 	"time"
 )
 
+// locationSignals is the set of signal names whose value is a Location object
+// rather than a scalar. They require a nested selection set in GraphQL queries.
+var locationSignals = map[string]bool{
+	"currentLocationCoordinates":            true,
+	"currentLocationApproximateCoordinates": true,
+}
+
 // GenerateLatestSignalsQuery generates a GraphQL query for latest signals based on requested signal names.
 func GenerateLatestSignalsQuery(signals []string) string {
 	if len(signals) == 0 {
@@ -20,7 +27,11 @@ func GenerateLatestSignalsQuery(signals []string) string {
 		lastSeen
 `)
 	for _, signal := range signals {
-		_, _ = fmt.Fprintf(&builder, "\t\t%s { timestamp value }\n", signal)
+		if locationSignals[signal] {
+			_, _ = fmt.Fprintf(&builder, "\t\t%s { timestamp value { latitude longitude hdop } }\n", signal)
+		} else {
+			_, _ = fmt.Fprintf(&builder, "\t\t%s { timestamp value }\n", signal)
+		}
 	}
 
 	_, _ = builder.WriteString("\t}\n}")
@@ -41,7 +52,11 @@ func GenerateHistoricalQuery(signals []string) string {
 `)
 
 	for _, signal := range signals {
-		_, _ = fmt.Fprintf(&builder, "\t\t%s(agg:LAST)\n", signal)
+		if locationSignals[signal] {
+			_, _ = fmt.Fprintf(&builder, "\t\t%s(agg:LAST) { latitude longitude hdop }\n", signal)
+		} else {
+			_, _ = fmt.Fprintf(&builder, "\t\t%s(agg:LAST)\n", signal)
+		}
 	}
 	_, _ = builder.WriteString("\t}\n}")
 
@@ -62,28 +77,24 @@ type dataField struct {
 
 // SignalCollection represents the latest signals collection from telemetry API.
 type SignalCollection struct {
-	LastSeen                                time.Time     `json:"lastSeen"`
-	CurrentLocationLatitude                 *SignalFloat  `json:"currentLocationLatitude"`
-	CurrentLocationLongitude                *SignalFloat  `json:"currentLocationLongitude"`
-	CurrentLocationApproximateLatitude      *SignalFloat  `json:"currentLocationApproximateLatitude"`
-	CurrentLocationApproximateLongitude     *SignalFloat  `json:"currentLocationApproximateLongitude"`
-	PowertrainTransmissionTravelledDistance *SignalFloat  `json:"powertrainTransmissionTravelledDistance"`
-	Speed                                   *SignalFloat  `json:"speed"`
-	ObdDTCList                              *SignalString `json:"obdDTCList"`
-	ObdStatusDTCCount                       *SignalFloat  `json:"obdStatusDTCCount"`
-	ChassisAxleRow1WheelLeftTirePressure    *SignalFloat  `json:"chassisAxleRow1WheelLeftTirePressure"`
-	ChassisAxleRow1WheelRightTirePressure   *SignalFloat  `json:"chassisAxleRow1WheelRightTirePressure"`
-	ChassisAxleRow2WheelLeftTirePressure    *SignalFloat  `json:"chassisAxleRow2WheelLeftTirePressure"`
-	ChassisAxleRow2WheelRightTirePressure   *SignalFloat  `json:"chassisAxleRow2WheelRightTirePressure"`
+	LastSeen                                time.Time       `json:"lastSeen"`
+	CurrentLocationCoordinates              *SignalLocation `json:"currentLocationCoordinates"`
+	CurrentLocationApproximateCoordinates   *SignalLocation `json:"currentLocationApproximateCoordinates"`
+	PowertrainTransmissionTravelledDistance *SignalFloat    `json:"powertrainTransmissionTravelledDistance"`
+	Speed                                   *SignalFloat    `json:"speed"`
+	ObdDTCList                              *SignalString   `json:"obdDTCList"`
+	ObdStatusDTCCount                       *SignalFloat    `json:"obdStatusDTCCount"`
+	ChassisAxleRow1WheelLeftTirePressure    *SignalFloat    `json:"chassisAxleRow1WheelLeftTirePressure"`
+	ChassisAxleRow1WheelRightTirePressure   *SignalFloat    `json:"chassisAxleRow1WheelRightTirePressure"`
+	ChassisAxleRow2WheelLeftTirePressure    *SignalFloat    `json:"chassisAxleRow2WheelLeftTirePressure"`
+	ChassisAxleRow2WheelRightTirePressure   *SignalFloat    `json:"chassisAxleRow2WheelRightTirePressure"`
 }
 
 // SignalAggregations represents historical signal aggregations.
 type SignalAggregations struct {
 	Timestamp                               time.Time `json:"timestamp"`
-	CurrentLocationLatitude                 *float64  `json:"currentLocationLatitude"`
-	CurrentLocationLongitude                *float64  `json:"currentLocationLongitude"`
-	CurrentLocationApproximateLatitude      *float64  `json:"currentLocationApproximateLatitude"`
-	CurrentLocationApproximateLongitude     *float64  `json:"currentLocationApproximateLongitude"`
+	CurrentLocationCoordinates              *Location `json:"currentLocationCoordinates"`
+	CurrentLocationApproximateCoordinates   *Location `json:"currentLocationApproximateCoordinates"`
 	PowertrainTransmissionTravelledDistance *float64  `json:"powertrainTransmissionTravelledDistance"`
 	Speed                                   *float64  `json:"speed"`
 	ObdDTCList                              *string   `json:"obdDTCList"`
@@ -104,6 +115,19 @@ type SignalFloat struct {
 type SignalString struct {
 	Timestamp time.Time `json:"timestamp"`
 	Value     string    `json:"value"`
+}
+
+// SignalLocation represents a location signal with timestamp.
+type SignalLocation struct {
+	Timestamp time.Time `json:"timestamp"`
+	Value     Location  `json:"value"`
+}
+
+// Location is a WGS 84 coordinate as returned by the telemetry GraphQL API.
+type Location struct {
+	Latitude  float64 `json:"latitude"`
+	Longitude float64 `json:"longitude"`
+	Hdop      float64 `json:"hdop"`
 }
 
 // Signal represents a telemetry signal (for backward compatibility).

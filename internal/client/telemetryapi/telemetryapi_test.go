@@ -37,9 +37,13 @@ func TestService_GetLatestSignals(t *testing.T) {
 							"timestamp": "2024-01-15T10:30:00Z",
 							"value": 65.5
 						},
-						"currentLocationLatitude": {
+						"currentLocationCoordinates": {
 							"timestamp": "2024-01-15T10:30:00Z",
-							"value": 37.7749
+							"value": {
+								"latitude": 37.7749,
+								"longitude": -122.4194,
+								"hdop": 1.0
+							}
 						}
 					}
 				}
@@ -110,7 +114,7 @@ func TestService_GetLatestSignals(t *testing.T) {
 			signals, err := service.GetLatestSignalsWithAuth(ctx, telemetryapi.TelemetryLatestOptions{
 				TokenID:  tt.tokenID,
 				JWTToken: "test-jwt-token",
-				Signals:  []string{vss.FieldCurrentLocationLatitude, vss.FieldSpeed},
+				Signals:  []string{vss.FieldCurrentLocationCoordinates, vss.FieldSpeed},
 			})
 			if tt.expectedError {
 				require.Error(t, err)
