@@ -21,7 +21,7 @@ const (
 
 	vinvcQuery     = "query {vinVCLatest(tokenId: %d) {rawVC}}"
 	pomQuery       = "query {pomVCLatest(tokenId: %d) {rawVC}}"
-	successMessage = "VC generated successfully, retrieve using the provided telemetry-api."
+	successMessage = "VC generated successfully, retrieve using the provided fetch-api."
 )
 
 type successResponse struct {
